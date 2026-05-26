@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 type Message = {
   id: string;
@@ -16,14 +17,9 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { refreshCompanies, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
+  const { user } = useAuth();
   
-  const [messages, setMessages] = useState<Message[]>([
-    { 
-      id: '1', 
-      role: 'model', 
-      parts: [{ text: "¡Hola! Soy Charlo, tu especialista de onboarding. 🚀\n¿Cómo se llama tu negocio?" }] 
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -38,9 +34,26 @@ export default function OnboardingPage() {
     persona: 'Eres un asistente virtual amable y servicial.'
   });
 
+  // Final Step States
+  const [showFinalStep, setShowFinalStep] = useState(false);
+  const [finalBusinessArgs, setFinalBusinessArgs] = useState<any>(null);
+  const [metaToken, setMetaToken] = useState("");
+  const [phoneId, setPhoneId] = useState("");
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (user && messages.length === 0) {
+      const name = user.displayName?.split(' ')[0]; // We only use displayName as a confident name
+      const greeting = name 
+        ? `¡Hola ${name}! Soy Charlo, tu especialista de onboarding. 🚀\n¿Cómo se llama tu negocio?`
+        : `¡Hola! Soy Charlo, tu especialista de onboarding. 🚀\nPara empezar a configurar tu IA, ¿cómo te llamas?`;
+        
+      setMessages([{ id: '1', role: 'model', parts: [{ text: greeting }] }]);
+    }
+  }, [user, messages.length]);
 
   useEffect(() => {
     scrollToBottom();
@@ -62,10 +75,22 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Send the current profile state so the AI knows what we already have
-        body: JSON.stringify({ message: text, history: currentHistory, profileState: profile }),
+        body: JSON.stringify({ 
+          message: text, 
+          history: currentHistory, 
+          profileState: profile,
+          userContext: {
+            name: user?.displayName || "Unknown",
+            email: user?.email || "Unknown"
+          }
+        }),
       });
 
       const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Error from server");
+      }
 
       if (data.toolCall && data.toolCall.name === 'update_profile_preview') {
         // AI sent us new profile data!
@@ -91,38 +116,13 @@ export default function OnboardingPage() {
 
       // If the AI decided to call the create_business tool
       if (data.toolCall && data.toolCall.name === 'create_business') {
-        setIsCreating(true);
         const args = data.toolCall.args;
+        setFinalBusinessArgs(args);
         
-        // Let the user read the last message before redirecting
-        setTimeout(async () => {
-          try {
-            // Call the CRUD API to actually create the company
-            const createRes = await fetch('/api/companies', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                name: args.name || profile.name,
-                persona: args.persona || profile.persona,
-                productsCatalog: args.productsCatalog || profile.productsCatalog,
-                knowledgeBase: args.knowledgeBase || profile.knowledgeBase,
-                calendlyLink: ''
-              })
-            });
-            
-            if (createRes.ok) {
-              const newCompany = await createRes.json();
-              await refreshCompanies();
-              setSelectedCompanyId(newCompany.id);
-              router.push('/dashboard/companies');
-            }
-          } catch (err) {
-            console.error("Failed to provision business:", err);
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', parts: [{ text: "❌ Hubo un error al guardar tu negocio en la base de datos." }] }]);
-          } finally {
-            setIsCreating(false);
-          }
-        }, 2000);
+        // Let the user read the last message before showing modal
+        setTimeout(() => {
+          setShowFinalStep(true);
+        }, 1500);
       }
 
     } catch (error) {
@@ -130,6 +130,37 @@ export default function OnboardingPage() {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', parts: [{ text: "Error de conexión con el agente." }] }]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFinalSubmit = async (skipMeta: boolean) => {
+    setIsCreating(true);
+    try {
+      const createRes = await fetch('/api/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: finalBusinessArgs?.name || profile.name,
+          persona: finalBusinessArgs?.persona || profile.persona,
+          productsCatalog: finalBusinessArgs?.productsCatalog || profile.productsCatalog,
+          knowledgeBase: finalBusinessArgs?.knowledgeBase || profile.knowledgeBase,
+          calendlyLink: '',
+          metaAccessToken: skipMeta ? undefined : metaToken,
+          whatsappPhoneNumberId: skipMeta ? undefined : phoneId,
+        })
+      });
+      
+      if (createRes.ok) {
+        const newCompany = await createRes.json();
+        await refreshCompanies();
+        setSelectedCompanyId(newCompany.id);
+        router.push('/dashboard/companies');
+      }
+    } catch (err) {
+      console.error("Failed to provision business:", err);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', parts: [{ text: "❌ Hubo un error al guardar tu negocio en la base de datos." }] }]);
+      setIsCreating(false);
+      setShowFinalStep(false);
     }
   };
 
@@ -145,6 +176,51 @@ export default function OnboardingPage() {
       transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
       
+      {/* FINAL STEP MODAL */}
+      {showFinalStep && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ width: 500, padding: 32, display: 'flex', flexDirection: 'column', gap: 24, animation: 'scaleIn 0.3s ease-out' }}>
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>¡Ya casi terminamos!</h2>
+              <p style={{ color: 'var(--text-secondary)' }}>Charlo ha terminado de configurar tu asistente. Ahora puedes conectarlo a tu cuenta de WhatsApp (Opcional).</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                Token de Acceso de Meta
+                <input 
+                  type="password"
+                  value={metaToken}
+                  onChange={e => setMetaToken(e.target.value)}
+                  placeholder="EAALxxxxxxxxxxxxxx"
+                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
+                />
+              </label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                ID del Número de Teléfono (Phone Number ID)
+                <input 
+                  type="text"
+                  value={phoneId}
+                  onChange={e => setPhoneId(e.target.value)}
+                  placeholder="123456789012345"
+                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
+                />
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
+                Saltar por ahora
+              </button>
+              <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating || !metaToken || !phoneId}>
+                {isCreating ? 'Guardando...' : 'Conectar y Finalizar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* LEFT PANE: Profile Editor (Only visible after interacting) */}
       <div 
         className="glass-panel" 
@@ -289,7 +365,7 @@ export default function OnboardingPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={t('onboarding.placeholder')}
-              disabled={isLoading || isCreating}
+              disabled={isLoading || isCreating || showFinalStep}
               style={{
                 flex: 1,
                 padding: '14px 20px',
@@ -304,7 +380,7 @@ export default function OnboardingPage() {
             <button 
               type="submit" 
               className="btn-primary" 
-              disabled={!input.trim() || isLoading || isCreating}
+              disabled={!input.trim() || isLoading || isCreating || showFinalStep}
               style={{ borderRadius: 'var(--border-radius-full)', padding: '0 24px' }}
             >
               {t('onboarding.send')}
@@ -325,6 +401,10 @@ export default function OnboardingPage() {
         }
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
       `}} />
     </div>

@@ -31,10 +31,13 @@ export const es = {
 
   // Settings
   settings: {
-    title: "Ajustes de Usuario",
-    subtitle: "Gestiona las preferencias de tu cuenta y de la aplicación.",
+    title: "Ajustes de Usuario y Empresa",
+    subtitle: "Gestiona las preferencias y las integraciones del negocio seleccionado.",
     languagePreferences: "Preferencias de Idioma",
     selectLanguage: "Seleccionar el Idioma del Dashboard",
+    whatsappIntegration: "Integración de WhatsApp",
+    metaToken: "Token de Acceso de Meta",
+    phoneId: "ID del Número de Teléfono (Phone Number ID)",
     saveChanges: "Guardar Cambios",
   },
 

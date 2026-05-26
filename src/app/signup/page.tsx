@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -26,6 +26,16 @@ export default function Signup() {
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
+    }
+  };
+
+  const handleProviderSignIn = async (provider: any) => {
+    setError('');
+    try {
+      await signInWithPopup(auth, provider);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign up with provider');
     }
   };
 
@@ -66,6 +76,25 @@ export default function Signup() {
             />
           </div>
           <button type="submit" className="btn-primary" style={{ marginTop: 8 }}>Sign Up</button>
+          
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button 
+              type="button" 
+              onClick={() => handleProviderSignIn(new GoogleAuthProvider())} 
+              className="btn-secondary" 
+              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}
+            >
+              <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 16, height: 16 }} /> Google
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleProviderSignIn(new FacebookAuthProvider())} 
+              className="btn-secondary" 
+              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}
+            >
+              <img src="https://www.facebook.com/favicon.ico" alt="Facebook" style={{ width: 16, height: 16 }} /> Facebook
+            </button>
+          </div>
         </form>
         <p style={{ marginTop: 24, textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
           Already have an account? <Link href="/login" style={{ color: 'var(--accent-color)', fontWeight: 500 }}>Sign In</Link>

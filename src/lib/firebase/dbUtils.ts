@@ -197,14 +197,21 @@ export async function getSessionHistory(companyId: string, sessionId: string) {
 }
 
 export async function getRawSessionHistory(companyId: string, sessionId: string) {
-  if (!adminDb) return [];
+  if (!adminDb) return null;
   const docId = `${companyId}_${sessionId}`;
   const doc = await adminDb.collection('sessions').doc(docId).get();
-  if (!doc.exists) return [];
-  return doc.data()?.history || [];
+  if (!doc.exists) return null;
+  return doc.data();
 }
 
-export async function saveSessionMessage(companyId: string, sessionId: string, role: "user" | "model", text: string) {
+export async function saveSessionMessage(
+  companyId: string, 
+  sessionId: string, 
+  role: "user" | "model" | "human", 
+  text: string,
+  platform: "whatsapp" | "web" = "whatsapp",
+  customerPhone?: string
+) {
   if (!adminDb) return;
   const docId = `${companyId}_${sessionId}`;
   
@@ -221,13 +228,75 @@ export async function saveSessionMessage(companyId: string, sessionId: string, r
     await docRef.set({
       companyId,
       sessionId,
+      customerPhone: customerPhone || sessionId,
+      platform,
+      status: 'ai_handling', // Default status for new chats
+      lastMessage: text,
       history: [newMessage],
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      updatedAt: Date.now()
     });
   } else {
+    // We only update status if it's explicitly passed, otherwise we keep existing
+    // But since this function only appends messages, we don't change status here.
     await docRef.update({
       history: FieldValue.arrayUnion(newMessage),
-      lastUpdated: new Date().toISOString()
+      lastMessage: text,
+      lastUpdated: new Date().toISOString(),
+      updatedAt: Date.now()
     });
   }
+}
+
+export async function updateSessionStatus(companyId: string, sessionId: string, status: "ai_handling" | "needs_human" | "human_handling") {
+  if (!adminDb) return;
+  const docId = `${companyId}_${sessionId}`;
+  await adminDb.collection('sessions').doc(docId).update({
+    status,
+    lastUpdated: new Date().toISOString(),
+    updatedAt: Date.now()
+  });
+}
+
+// --- ORDERS ---
+export async function getOrders(companyId: string) {
+  if (!adminDb) return [];
+  const snapshot = await adminDb.collection('orders').where('companyId', '==', companyId).orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function createOrder(companyId: string, customerId: string, items: any[], total: number) {
+  if (!adminDb) return null;
+  const order = {
+    companyId,
+    customerId,
+    items,
+    total,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+  const docRef = await adminDb.collection('orders').add(order);
+  return { id: docRef.id, ...order };
+}
+
+// --- PAYMENTS ---
+export async function getPayments(companyId: string) {
+  if (!adminDb) return [];
+  const snapshot = await adminDb.collection('payments').where('companyId', '==', companyId).orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function registerPayment(companyId: string, customerId: string, amount: number, reference: string, method: string = "SINPE Móvil") {
+  if (!adminDb) return null;
+  const payment = {
+    companyId,
+    customerId,
+    amount,
+    reference,
+    method,
+    status: 'verified',
+    createdAt: new Date().toISOString()
+  };
+  const docRef = await adminDb.collection('payments').add(payment);
+  return { id: docRef.id, ...payment };
 }

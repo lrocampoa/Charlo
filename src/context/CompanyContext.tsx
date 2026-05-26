@@ -45,15 +45,49 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
   const { user } = useAuth();
 
   const refreshCompanies = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
-      const res = await fetch('/api/companies');
+      const token = await user.getIdToken();
+      const res = await fetch('/api/companies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
-        setCompanies(data.companies || []);
+        const loadedCompanies = data.companies || [];
         
-        if (!selectedCompanyId && data.companies?.length > 0) {
-          setSelectedCompanyId(data.companies[0].id);
+        // --- AUTO SEEDER LOGIC ---
+        if (loadedCompanies.length === 0 && user) {
+          const hasSeeded = localStorage.getItem('hasSeeded_charlo');
+          if (!hasSeeded) {
+            console.log("No companies found on first login. Seeding demo data...");
+            await fetch('/api/seed', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({})
+            });
+            localStorage.setItem('hasSeeded_charlo', 'true');
+            // Re-fetch after seeding
+            const res2 = await fetch('/api/companies', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data2 = await res2.json();
+            setCompanies(data2.companies || []);
+            if (data2.companies?.length > 0) {
+              setSelectedCompanyId(data2.companies[0].id);
+            }
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        setCompanies(loadedCompanies);
+        
+        if (!selectedCompanyId && loadedCompanies.length > 0) {
+          setSelectedCompanyId(loadedCompanies[0].id);
         }
       }
     } catch (error) {

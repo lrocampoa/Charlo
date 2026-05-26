@@ -9,18 +9,20 @@ import { useLanguage } from '@/context/LanguageContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { companies, selectedCompanyId, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
 
   const navItems = [
-    { name: t('sidebar.overview'), path: '/dashboard' },
-    { name: t('sidebar.manageBusinesses'), path: '/dashboard/companies' },
-    { name: t('sidebar.inbox'), path: '/dashboard/inbox' },
-    { name: t('sidebar.customers'), path: '/dashboard/customers' },
-    { name: t('sidebar.knowledge'), path: '/dashboard/knowledge' },
-    { name: t('sidebar.agents'), path: '/dashboard/agents' },
-    { name: t('sidebar.simulator'), path: '/dashboard/test' },
+    { name: `📊 ${t('sidebar.overview')}`, path: '/dashboard' },
+    { name: `🏢 ${t('sidebar.manageBusinesses')}`, path: '/dashboard/companies' },
+    { name: `📥 ${t('sidebar.inbox')}`, path: '/dashboard/inbox' },
+    { name: `👥 ${t('sidebar.customers')}`, path: '/dashboard/customers' },
+    { name: `🧠 ${t('sidebar.knowledge')}`, path: '/dashboard/knowledge' },
+    { name: `🤖 ${t('sidebar.agents')}`, path: '/dashboard/agents' },
+    { name: "🛍️ Órdenes", path: '/dashboard/orders' },
+    { name: "💳 Pagos", path: '/dashboard/payments' },
+    { name: `🎮 ${t('sidebar.simulator')}`, path: '/dashboard/test' },
   ];
 
   return (
@@ -28,6 +30,12 @@ export default function Sidebar() {
       <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 16 }}>Charlo B2B</h1>
         
+        {user && (
+          <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            ¡Bienvenido, <strong style={{ color: 'var(--text-primary)' }}>{user.displayName?.split(' ')[0] || user.email?.split('@')[0] || 'Usuario'}</strong>!
+          </div>
+        )}
+
         {/* Global Company Selector */}
         <select 
           value={selectedCompanyId || ''}

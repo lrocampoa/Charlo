@@ -1,95 +1,129 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCompany } from '@/context/CompanyContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function SettingsPage() {
-  const { language, setLanguage, t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
+  const { selectedCompanyId, companies, refreshCompanies } = useCompany();
+  const { user } = useAuth();
+  
+  const [metaToken, setMetaToken] = useState('');
+  const [phoneId, setPhoneId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+
+  useEffect(() => {
+    if (selectedCompany) {
+      setMetaToken(selectedCompany.metaAccessToken || '');
+      setPhoneId(selectedCompany.whatsappPhoneNumberId || '');
+    }
+  }, [selectedCompany]);
+
+  const handleSaveWhatsAppConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompanyId || !user) return;
+    
+    setIsSaving(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/companies/${selectedCompanyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          metaAccessToken: metaToken,
+          whatsappPhoneNumberId: phoneId
+        })
+      });
+      
+      if (res.ok) {
+        await refreshCompanies();
+        alert('Configuración guardada exitosamente.');
+      } else {
+        alert('Error al guardar la configuración.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al guardar.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <div className="fade-in">
+    <div>
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: '2rem', fontWeight: 600 }}>{t('settings.title')}</h2>
-        <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>{t('settings.subtitle')}</p>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>{t('settings.title')}</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('settings.subtitle')}</p>
       </div>
 
-      <div className="glass-panel" style={{ padding: 24, maxWidth: 600, marginBottom: 24 }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 16 }}>{t('settings.languagePreferences')}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 32, maxWidth: 600 }}>
         
-        <div>
-          <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+        {/* Language Settings */}
+        <div className="glass-panel">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>{t('settings.languagePreferences')}</h2>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
             {t('settings.selectLanguage')}
+            <select 
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as 'en' | 'es')}
+              style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
+            >
+              <option value="en">English</option>
+              <option value="es">Español</option>
+            </select>
           </label>
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button 
-              onClick={() => setLanguage('en')}
-              className={language === 'en' ? 'btn-primary' : 'btn-secondary'}
-              style={{ flex: 1, padding: '12px', fontSize: '1rem' }}
-            >
-              🇺🇸 English
-            </button>
-            <button 
-              onClick={() => setLanguage('es')}
-              className={language === 'es' ? 'btn-primary' : 'btn-secondary'}
-              style={{ flex: 1, padding: '12px', fontSize: '1rem' }}
-            >
-              🇪🇸 Español
-            </button>
-          </div>
         </div>
-      </div>
 
-      <div style={{ maxWidth: 800 }}>
-        <h3 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: 16 }}>Integraciones de Canales</h3>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Conecta tus cuentas de redes sociales para que tus Agentes de IA puedan responder a tus clientes automáticamente en el negocio seleccionado.</p>
+        {/* WhatsApp Integration */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#25D366' }}>💬</span> {t('settings.whatsappIntegration')}
+            </h2>
+            <form onSubmit={handleSaveWhatsAppConfig} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                {t('settings.metaToken')}
+                <input 
+                  type="password"
+                  value={metaToken}
+                  onChange={(e) => setMetaToken(e.target.value)}
+                  placeholder="EAALxxxxxxxxxxxxxx"
+                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
+                />
+              </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 24 }}>
-          {/* WhatsApp & Meta Integration Card */}
-          <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: '#25D366', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: 24, fontWeight: 'bold' }}>
-                W
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>WhatsApp (Meta)</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Cloud API oficial</p>
-              </div>
-            </div>
-            
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24, flex: 1, lineHeight: 1.5 }}>
-              Conecta tu número de WhatsApp Business para habilitar respuestas con IA. Requiere verificación de negocio en Meta.
-            </p>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                {t('settings.phoneId')}
+                <input 
+                  type="text"
+                  value={phoneId}
+                  onChange={(e) => setPhoneId(e.target.value)}
+                  placeholder="123456789012345"
+                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
+                />
+              </label>
 
-            <button 
-              className="btn-primary" 
-              style={{ width: '100%', backgroundColor: '#1877F2', borderColor: '#1877F2' }}
-              onClick={() => alert("En desarrollo: Esta función abrirá 'Facebook Login for Business'.")}
-            >
-              Conectar con Facebook
-            </button>
+              <button type="submit" className="btn-primary" disabled={isSaving} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+                {isSaving ? 'Guardando...' : t('settings.saveChanges')}
+              </button>
+            </form>
           </div>
+        )}
 
-          {/* Instagram Integration Card */}
-          <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', opacity: 0.6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#fff', fontSize: 24, fontWeight: 'bold' }}>
-                IG
-              </div>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)' }}>Instagram</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Direct Messages</p>
-              </div>
-            </div>
-            
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 24, flex: 1, lineHeight: 1.5 }}>
-              Responde a los mensajes directos (DMs) y comentarios en tus publicaciones de Instagram usando a tus Agentes de IA.
-            </p>
-
-            <button className="btn-secondary" style={{ width: '100%' }} disabled>
-              Próximamente
-            </button>
+        {!selectedCompany && (
+          <div className="glass-panel" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+            Selecciona un negocio del menú izquierdo para configurar WhatsApp.
           </div>
-        </div>
+        )}
+
       </div>
     </div>
   );

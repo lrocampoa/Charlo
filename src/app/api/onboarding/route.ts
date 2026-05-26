@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from '@google/generative-ai';
+import { sendAdminAlert } from '@/lib/notifications';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-const SYSTEM_INSTRUCTION = `You are the Charlo AI B2B Onboarding Specialist. Your goal is to help a business owner configure their first AI Agent for their company.
+const getSystemInstruction = (userContext?: any) => `You are the Charlo AI B2B Onboarding Specialist. Your goal is to help a business owner configure their first AI Agent for their company.
 You are energetic, welcoming, and very smart. 
+
+**USER CONTEXT:**
+The user's name is: ${userContext?.name || "Unknown"}
+The user's email is: ${userContext?.email || "Unknown"}
+If the user's name is "Unknown", they were just asked for their name. Acknowledge their name, and then proceed to ask about their business.
 
 **STRICT STATE MACHINE WORKFLOW:**
 
@@ -104,7 +110,7 @@ const onboardingTools: FunctionDeclaration[] = [
 
 export async function POST(request: Request) {
   try {
-    const { history, message, profileState } = await request.json();
+    const { history, message, profileState, userContext } = await request.json();
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "Gemini API Key missing" }, { status: 500 });
@@ -113,7 +119,7 @@ export async function POST(request: Request) {
     // Add googleSearch retrieval natively (this allows Gemini to search the web as a fallback!)
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: getSystemInstruction(userContext),
       tools: [
         { functionDeclarations: onboardingTools },
         { googleSearch: {} } as any // Native Google Search fallback!
@@ -251,8 +257,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ text: responseText });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("Onboarding Agent Error:", error);
+    
+    // Detect quota limits or generic crashes and send Postmark alert
+    const isQuotaError = error?.message?.includes("429") || error?.status === 429;
+    const subject = isQuotaError ? "Gemini API Quota Exceeded (429)" : "Onboarding API Crash";
+    
+    // Don't await if you don't want to block the response, but serverless environments might require awaiting.
+    await sendAdminAlert(subject, error?.message || String(error));
+
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

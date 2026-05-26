@@ -4,13 +4,16 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCompany, Company } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CompaniesPage() {
   const { companies, refreshCompanies, isLoading } = useCompany();
   const { t } = useLanguage();
   const router = useRouter();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Company>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -78,8 +81,14 @@ export default function CompaniesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
         {companies.map(c => (
-          <div key={c.id} className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ fontSize: '1.25rem', marginBottom: 8, color: 'var(--text-primary)', fontWeight: 600 }}>{c.name || t('companies.unnamed')}</h3>
+          <div key={c.id} className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            {/* Mockup Ribbon */}
+            {c.id.startsWith('demo_') && (
+              <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 10px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em' }}>
+                MOCKUP
+              </div>
+            )}
+            <h3 style={{ fontSize: '1.25rem', marginBottom: 8, color: 'var(--text-primary)', fontWeight: 600, paddingRight: c.id.startsWith('demo_') ? 60 : 0 }}>{c.name || t('companies.unnamed')}</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 24, fontFamily: 'monospace' }}>{t('companies.id')}: {c.id}</p>
             
             <div style={{ marginTop: 'auto', display: 'flex', gap: 12 }}>
@@ -88,9 +97,45 @@ export default function CompaniesPage() {
             </div>
           </div>
         ))}
+        {companies.length > 0 && (
+          <div 
+            className="glass-panel" 
+            style={{ padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', minHeight: 200, borderStyle: 'dashed', borderWidth: 2, borderColor: 'var(--border-color)', opacity: 0.8, transition: 'all 0.2s' }}
+            onClick={() => router.push('/onboarding')}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = '1', e.currentTarget.style.borderColor = 'var(--accent-color)')}
+            onMouseOut={(e) => (e.currentTarget.style.opacity = '0.8', e.currentTarget.style.borderColor = 'var(--border-color)')}
+          >
+            <div style={{ fontSize: '3rem', marginBottom: 8, color: 'var(--text-secondary)' }}>+</div>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 600 }}>Crear otro negocio</h3>
+          </div>
+        )}
         {companies.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)' }}>
-            {t('companies.noBusinesses')}
+          <div style={{ gridColumn: '1 / -1', padding: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: 'var(--text-secondary)', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)' }}>
+            <p>{t('companies.noBusinesses')}</p>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <button className="btn-primary" onClick={() => router.push('/onboarding')}>
+                Create one business
+              </button>
+              <button 
+                className="btn-secondary" 
+                disabled={isSeeding}
+                onClick={async () => {
+                  setIsSeeding(true);
+                  try {
+                    const token = await user?.getIdToken();
+                    await fetch('/api/seed', { 
+                      method: 'POST', 
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    await refreshCompanies();
+                  } finally {
+                    setIsSeeding(false);
+                  }
+                }}
+              >
+                {isSeeding ? "Generando..." : "Generar Datos de Prueba"}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getCompanies, createCompany } from '@/lib/firebase/dbUtils';
+import { verifyIdToken } from '@/lib/firebase/admin';
 
 export async function GET(request: Request) {
   try {
-    // In a real app we'd get the uid from the auth token in headers. 
-    // Using MOCK_USER_ID for now since Auth is bypassed.
-    const userId = "MOCK_USER_ID"; 
+    const userId = await verifyIdToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     
     const companies = await getCompanies(userId);
     return NextResponse.json({ companies });
@@ -17,7 +19,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const userId = "MOCK_USER_ID";
+    const userId = await verifyIdToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     
     const newCompany = await createCompany({

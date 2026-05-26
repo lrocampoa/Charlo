@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
 import { getCompanyByWhatsAppId } from '@/lib/firebase/dbUtils';
+import { sendAdminAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
 // When you configure the webhook in Meta Developers, they send a GET request to verify ownership.
@@ -38,15 +39,8 @@ export async function POST(request: Request) {
             const message = change.value.messages[0];
             const senderPhone = message.from;
             const businessPhoneId = change.value.metadata.phone_number_id;
-            const messageText = message.text?.body || "[No text / Media]";
-
-            console.log(`\n============================`);
-            console.log(`💬 NEW WHATSAPP MESSAGE`);
-            console.log(`From: ${senderPhone}`);
-            console.log(`To Phone ID: ${businessPhoneId}`);
-            console.log(`Message: ${messageText}`);
-            console.log(`============================\n`);
-
+            let messageText = message.text?.body || "";
+            
             // Look up company by businessPhoneId in Firebase
             const company = await getCompanyByWhatsAppId(businessPhoneId);
             
@@ -54,6 +48,51 @@ export async function POST(request: Request) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
               return NextResponse.json({ status: "ignored", reason: "unknown_phone_id" }, { status: 200 });
             }
+
+            const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
+
+            // --- IMAGE PROCESSING ---
+            let imagePart = null;
+            if (message.type === 'image' && message.image?.id) {
+              console.log(`📸 Image detected: ${message.image.id}`);
+              messageText = "[Imagen Recibida]";
+              if (accessToken) {
+                try {
+                  // 1. Get Media URL
+                  const mediaUrlRes = await fetch(`https://graph.facebook.com/v19.0/${message.image.id}`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                  });
+                  const mediaData = await mediaUrlRes.json();
+                  
+                  if (mediaData.url) {
+                    // 2. Download Binary Data
+                    const imgRes = await fetch(mediaData.url, {
+                      headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    const arrayBuffer = await imgRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+                    const base64Data = buffer.toString('base64');
+                    
+                    imagePart = {
+                      data: base64Data,
+                      mimeType: message.image.mime_type || "image/jpeg"
+                    };
+                    console.log("✅ Image successfully downloaded and converted to Base64");
+                  }
+                } catch (err) {
+                  console.error("❌ Failed to download image from Meta:", err);
+                }
+              } else {
+                console.warn("⚠️ Cannot download image without Meta Access Token.");
+              }
+            }
+
+            console.log(`\n============================`);
+            console.log(`💬 NEW WHATSAPP MESSAGE`);
+            console.log(`From: ${senderPhone}`);
+            console.log(`To Phone ID: ${businessPhoneId}`);
+            console.log(`Message: ${messageText}`);
+            console.log(`============================\n`);
 
             const context = {
               knowledgeBase: company.knowledgeBase || "",
@@ -67,8 +106,15 @@ export async function POST(request: Request) {
               company.id, 
               senderPhone, // use their phone number as the session ID
               messageText, 
-              context
+              context,
+              imagePart,
+              "whatsapp"
             );
+
+            if (!response) {
+               console.log("🔇 No response from AI (likely human_handling mode). Skipping Meta API call.");
+               continue; // Move to next change
+            }
 
             console.log(`🤖 AI Response generated: ${response}`);
 
@@ -98,8 +144,9 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json({ error: "Unsupported event" }, { status: 404 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Meta Webhook Error:", error);
+    await sendAdminAlert("WhatsApp Webhook Critical Error", error?.message || String(error));
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -1,8 +1,9 @@
 import { routeUserIntent } from './routerAgent';
 import { handleCustomerServiceQuery } from './customerServiceAgent';
+import { handlePaymentImage } from './paymentAgent';
 import { handleSalesQuery } from './salesAgent';
 import { handleBookingQuery } from './bookingAgent';
-import { getSessionHistory, saveSessionMessage, getCustomerProfile } from '../firebase/dbUtils';
+import { getSessionHistory, saveSessionMessage, getCustomerProfile, getRawSessionHistory, updateSessionStatus } from '../firebase/dbUtils';
 import { runSummarizerAgent } from './summarizerAgent';
 import { runQAAnalysis } from './qaAgent';
 
@@ -15,9 +16,20 @@ export async function processUserMessage(
     productsCatalog: string; 
     calendlyLink: string; 
     persona: string 
-  }
+  },
+  imagePart?: { data: string, mimeType: string } | null,
+  platform: "whatsapp" | "web" = "whatsapp"
 ) {
   console.log(`[Orchestrator] Processing message for company ${companyId}, session ${sessionId}`);
+
+  // 0. Check session status
+  const sessionDoc = await getRawSessionHistory(companyId, sessionId);
+  const status = sessionDoc?.status || 'ai_handling';
+
+  if (status === 'human_handling') {
+    console.log(`🔇 Session ${sessionId} is in 'human_handling' mode. AI will ignore.`);
+    return { response: null };
+  }
 
   // 1. Fetch Short-Term Memory (Today's History)
   const history = await getSessionHistory(companyId, sessionId);
@@ -31,6 +43,17 @@ export async function processUserMessage(
   console.log(`[Orchestrator] Detected Intent: ${routing.intent}`);
   
   let response = "";
+
+  // 3.5 Intercept Image Uploads
+  if (imagePart) {
+    console.log(`[Orchestrator] Intercepted image for payment validation`);
+    response = await handlePaymentImage(companyId, sessionId, imagePart);
+    
+    // Save Interaction
+    await saveSessionMessage(companyId, sessionId, "user", "[Envío un comprobante de pago]", platform, sessionId);
+    await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
+    return { routing: { intent: "PAYMENT" }, response };
+  }
   
   // 4. Call Specialized Agent with History and CRM Facts
   switch (routing.intent) {
@@ -45,7 +68,7 @@ export async function processUserMessage(
       break;
     case "ESCALATION":
       response = "Entiendo su frustración. Un agente humano se pondrá en contacto con usted en breve.";
-      // TODO: Trigger notification to the Omnichannel Inbox Dashboard
+      await updateSessionStatus(companyId, sessionId, "needs_human");
       break;
     case "PAYMENT":
       response = "Por favor, envíe una captura de pantalla del comprobante de SINPE Móvil para verificar el pago.";
@@ -56,8 +79,9 @@ export async function processUserMessage(
   }
   
   // 5. Save Interaction to Short-Term Memory
-  await saveSessionMessage(companyId, sessionId, "user", message);
-  await saveSessionMessage(companyId, sessionId, "model", response);
+  // Note: user message is already saved at the beginning of this function.
+  // We only save the model response here.
+  await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
 
   // 6. Trigger Summarizer & QA Agents Asynchronously
   // We do not await these, we just let them run in the background.

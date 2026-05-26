@@ -27,4 +27,17 @@ if (!admin.apps.length) {
 const adminDb = isInitialized ? admin.firestore() : null;
 const adminAuth = isInitialized ? admin.auth() : null;
 
+export async function verifyIdToken(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !adminAuth) return null;
+  const token = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    return decodedToken.uid;
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return null;
+  }
+}
+
 export { adminDb, adminAuth };

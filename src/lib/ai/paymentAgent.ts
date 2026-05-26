@@ -1,0 +1,48 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { registerPayment } from '../firebase/dbUtils';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+export async function handlePaymentImage(
+  companyId: string,
+  customerId: string,
+  imagePart: { data: string, mimeType: string }
+) {
+  try {
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-3.5-flash',
+      systemInstruction: "Eres un analista financiero. El usuario acaba de enviar una imagen. Si la imagen es un comprobante de transferencia bancaria o SINPE Móvil, extrae EXACTAMENTE el monto transferido (como un número) y el número de referencia. Responde estrictamente en formato JSON válido: { \"esComprobante\": true, \"monto\": 15000, \"referencia\": \"123456789\" }. Si NO es un comprobante de pago, responde { \"esComprobante\": false }."
+    });
+
+    const result = await model.generateContent([
+      "Analiza esta imagen y extrae los datos del pago en JSON.",
+      {
+        inlineData: {
+          data: imagePart.data,
+          mimeType: imagePart.mimeType
+        }
+      }
+    ]);
+
+    const text = result.response.text();
+    // Use regex to safely extract the JSON from markdown if Gemini wraps it
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return "No logré leer el comprobante. ¿Podrías enviarlo de nuevo con más claridad?";
+    }
+
+    const data = JSON.parse(jsonMatch[0]);
+
+    if (data.esComprobante && data.monto) {
+      // Register the payment in the DB!
+      await registerPayment(companyId, customerId, data.monto, data.referencia || 'N/A', 'SINPE Móvil');
+      return `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
+    } else {
+      return "Recibí la imagen, pero no parece ser un comprobante de pago válido. Si tienes dudas, dime cómo puedo ayudarte.";
+    }
+
+  } catch (error) {
+    console.error("Error analyzing payment image:", error);
+    return "Recibí tu imagen, pero hubo un problema al procesarla. Por favor, espera a que un humano te asista.";
+  }
+}
