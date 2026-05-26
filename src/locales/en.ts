@@ -1,0 +1,135 @@
+export const en = {
+  // Sidebar
+  sidebar: {
+    overview: "Overview",
+    manageBusinesses: "Manage Businesses",
+    inbox: "Inbox (Human Handoff)",
+    customers: "Customers (CRM)",
+    knowledge: "Knowledge & SOPs",
+    agents: "Agent Config",
+    simulator: "AI Simulator (Test)",
+    settings: "Settings",
+    signOut: "Sign Out"
+  },
+  
+  // Dashboard Overview
+  overview: {
+    title: "Dashboard Overview",
+    subtitle: "Real-time metrics and system health for",
+    noBusiness: "No business selected. Create or select a business to see metrics.",
+    totalConversations: "Total Conversations",
+    avgResolutionTime: "Avg. Resolution Time",
+    botDeflectionRate: "Bot Deflection Rate",
+    escalations: "Escalations to Human",
+    recentActivity: "Recent Activity",
+    aiResolved: "AI resolved booking inquiry",
+    knowledgeGap: "Knowledge Gap Flagged",
+    handoff: "Handoff to human requested",
+    systemHealth: "System Health",
+    allSystemsOperational: "All systems operational. Webhooks and Database are connected.",
+  },
+
+  // Settings
+  settings: {
+    title: "User Settings",
+    subtitle: "Manage your account preferences and application settings.",
+    languagePreferences: "Language Preferences",
+    selectLanguage: "Select Dashboard Language",
+    saveChanges: "Save Changes",
+  },
+
+  // Manage Businesses
+  companies: {
+    title: "Manage Businesses",
+    subtitle: "Create and configure multiple AI agents for different tenants.",
+    newBusiness: "+ AI Onboarding",
+    unnamed: "Unnamed Business",
+    id: "ID",
+    editConfig: "Edit Config",
+    delete: "Delete",
+    noBusinesses: "You haven't created any businesses yet.",
+    editTitle: "Edit Business Configuration",
+    name: "Business Name",
+    whatsappId: "WhatsApp Phone ID (Optional)",
+    calendlyLink: "Calendly Link",
+    persona: "Agent Persona",
+    productsCatalog: "Products / Services Catalog",
+    knowledgeBase: "Knowledge Base (Policies, FAQs)",
+    cancel: "Cancel",
+    save: "Save Configuration",
+    saving: "Saving...",
+    confirmDelete: "Are you sure you want to delete this business?",
+  },
+
+  // Customers (CRM)
+  customers: {
+    title: "Customers CRM",
+    subtitle: "Long-Term Memory profiles for",
+    subtitle2: "The AI automatically extracts facts from conversations to build these profiles over time.",
+    noBusiness: "Please select a business to view CRM profiles.",
+    loading: "Loading profiles...",
+    noProfiles: "No CRM profiles found. Chat with the AI Simulator to generate memory facts!",
+    lastActive: "Last active",
+    extractedFacts: "Extracted Facts",
+    noFacts: "No facts extracted yet.",
+  },
+
+  // AI Simulator
+  simulator: {
+    title: "AI Simulator",
+    subtitle: "Testing",
+    subtitle2: "in real-time.",
+    noBusiness: "No Business Selected",
+    typeMessage: "Type your message here...",
+    send: "Send",
+  },
+
+  // Agent Config
+  agents: {
+    title: "Agent Configuration",
+    subtitle: "Manage your specialized AI team and configure their personas.",
+    brandPersona: "Brand Persona & Tone",
+    casual: "Casual & Friendly",
+    professional: "Professional & Formal",
+    salesDriven: "Energetic & Sales-driven",
+    currentTone: "Current tone",
+    noPersona: "No persona configured.",
+    routerAgent: "Router Agent",
+    routerDesc: "Identifies intent and routes to correct agent.",
+    salesAgent: "Sales Agent",
+    salesDesc: "Recommends products and captures leads.",
+    bookingAgent: "Booking Agent",
+    bookingDesc: "Integrates with Calendly and Google Sheets.",
+    active: "Active",
+    enable: "Enable",
+  },
+
+  // Knowledge & SOPs
+  knowledge: {
+    title: "Knowledge & SOPs",
+    subtitle: "Train the AI team for",
+    subtitle2: "by providing menus, guidelines, and procedures.",
+    dataSources: "Data Sources",
+    sops: "SOP Action Library",
+    uploaded: "Uploaded Knowledge",
+    active: "Active",
+    uploadPdf: "Upload PDF / Image",
+    scrapeWeb: "Scrape Website",
+    actionQueue: "Action Library Queue",
+    actionQueueDesc: "When the AI doesn't know how to handle a specific request, it creates a ticket here for you to write the procedure.",
+    missingSop: "Missing SOP",
+    ago: "hours ago",
+    writeProcedure: "Write Procedure",
+    completedSop: "Completed SOP",
+  },
+  
+  // Onboarding
+  onboarding: {
+    title: "Charlo AI Setup",
+    subtitle: "Tell me about your business and I will configure your AI automatically.",
+    skip: "Skip onboarding and return to dashboard",
+    placeholder: "e.g. My business is a dog grooming salon called Wow Dog...",
+    send: "Send",
+    configuring: "Configuring business and redirecting to dashboard...",
+  }
+};
