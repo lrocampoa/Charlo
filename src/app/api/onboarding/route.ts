@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -24,21 +24,21 @@ Follow these steps EXACTLY:
 
 CRITICAL: When you need the user to choose a location, use the 'ask_multiple_choice' tool to render clickable buttons on their screen. Keep your conversational responses short.`;
 
-const onboardingTools = [
+const onboardingTools: FunctionDeclaration[] = [
   {
     name: 'create_business',
     description: 'Creates a new business tenant configuration in the database. Call this ONLY when you have gathered the business name and at least some context about what they do.',
     parameters: {
-      type: 'object',
+      type: SchemaType.OBJECT,
       properties: {
-        name: { type: 'string', description: 'The official name of the business.' },
-        persona: { type: 'string', description: 'Instructions for how the AI should talk. e.g. "You are an energetic Italian chef..."' },
-        productsCatalog: { type: 'string', description: 'A markdown list of the products or services they offer, and estimated prices. Include links if they provided any.' },
-        knowledgeBase: { type: 'string', description: 'Important facts: opening hours, return policies, payment methods, dietary options, location, etc.' },
-        whatsappNumber: { type: 'string', description: 'The WhatsApp number of the business, if provided.' },
-        instagramLink: { type: 'string', description: 'The Instagram link of the business, if provided.' },
-        facebookLink: { type: 'string', description: 'The Facebook link of the business, if provided.' },
-        needsWebsiteUpsell: { type: 'boolean', description: 'Set to true ONLY IF the user lacks a custom website or uses a social media page (like Facebook) as their main website.' }
+        name: { type: SchemaType.STRING, description: 'The official name of the business.' },
+        persona: { type: SchemaType.STRING, description: 'Instructions for how the AI should talk. e.g. "You are an energetic Italian chef..."' },
+        productsCatalog: { type: SchemaType.STRING, description: 'A markdown list of the products or services they offer, and estimated prices. Include links if they provided any.' },
+        knowledgeBase: { type: SchemaType.STRING, description: 'Important facts: opening hours, return policies, payment methods, dietary options, location, etc.' },
+        whatsappNumber: { type: SchemaType.STRING, description: 'The WhatsApp number of the business, if provided.' },
+        instagramLink: { type: SchemaType.STRING, description: 'The Instagram link of the business, if provided.' },
+        facebookLink: { type: SchemaType.STRING, description: 'The Facebook link of the business, if provided.' },
+        needsWebsiteUpsell: { type: SchemaType.BOOLEAN, description: 'Set to true ONLY IF the user lacks a custom website or uses a social media page (like Facebook) as their main website.' }
       },
       required: ['name', 'persona', 'productsCatalog', 'knowledgeBase'],
     },
@@ -47,10 +47,10 @@ const onboardingTools = [
     name: 'ask_multiple_choice',
     description: 'Use this tool to ask the user a multiple choice question. This will render buttons on their screen.',
     parameters: {
-      type: 'object',
+      type: SchemaType.OBJECT,
       properties: {
-        question: { type: 'string', description: 'The text of the question.' },
-        options: { type: 'array', items: { type: 'string' }, description: 'A list of options to render as clickable buttons.' }
+        question: { type: SchemaType.STRING, description: 'The text of the question.' },
+        options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: 'A list of options to render as clickable buttons.' }
       },
       required: ['question', 'options'],
     },
@@ -59,9 +59,9 @@ const onboardingTools = [
     name: 'search_google_places',
     description: 'Searches the Google Places API for a business by name.',
     parameters: {
-      type: 'object',
+      type: SchemaType.OBJECT,
       properties: {
-        query: { type: 'string', description: 'The name of the business to search for.' }
+        query: { type: SchemaType.STRING, description: 'The name of the business to search for.' }
       },
       required: ['query'],
     },
@@ -70,9 +70,9 @@ const onboardingTools = [
     name: 'get_place_details',
     description: 'Fetches detailed information about a specific Google Place (hours, website, phone).',
     parameters: {
-      type: 'object',
+      type: SchemaType.OBJECT,
       properties: {
-        place_id: { type: 'string', description: 'The place_id returned by search_google_places.' }
+        place_id: { type: SchemaType.STRING, description: 'The place_id returned by search_google_places.' }
       },
       required: ['place_id'],
     },
