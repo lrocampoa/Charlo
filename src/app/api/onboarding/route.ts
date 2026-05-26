@@ -116,7 +116,8 @@ export async function POST(request: Request) {
       const call = functionCalls[0];
       
       if (call.name === 'search_google_places') {
-        const query = call.args.query;
+        const args = call.args as any;
+        const query = args.query;
         console.log(`[Server] Executing search_google_places for: ${query}`);
         
         let searchResults = [];
@@ -154,7 +155,8 @@ export async function POST(request: Request) {
         functionCalls = result.response.functionCalls();
       } 
       else if (call.name === 'get_place_details') {
-        const placeId = call.args.place_id;
+        const args = call.args as any;
+        const placeId = args.place_id;
         console.log(`[Server] Executing get_place_details for: ${placeId}`);
         
         let details = {};
@@ -218,7 +220,7 @@ export async function POST(request: Request) {
           }
         });
       } else if (call.name === 'ask_multiple_choice') {
-        const choiceArgs = call.args;
+        const choiceArgs = call.args as any;
         return NextResponse.json({
           text: choiceArgs.question,
           toolCall: {

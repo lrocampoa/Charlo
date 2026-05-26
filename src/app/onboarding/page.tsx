@@ -59,15 +59,15 @@ export default function OnboardingPage() {
       let newMessage: Message | null = null;
 
       if (data.toolCall && data.toolCall.name === 'ask_multiple_choice') {
-        newMessage = { 
+        const newMessage: Message = { 
           id: Date.now().toString(), 
           role: 'model', 
           parts: [{ text: data.text }],
           options: data.toolCall.args.options 
         };
-        setMessages(prev => [...prev, newMessage!]);
+        setMessages(prev => [...prev, newMessage]);
       } else if (data.text) {
-        newMessage = { id: Date.now().toString(), role: 'model', parts: [{ text: data.text }] };
+        const newMessage: Message = { id: Date.now().toString(), role: 'model', parts: [{ text: data.text }] };
         setMessages(prev => [...prev, newMessage]);
       }
 
