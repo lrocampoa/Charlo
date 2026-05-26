@@ -4,43 +4,66 @@ import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from '@google/gen
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const SYSTEM_INSTRUCTION = `You are the Charlo AI B2B Onboarding Specialist. Your goal is to help a business owner configure their first AI Agent for their company.
-You are energetic, welcoming, and very smart.
+You are energetic, welcoming, and very smart. 
 
-Follow these steps EXACTLY:
-1. Greet the user warmly and ask them for the name of their business.
-2. If the user provides a business name, YOU MUST IMMEDIATELY use the 'search_google_places' tool to find their real business. Do not ask for their address yet, just search the name they gave you.
-3. After 'search_google_places' returns results, you MUST use the 'ask_multiple_choice' tool to ask them "¿Es alguno de estos tu local?" and list the precise addresses/names exactly as they were returned, plus a "Ninguno" option.
-4. When the user replies with their selected address, YOU MUST IMMEDIATELY use 'search_google_places' again with that exact address string to reliably find its place_id, and then use 'get_place_details' to extract their official hours, website, etc.
-5. After extracting the details, summarize the information you found (e.g. "¡Perfecto! Encontré que tu horario es de 9 a 5, y tu teléfono es X...").
-6. CRITICAL NEXT STEP: You MUST inform the user that to configure their assistant properly, you need a bit more information. Ask them sequentially for:
-   - Their WhatsApp number, Instagram link, or Facebook link (CRITICAL: without at least one channel, the assistant cannot be installed).
-   - A link to their menu or a list of their services.
-   - What payment methods they accept (cash, Sinpe Móvil, credit cards).
-   - If they have specific dietary options (if they are a restaurant).
-7. If the user says they don't have something, acknowledge it and move on to the next question. Do not force them if they explicitly decline.
-8. Once you have gathered the required information (channels, menu/services, payment methods) or the user has confirmed they don't have them, YOU MUST CALL THE 'create_business' TOOL.
-9. In the 'create_business' tool, intelligently fill out 'persona', 'productsCatalog', 'knowledgeBase' (incorporating payment methods and dietary info), 'whatsappNumber', 'instagramLink', 'facebookLink'. If they lack a website or use a social media link as their main website, set 'needsWebsiteUpsell' to true.
-10. After successfully calling the 'create_business' tool, congratulate them enthusiastically and tell them they will be redirected to the dashboard automatically.
+**STRICT STATE MACHINE WORKFLOW:**
 
-CRITICAL: When you need the user to choose a location, use the 'ask_multiple_choice' tool to render clickable buttons on their screen. Keep your conversational responses short.`;
+**STEP 1: IDENTITY**
+- You must ask for the business name.
+- If they provide a name, use 'search_google_places' to find it. 
+- If 'search_google_places' fails or returns empty, YOU MUST immediately use 'search_google_web' (the native google search tool) to find their website, facebook page, or info about the business.
+- When you find candidates, use 'ask_multiple_choice' to confirm: "¿Es alguno de estos tu local/negocio?". Include a "Ninguno" option. Do not assume any result is correct without their confirmation.
+
+**STEP 2: EXTRACTION & PREVIEW**
+- Once they confirm a location/website, use 'get_place_details' (if it was a Google Place) or analyze the web results.
+- **CRITICAL:** Call 'update_profile_preview' immediately to update the left pane on their screen with the info you found (name, hours, basic rules).
+- Tell the user: "He actualizado tu perfil en el panel izquierdo. Revisa si la información es correcta y modifícala ahí mismo si falta algo."
+
+**STEP 3: FILLING THE GAPS**
+- Review the current Profile State (passed into the prompt context).
+- Identify what is missing to make a great AI Assistant. You need:
+   1. The catalog of products/services and prices.
+   2. Payment methods.
+   3. A primary contact channel (WhatsApp, Instagram, etc.).
+- Ask them ONE question at a time to fill these gaps. 
+- **CRITICAL:** Every time they give you a piece of information (e.g., "Aceptamos efectivo y Sinpe"), YOU MUST call 'update_profile_preview' to inject that into the \`knowledgeBase\` or \`productsCatalog\` so they see it updating in real-time.
+
+**STEP 4: FINALIZATION**
+- Once the profile looks solid (has name, some knowledge base, and a catalog), ask them to confirm if everything on the left pane looks perfect.
+- Only when they confirm, call the 'create_business' tool to finish the onboarding.
+
+RULES TO AVOID LOOPING:
+- NEVER call the same tool twice with the exact same arguments in a row.
+- If a tool fails to return what you need, fallback to asking the user directly.
+- Always wait for the user's response before proceeding to the next step.`;
 
 const onboardingTools: FunctionDeclaration[] = [
   {
     name: 'create_business',
-    description: 'Creates a new business tenant configuration in the database. Call this ONLY when you have gathered the business name and at least some context about what they do.',
+    description: 'Call this ONLY when the user confirms the profile is ready. Finalizes the onboarding process.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name: { type: SchemaType.STRING },
+        persona: { type: SchemaType.STRING },
+        productsCatalog: { type: SchemaType.STRING },
+        knowledgeBase: { type: SchemaType.STRING }
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'update_profile_preview',
+    description: 'Call this frequently! Use it whenever you learn a new fact (hours, products, payment methods, personality) to update the user\'s screen in real-time.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         name: { type: SchemaType.STRING, description: 'The official name of the business.' },
         persona: { type: SchemaType.STRING, description: 'Instructions for how the AI should talk. e.g. "You are an energetic Italian chef..."' },
-        productsCatalog: { type: SchemaType.STRING, description: 'A markdown list of the products or services they offer, and estimated prices. Include links if they provided any.' },
+        productsCatalog: { type: SchemaType.STRING, description: 'A markdown list of the products or services they offer, and estimated prices.' },
         knowledgeBase: { type: SchemaType.STRING, description: 'Important facts: opening hours, return policies, payment methods, dietary options, location, etc.' },
-        whatsappNumber: { type: SchemaType.STRING, description: 'The WhatsApp number of the business, if provided.' },
-        instagramLink: { type: SchemaType.STRING, description: 'The Instagram link of the business, if provided.' },
-        facebookLink: { type: SchemaType.STRING, description: 'The Facebook link of the business, if provided.' },
-        needsWebsiteUpsell: { type: SchemaType.BOOLEAN, description: 'Set to true ONLY IF the user lacks a custom website or uses a social media page (like Facebook) as their main website.' }
       },
-      required: ['name', 'persona', 'productsCatalog', 'knowledgeBase'],
+      required: [],
     },
   },
   {
@@ -57,7 +80,7 @@ const onboardingTools: FunctionDeclaration[] = [
   },
   {
     name: 'search_google_places',
-    description: 'Searches the Google Places API for a business by name.',
+    description: 'Searches the Google Places API for a physical business by name.',
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -81,16 +104,20 @@ const onboardingTools: FunctionDeclaration[] = [
 
 export async function POST(request: Request) {
   try {
-    const { history, message } = await request.json();
+    const { history, message, profileState } = await request.json();
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: "Gemini API Key missing" }, { status: 500 });
     }
 
+    // Add googleSearch retrieval natively (this allows Gemini to search the web as a fallback!)
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',
       systemInstruction: SYSTEM_INSTRUCTION,
-      tools: [{ functionDeclarations: onboardingTools }],
+      tools: [
+        { functionDeclarations: onboardingTools },
+        { googleSearch: {} } as any // Native Google Search fallback!
+      ],
     });
 
     let validHistory = history.map((msg: any) => ({
@@ -98,7 +125,6 @@ export async function POST(request: Request) {
       parts: msg.parts,
     }));
 
-    // Gemini requires the history array to start with a 'user' message
     while (validHistory.length > 0 && validHistory[0].role !== 'user') {
       validHistory.shift();
     }
@@ -107,18 +133,22 @@ export async function POST(request: Request) {
       history: validHistory
     });
 
-    let result = await chat.sendMessage(message);
+    // Inject profile state into the message so the model knows what is already filled out
+    const contextInjectedMessage = `CURRENT PROFILE STATE:\n\`\`\`json\n${JSON.stringify(profileState, null, 2)}\n\`\`\`\n\nUser Message: ${message}`;
+
+    let result = await chat.sendMessage(contextInjectedMessage);
     let responseText = result.response.text();
     let functionCalls = result.response.functionCalls();
 
-    // Intercept and execute server-side tools (Google Places API mock)
-    while (functionCalls && functionCalls.length > 0) {
+    // Loop to handle server-side tools
+    let loopCount = 0;
+    while (functionCalls && functionCalls.length > 0 && loopCount < 3) {
+      loopCount++;
       const call = functionCalls[0];
       
       if (call.name === 'search_google_places') {
         const args = call.args as any;
         const query = args.query;
-        console.log(`[Server] Executing search_google_places for: ${query}`);
         
         let searchResults = [];
         const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -127,7 +157,7 @@ export async function POST(request: Request) {
           try {
             const res = await fetch(`https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`);
             const data = await res.json();
-            if (data.results) {
+            if (data.results && data.results.length > 0) {
               searchResults = data.results.slice(0, 3).map((place: any) => ({
                 place_id: place.place_id,
                 name: place.name,
@@ -138,10 +168,8 @@ export async function POST(request: Request) {
             console.error("Google Places Search Error:", e);
           }
         } else {
-          // MOCK fallback
           searchResults = [
-            { place_id: "mock_1", name: query, address: "123 Main St, Central City" },
-            { place_id: "mock_2", name: query + " Express", address: "456 Side Ave, Central City" }
+            { place_id: "mock_1", name: query, address: "123 Main St, Central City" }
           ];
         }
         
@@ -157,7 +185,6 @@ export async function POST(request: Request) {
       else if (call.name === 'get_place_details') {
         const args = call.args as any;
         const placeId = args.place_id;
-        console.log(`[Server] Executing get_place_details for: ${placeId}`);
         
         let details = {};
         const apiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -180,15 +207,7 @@ export async function POST(request: Request) {
             console.error("Google Places Details Error:", e);
           }
         } else {
-          // MOCK fallback
-          details = {
-            name: "Business Details Data",
-            formatted_address: "123 Main St, Central City",
-            formatted_phone_number: "+1 555-1234",
-            website: "https://mock.com",
-            opening_hours: { weekday_text: ["Lunes: 9am-5pm", "Martes: 9am-5pm", "Miércoles: 9am-5pm", "Jueves: 9am-5pm", "Viernes: 9am-5pm"] },
-            rating: 4.8
-          };
+          details = { name: "Mock Business", opening_hours: { weekday_text: ["Lunes: 9am-5pm"] } };
         }
         
         result = await chat.sendMessage([{
@@ -201,7 +220,7 @@ export async function POST(request: Request) {
         functionCalls = result.response.functionCalls();
       }
       else {
-        // It's a frontend tool (create_business or ask_multiple_choice)
+        // Break out of the loop for frontend tools (create_business, update_profile_preview, ask_multiple_choice)
         break;
       }
     }
@@ -209,24 +228,23 @@ export async function POST(request: Request) {
     // Handle frontend tools
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
-      if (call.name === 'create_business') {
-        const businessArgs = call.args;
-        
+      
+      if (call.name === 'update_profile_preview') {
         return NextResponse.json({ 
-          text: "¡Excelente! Estoy configurando tu negocio en este momento...", 
-          toolCall: {
-            name: 'create_business',
-            args: businessArgs
-          }
+          text: responseText, 
+          toolCall: { name: 'update_profile_preview', args: call.args }
         });
-      } else if (call.name === 'ask_multiple_choice') {
-        const choiceArgs = call.args as any;
+      } 
+      else if (call.name === 'create_business') {
+        return NextResponse.json({ 
+          text: "¡Excelente! Estoy guardando tu negocio en este momento...", 
+          toolCall: { name: 'create_business', args: call.args }
+        });
+      } 
+      else if (call.name === 'ask_multiple_choice') {
         return NextResponse.json({
-          text: choiceArgs.question,
-          toolCall: {
-            name: 'ask_multiple_choice',
-            args: choiceArgs
-          }
+          text: (call.args as any).question,
+          toolCall: { name: 'ask_multiple_choice', args: call.args }
         });
       }
     }

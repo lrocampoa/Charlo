@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
+import { getCompanyByWhatsAppId } from '@/lib/firebase/dbUtils';
 
 // Meta Verification Endpoint (GET)
 // When you configure the webhook in Meta Developers, they send a GET request to verify ownership.
@@ -46,18 +47,24 @@ export async function POST(request: Request) {
             console.log(`Message: ${messageText}`);
             console.log(`============================\n`);
 
-            // Use hardcoded company info for the MVP test since Firebase isn't set up yet
-            const companyId = "test_company_001";
+            // Look up company by businessPhoneId in Firebase
+            const company = await getCompanyByWhatsAppId(businessPhoneId);
+            
+            if (!company) {
+              console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
+              return NextResponse.json({ status: "ignored", reason: "unknown_phone_id" }, { status: 200 });
+            }
+
             const context = {
-              knowledgeBase: "Somos una empresa de pruebas. Aceptamos efectivo y tarjetas. Estamos abiertos de 8am a 5pm.",
-              productsCatalog: "- Producto A: $10\n- Producto B: $20",
-              calendlyLink: "",
-              persona: "Eres un asistente virtual amable y profesional."
+              knowledgeBase: company.knowledgeBase || "",
+              productsCatalog: company.productsCatalog || "",
+              calendlyLink: company.calendlyLink || "",
+              persona: company.persona || "Eres un asistente virtual amable y profesional."
             };
 
             // Call Gemini Orchestrator
             const { response } = await processUserMessage(
-              companyId, 
+              company.id, 
               senderPhone, // use their phone number as the session ID
               messageText, 
               context
@@ -66,7 +73,7 @@ export async function POST(request: Request) {
             console.log(`🤖 AI Response generated: ${response}`);
 
             // Send response back via Meta Graph API
-            const accessToken = process.env.META_ACCESS_TOKEN;
+            const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
             if (accessToken) {
               await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
                 method: 'POST',
@@ -82,7 +89,7 @@ export async function POST(request: Request) {
               });
               console.log(`✅ Message sent back to ${senderPhone}`);
             } else {
-              console.warn("⚠️ META_ACCESS_TOKEN not set in environment. Cannot send reply.");
+              console.warn("⚠️ No Meta Access Token found for company or environment. Cannot send reply.");
             }
           }
         }
