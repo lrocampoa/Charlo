@@ -63,13 +63,23 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Extract Facebook Page Info (since permissions were added)
+    // 4. Extract Facebook Page Info
     let fbName = "";
     let about = "";
     let website = "";
     let fbPhone = "";
     let pageId = null;
     let instagramId = null;
+
+    // Fallback: Extract from granular_scopes if /me/accounts fails
+    const pageScope = granularScopes.find((s: any) => s.scope.startsWith('pages_'));
+    if (pageScope && pageScope.target_ids && pageScope.target_ids.length > 0) {
+      pageId = pageScope.target_ids[0];
+    }
+    const igScope = granularScopes.find((s: any) => s.scope.startsWith('instagram_'));
+    if (igScope && igScope.target_ids && igScope.target_ids.length > 0) {
+      instagramId = igScope.target_ids[0];
+    }
 
     try {
       const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`);
@@ -91,6 +101,7 @@ export async function POST(req: Request) {
         }
       } else if (pagesData.error) {
         console.warn("Pages API error (might need to add scopes to Configuration):", pagesData.error);
+        console.log("Full Debug Data to inspect available scopes:", JSON.stringify(debugData, null, 2));
       }
     } catch(e) {
       console.error("Error fetching FB Page info during embedded signup", e);
