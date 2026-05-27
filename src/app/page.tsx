@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import ChatWidget from '@/components/ChatWidget';
 
 export default function Home() {
@@ -7,8 +8,8 @@ export default function Home() {
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
           <h1 style={{ fontSize: "2rem", fontWeight: 700 }}>Charlo</h1>
           <nav>
-            <button className="btn-secondary" style={{ marginRight: 12 }}>Login</button>
-            <button className="btn-primary">Sign up</button>
+            <Link href="/login" className="btn-secondary" style={{ marginRight: 12, textDecoration: 'none' }}>Login</Link>
+            <Link href="/signup" className="btn-primary" style={{ textDecoration: 'none' }}>Sign up</Link>
           </nav>
         </header>
 
@@ -20,8 +21,8 @@ export default function Home() {
             Automate customer service, generate leads, and handle bookings on WhatsApp, Instagram, and the web.
           </p>
           <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-            <button className="btn-primary">Get Started</button>
-            <button className="btn-secondary">View Demo</button>
+            <Link href="/signup" className="btn-primary" style={{ textDecoration: 'none' }}>Get Started</Link>
+            <Link href="/login" className="btn-secondary" style={{ textDecoration: 'none' }}>View Demo</Link>
           </div>
         </section>
       </div>
