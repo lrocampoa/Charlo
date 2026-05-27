@@ -81,6 +81,62 @@ export default function SettingsPage() {
           </label>
         </div>
 
+        {/* Canales Conectados */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🔌</span> Canales Conectados
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {selectedCompany.whatsappPhoneNumberId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '8px 16px', borderRadius: '20px', fontSize: '0.9rem' }}>
+                  <span>✅</span> WhatsApp
+                  <button 
+                    onClick={async () => {
+                      if(confirm('¿Desconectar WhatsApp?')) {
+                        const token = await user?.getIdToken();
+                        await fetch(`/api/companies/${selectedCompanyId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ whatsappPhoneNumberId: "" }) });
+                        refreshCompanies();
+                      }
+                    }} 
+                    style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginLeft: 8, opacity: 0.8, fontWeight: 'bold' }}>✕</button>
+                </div>
+              )}
+              {selectedCompany.facebookPageId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '8px 16px', borderRadius: '20px', fontSize: '0.9rem' }}>
+                  <span>✅</span> Messenger
+                  <button 
+                    onClick={async () => {
+                      if(confirm('¿Desconectar Messenger?')) {
+                        const token = await user?.getIdToken();
+                        await fetch(`/api/companies/${selectedCompanyId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ facebookPageId: "" }) });
+                        refreshCompanies();
+                      }
+                    }} 
+                    style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginLeft: 8, opacity: 0.8, fontWeight: 'bold' }}>✕</button>
+                </div>
+              )}
+              {selectedCompany.instagramAccountId && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.3)', color: '#ec4899', padding: '8px 16px', borderRadius: '20px', fontSize: '0.9rem' }}>
+                  <span>✅</span> Instagram
+                  <button 
+                    onClick={async () => {
+                      if(confirm('¿Desconectar Instagram?')) {
+                        const token = await user?.getIdToken();
+                        await fetch(`/api/companies/${selectedCompanyId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ instagramAccountId: "" }) });
+                        refreshCompanies();
+                      }
+                    }} 
+                    style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', marginLeft: 8, opacity: 0.8, fontWeight: 'bold' }}>✕</button>
+                </div>
+              )}
+              {!selectedCompany.whatsappPhoneNumberId && !selectedCompany.facebookPageId && !selectedCompany.instagramAccountId && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No tienes canales conectados actualmente.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* WhatsApp Integration */}
         {selectedCompany && (
           <div className="glass-panel">
