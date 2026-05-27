@@ -1,27 +1,39 @@
 import * as admin from 'firebase-admin';
 
+let isInitialized = false;
+
 if (!admin.apps.length) {
   if (!process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY === "your_private_key_here") {
-    throw new Error("FIREBASE_PRIVATE_KEY is missing or invalid. Check your environment variables. The server cannot start securely without a valid Firebase configuration.");
-  }
-  
-  try {
+    console.warn("⚠️ FIREBASE_PRIVATE_KEY is missing or invalid. Firebase Admin will not initialize.");
+  } else {
+    try {
+      // Fix potential formatting issues in the strings from Render/Vercel
+      let pk = process.env.FIREBASE_PRIVATE_KEY;
+      pk = pk.replace(/\\n/g, '\n').replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+      
+      const pId = process.env.FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+      const cEmail = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+
       admin.initializeApp({
         credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          // Handle newline characters and strip quotes if pasted incorrectly in Vercel
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n').replace(/^"|"$/g, ''),
+          projectId: pId,
+          clientEmail: cEmail,
+          privateKey: pk,
         }),
       });
-  } catch (error) {
-    console.error('Firebase admin initialization error:', error);
-    throw error;
+      isInitialized = true;
+    } catch (error) {
+      console.error('❌ Firebase admin initialization error. Check your credentials format.', error);
+    }
   }
+} else {
+  isInitialized = true;
 }
 
-const adminDb = admin.firestore();
-const adminAuth = admin.auth();
+// Export null if initialization failed so it doesn't crash the build phase.
+// getDb() in dbUtils will throw at RUNTIME if these are null.
+const adminDb = isInitialized ? admin.firestore() : null;
+const adminAuth = isInitialized ? admin.auth() : null;
 
 export async function verifyIdToken(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('authorization');
