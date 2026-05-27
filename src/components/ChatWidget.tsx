@@ -8,7 +8,7 @@ type Message = {
   text: string;
 };
 
-export default function ChatWidget({ companyId = "DEMO_COMPANY" }: { companyId?: string }) {
+export default function ChatWidget({ companyId }: { companyId: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', sender: 'ai', text: '¡Hola! Pura vida 🤙 ¿En qué te puedo ayudar hoy?' }

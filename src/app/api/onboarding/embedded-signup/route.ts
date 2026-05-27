@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     // 3. Fetch Phone Number ID using the WABA ID
     let phoneId = null;
-    let name = "Mi Negocio de WhatsApp";
+    let wabaName = "Mi Negocio de WhatsApp";
 
     if (wabaId) {
       const phonesRes = await fetch(`https://graph.facebook.com/v19.0/${wabaId}/phone_numbers?access_token=${accessToken}`);
@@ -56,12 +56,51 @@ export async function POST(req: Request) {
         phoneId = phonesData.data[0].id;
         // Optionally get the verified name if available
         if (phonesData.data[0].verified_name) {
-          name = phonesData.data[0].verified_name;
+          wabaName = phonesData.data[0].verified_name;
         } else if (phonesData.data[0].display_phone_number) {
-          name = `Negocio (${phonesData.data[0].display_phone_number})`;
+          wabaName = `Negocio (${phonesData.data[0].display_phone_number})`;
         }
       }
     }
+
+    // 4. Extract Facebook Page Info (since permissions were added)
+    let fbName = "";
+    let about = "";
+    let website = "";
+    let fbPhone = "";
+    let pageId = null;
+    let instagramId = null;
+
+    try {
+      const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${accessToken}`);
+      const pagesData = await pagesRes.json();
+      
+      if (!pagesData.error && pagesData.data && pagesData.data.length > 0) {
+        pageId = pagesData.data[0].id;
+        const pageToken = pagesData.data[0].access_token;
+        
+        const detailRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=name,about,phone,website,emails,instagram_business_account&access_token=${pageToken}`);
+        const detailData = await detailRes.json();
+
+        if (detailData.name) fbName = detailData.name;
+        if (detailData.about) about = detailData.about;
+        if (detailData.website) website = detailData.website;
+        if (detailData.phone) fbPhone = detailData.phone;
+        if (detailData.instagram_business_account) {
+          instagramId = detailData.instagram_business_account.id;
+        }
+      } else if (pagesData.error) {
+        console.warn("Pages API error (might need to add scopes to Configuration):", pagesData.error);
+      }
+    } catch(e) {
+      console.error("Error fetching FB Page info during embedded signup", e);
+    }
+
+    const finalName = fbName || wabaName;
+    const finalKnowledgeBase = `ID de WhatsApp Business: ${wabaId || "Desconocido"}\n` +
+      (fbPhone ? `Teléfono FB: ${fbPhone}\n` : "") +
+      (website ? `Sitio Web: ${website}\n` : "") +
+      (about ? `\nSobre nosotros:\n${about}` : "");
 
     // Return everything to the frontend
     return NextResponse.json({
@@ -69,9 +108,11 @@ export async function POST(req: Request) {
       accessToken,
       wabaId,
       phoneId,
+      facebookPageId: pageId,
+      instagramAccountId: instagramId,
       profileUpdate: {
-        name: name,
-        knowledgeBase: `ID de WhatsApp Business: ${wabaId || "Desconocido"}`,
+        name: finalName,
+        knowledgeBase: finalKnowledgeBase,
       }
     });
 

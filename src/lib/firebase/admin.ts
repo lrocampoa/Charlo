@@ -1,31 +1,27 @@
 import * as admin from 'firebase-admin';
 
-let isInitialized = false;
-
 if (!admin.apps.length) {
-  try {
-    if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_PRIVATE_KEY !== "your_private_key_here") {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          // Handle newline characters in the private key from env variables
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-      isInitialized = true;
-    } else {
-      console.warn("⚠️ FIREBASE_PRIVATE_KEY is invalid or missing. Firebase Admin SDK is running in MOCK mode.");
-    }
-  } catch (error) {
-    console.error('Firebase admin initialization error', error);
+  if (!process.env.FIREBASE_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY === "your_private_key_here") {
+    throw new Error("FIREBASE_PRIVATE_KEY is missing or invalid. Check your environment variables. The server cannot start securely without a valid Firebase configuration.");
   }
-} else {
-  isInitialized = true;
+  
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        // Handle newline characters in the private key from env variables
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
+  } catch (error) {
+    console.error('Firebase admin initialization error:', error);
+    throw error;
+  }
 }
 
-const adminDb = isInitialized ? admin.firestore() : null;
-const adminAuth = isInitialized ? admin.auth() : null;
+const adminDb = admin.firestore();
+const adminAuth = admin.auth();
 
 export async function verifyIdToken(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('authorization');

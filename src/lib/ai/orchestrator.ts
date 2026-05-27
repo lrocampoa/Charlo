@@ -36,7 +36,7 @@ export async function processUserMessage(
 
   // 2. Fetch Long-Term Memory (CRM Facts)
   const crmProfile = await getCustomerProfile(companyId, sessionId);
-  const crmFacts = crmProfile.extractedFacts || {};
+  const crmFacts = crmProfile?.extractedFacts || {};
 
   // 3. Route User Intent (Stateless, based on latest message)
   const routing = await routeUserIntent(message);

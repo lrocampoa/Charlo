@@ -18,7 +18,7 @@ export async function runSummarizerAgent(companyId: string, customerId: string) 
 
     // 2. Fetch existing CRM profile
     const existingProfile = await getCustomerProfile(companyId, customerId);
-    const existingFacts = existingProfile.extractedFacts || {};
+    const existingFacts = existingProfile?.extractedFacts || {};
 
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',

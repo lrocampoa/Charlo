@@ -52,6 +52,8 @@ export default function OnboardingPage() {
   const [finalBusinessArgs, setFinalBusinessArgs] = useState<any>(null);
   const [metaToken, setMetaToken] = useState("");
   const [phoneId, setPhoneId] = useState("");
+  const [facebookPageId, setFacebookPageId] = useState<string | null>(null);
+  const [instagramAccountId, setInstagramAccountId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
 
   const scrollToBottom = () => {
@@ -106,6 +108,8 @@ export default function OnboardingPage() {
               if (res.ok && data.success) {
                 setMetaToken(data.accessToken);
                 if (data.phoneId) setPhoneId(data.phoneId);
+                if (data.facebookPageId) setFacebookPageId(data.facebookPageId);
+                if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
                 
                 setProfile(prev => ({ ...prev, ...data.profileUpdate }));
                 setExtractedProvider('Meta');
@@ -297,6 +301,8 @@ export default function OnboardingPage() {
           calendlyLink: '',
           metaAccessToken: skipMeta ? undefined : metaToken,
           whatsappPhoneNumberId: skipMeta ? undefined : phoneId,
+          facebookPageId: skipMeta ? undefined : facebookPageId,
+          instagramAccountId: skipMeta ? undefined : instagramAccountId,
         })
       });
       
@@ -317,285 +323,464 @@ export default function OnboardingPage() {
   return (
     <div style={{ 
       display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
+      flexDirection: 'column',
       minHeight: '100vh', 
       backgroundColor: 'var(--bg-primary)', 
-      padding: 24,
-      gap: 24,
-      transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+      padding: '40px 24px',
+      alignItems: 'center',
     }}>
       
-      {/* FINAL STEP MODAL */}
-      {showFinalStep && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div className="glass-panel" style={{ width: 500, padding: 32, display: 'flex', flexDirection: 'column', gap: 24, animation: 'scaleIn 0.3s ease-out' }}>
-            <div style={{ textAlign: 'center' }}>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>¡Ya casi terminamos!</h2>
-              <p style={{ color: 'var(--text-secondary)' }}>Charlo ha terminado de configurar tu asistente. Ahora puedes conectarlo a tu cuenta de WhatsApp (Opcional).</p>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                Token de Acceso de Meta
-                <input 
-                  type="password"
-                  value={metaToken}
-                  onChange={e => setMetaToken(e.target.value)}
-                  placeholder="EAALxxxxxxxxxxxxxx"
-                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
-                />
-              </label>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                ID del Número de Teléfono (Phone Number ID)
-                <input 
-                  type="text"
-                  value={phoneId}
-                  onChange={e => setPhoneId(e.target.value)}
-                  placeholder="123456789012345"
-                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
-                />
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
-                Saltar por ahora
-              </button>
-              <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating || !metaToken || !phoneId}>
-                {isCreating ? 'Guardando...' : 'Conectar y Finalizar'}
-              </button>
-            </div>
-          </div>
+      {/* STEPPER */}
+      <div className="stepper-container slide-up">
+        <div className={`step ${onboardingStep >= 1 ? 'active' : ''}`}>
+          <div className="step-number">1</div>
+          <span>Conectar</span>
         </div>
-      )}
-
-      {/* STEP 1: INITIAL CONNECTION SCREEN */}
-      {onboardingStep === 1 && (
-        <div className="glass-panel" style={{ maxWidth: 600, padding: 40, textAlign: 'center', animation: 'scaleIn 0.4s ease-out' }}>
-          <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            Acelera tu configuración
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: 32, lineHeight: 1.6 }}>
-            Para no hacerte tantas preguntas, primero conecta tu cuenta de negocio. Extraeremos automáticamente tu nombre, dirección, horarios y catálogos directamente de tus redes oficiales.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-            <button 
-              onClick={handleConnectGoogle} 
-              disabled={isExtracting}
-              className="btn-primary" 
-              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#ffffff', color: '#000' }}
-            >
-              {isExtracting ? 'Conectando...' : '🌐 Conectar Google Business'}
-            </button>
-            
-            <button 
-              onClick={handleConnectFacebook}
-              disabled={isExtracting}
-              className="btn-primary" 
-              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff' }}
-            >
-              {isExtracting ? 'Conectando...' : '🔵 Conectar Meta (Facebook/WhatsApp)'}
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0' }}>
-              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>O hazlo desde cero</span>
-              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
-            </div>
-
-            <button 
-              onClick={() => setOnboardingStep(2)}
-              disabled={isExtracting}
-              className="btn-secondary"
-              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border-color)' }}
-            >
-              ✍️ Configurar manualmente con Charlo
-            </button>
-          </div>
+        <div className={`step-line ${onboardingStep >= 2 ? 'active' : ''}`} />
+        <div className={`step ${onboardingStep >= 2 ? 'active' : ''}`}>
+          <div className="step-number">2</div>
+          <span>Entrenar IA</span>
         </div>
-      )}
-
-      {/* STEP 2: LEFT PANE (Profile) - Only visible in Step 2 */}
-      {onboardingStep === 2 && (
-      <div 
-        className="glass-panel" 
-        style={{ 
-          width: hasStarted ? '400px' : '0px', 
-          opacity: hasStarted ? 1 : 0,
-          visibility: hasStarted ? 'visible' : 'hidden',
-          height: '80vh', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          padding: hasStarted ? 24 : 0, 
-          overflow: 'hidden',
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          border: hasStarted ? '1px solid var(--border-color)' : 'none',
-          transform: hasStarted ? 'translateX(0)' : 'translateX(-50px)'
-        }}
-      >
-        <div style={{ paddingBottom: 16, borderBottom: '1px solid var(--border-color)', marginBottom: 16 }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff' }}>📄 Perfil en Construcción</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Charlo está analizando internet y tus respuestas para construir esto.</p>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Nombre del Negocio:
-            <input 
-              type="text" 
-              value={profile.name} 
-              onChange={e => setProfile({...profile, name: e.target.value})}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.2)', color: '#fff' }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Horarios, Ubicación y Reglas (Base de Conocimiento):
-            <textarea 
-              rows={4}
-              value={profile.knowledgeBase} 
-              onChange={e => setProfile({...profile, knowledgeBase: e.target.value})}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.2)', color: '#fff', resize: 'vertical' }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Catálogo o Servicios (Markdown aceptado):
-            <textarea 
-              rows={4}
-              value={profile.productsCatalog} 
-              onChange={e => setProfile({...profile, productsCatalog: e.target.value})}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.2)', color: '#fff', resize: 'vertical' }}
-            />
-          </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-            Personalidad del Agente:
-            <textarea 
-              rows={2}
-              value={profile.persona} 
-              onChange={e => setProfile({...profile, persona: e.target.value})}
-              style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', backgroundColor: 'rgba(0,0,0,0.2)', color: '#fff', resize: 'vertical' }}
-            />
-          </label>
+        <div className={`step-line ${showFinalStep ? 'active' : ''}`} />
+        <div className={`step ${showFinalStep ? 'active' : ''}`}>
+          <div className="step-number">3</div>
+          <span>Listo</span>
         </div>
       </div>
-      )}
 
-      {/* STEP 2: RIGHT PANE (Chat Interface) */}
-      {onboardingStep === 2 && (
-      <div 
-        className="glass-panel" 
-        style={{ 
-          width: '100%', 
-          maxWidth: 600, 
-          height: '80vh', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          padding: 0, 
-          overflow: 'hidden',
-          transition: 'all 0.5s ease-in-out'
-        }}
-      >
-        {/* Header */}
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            {t('onboarding.title')}
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 8 }}>
-            {t('onboarding.subtitle')}
-          </p>
-        </div>
-
-        {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {messages.map((msg) => (
-            <div key={msg.id} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-              <div style={{
-                padding: '12px 16px',
-                borderRadius: 16,
-                backgroundColor: msg.role === 'user' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
-                color: '#fff',
-                border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none',
-                boxShadow: msg.role === 'user' ? '0 4px 12px rgba(139, 92, 246, 0.3)' : 'none',
-              }}>
-                <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.95rem' }}>{msg.parts[0].text}</p>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 24,
+        width: '100%',
+        maxWidth: 1000,
+        flex: 1
+      }}>
+      
+        {/* FINAL STEP MODAL */}
+        {showFinalStep && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+            <div className="glass-panel-premium" style={{ width: 500, padding: 40, display: 'flex', flexDirection: 'column', gap: 24, animation: 'scaleIn 0.3s ease-out' }}>
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>¡Ya casi terminamos!</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>Charlo ha configurado tu agente inteligentemente. Ahora puedes conectarlo a tu cuenta de WhatsApp (Opcional).</p>
               </div>
-              
-              {/* Render clickable buttons if options exist */}
-              {msg.options && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                  {msg.options.map((opt, idx) => (
-                    <button 
-                      key={idx} 
-                      className="btn-primary" 
-                      style={{ fontSize: '0.85rem', padding: '8px 16px', borderRadius: 'var(--border-radius-full)' }}
-                      onClick={() => handleSend(opt)}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="floating-input-group">
+                  <input 
+                    type="password"
+                    className="floating-input"
+                    value={metaToken}
+                    onChange={e => setMetaToken(e.target.value)}
+                    placeholder=" "
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                  <label className="floating-label">Token de Acceso de Meta (Opcional)</label>
                 </div>
-              )}
-            </div>
-          ))}
-          {isLoading && !isCreating && (
-            <div style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)' }}>
-              <div className="typing-indicator" style={{ display: 'flex', gap: 4 }}>
-                <span style={{ width: 6, height: 6, backgroundColor: 'var(--text-secondary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
-                <span style={{ width: 6, height: 6, backgroundColor: 'var(--text-secondary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
-                <span style={{ width: 6, height: 6, backgroundColor: 'var(--text-secondary)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
+
+                <div className="floating-input-group">
+                  <input 
+                    type="text"
+                    className="floating-input"
+                    value={phoneId}
+                    onChange={e => setPhoneId(e.target.value)}
+                    placeholder=" "
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                  <label className="floating-label">ID del Número de Teléfono (Opcional)</label>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+                <button className="btn-secondary" style={{ flex: 1, padding: '14px 0' }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
+                  Saltar por ahora
+                </button>
+                <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff', padding: '14px 0', border: 'none' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating || !metaToken || !phoneId}>
+                  {isCreating ? 'Guardando...' : 'Conectar y Finalizar'}
+                </button>
               </div>
             </div>
-          )}
-          {isCreating && (
-            <div style={{ alignSelf: 'center', padding: '12px 24px', borderRadius: 16, backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="spinner" style={{ width: 16, height: 16, border: '2px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              {t('onboarding.configuring')}
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        )}
 
-        {/* Input Area */}
-        <div style={{ padding: 16, borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-          <form onSubmit={(e) => { e.preventDefault(); handleSend(input); }} style={{ display: 'flex', gap: 12 }}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={t('onboarding.placeholder')}
-              disabled={isLoading || isCreating || showFinalStep}
-              style={{
-                flex: 1,
-                padding: '14px 20px',
-                borderRadius: 'var(--border-radius-full)',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-primary)',
-                color: '#fff',
-                outline: 'none',
-                fontSize: '0.95rem'
-              }}
-            />
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={!input.trim() || isLoading || isCreating || showFinalStep}
-              style={{ borderRadius: 'var(--border-radius-full)', padding: '0 24px' }}
-            >
-              {t('onboarding.send')}
-            </button>
-          </form>
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <button type="button" onClick={() => router.push('/dashboard')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}>
-              {t('onboarding.skip')}
-            </button>
+        {/* STEP 1: INITIAL CONNECTION SCREEN */}
+        {onboardingStep === 1 && (
+          <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Conecta tu negocio
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
+              Para ahorrarte tiempo, extraemos el nombre, ubicación, y catálogos directamente de tus redes. 
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              <button 
+                onClick={handleConnectGoogle} 
+                disabled={isExtracting}
+                className="btn-primary" 
+                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#ffffff', color: '#000', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
+              >
+                {isExtracting ? <div className="spinner-small" /> : '🌐'}
+                {isExtracting ? 'Conectando...' : 'Conectar Google Business'}
+              </button>
+              
+              <button 
+                onClick={handleConnectFacebook}
+                disabled={isExtracting}
+                className="btn-primary" 
+                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
+              >
+                {isExtracting ? <div className="spinner-small" /> : '🔵'}
+                {isExtracting ? 'Conectando...' : 'Conectar Meta (WhatsApp)'}
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '16px 0' }}>
+                <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>O</span>
+                <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+              </div>
+
+              <button 
+                onClick={() => setOnboardingStep(2)}
+                disabled={isExtracting}
+                className="btn-secondary"
+                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+              >
+                ✍️ Llenar manualmente
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: LEFT PANE (Profile) - Only visible in Step 2 */}
+        {onboardingStep === 2 && (
+        <div 
+          className="glass-panel-premium slide-up" 
+          style={{ 
+            width: hasStarted ? '380px' : '0px', 
+            opacity: hasStarted ? 1 : 0,
+            visibility: hasStarted ? 'visible' : 'hidden',
+            height: '75vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: hasStarted ? 32 : 0, 
+            overflow: 'hidden',
+            transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+            border: hasStarted ? '1px solid rgba(255,255,255,0.1)' : 'none',
+          }}
+        >
+          <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff' }}>📄 Perfil en Construcción</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Charlo actualiza esto mientras conversan.</p>
+          </div>
+
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
+            <div className="floating-input-group">
+              <input 
+                type="text" 
+                className="floating-input"
+                placeholder=" "
+                value={profile.name} 
+                onChange={e => setProfile({...profile, name: e.target.value})}
+              />
+              <label className="floating-label">Nombre del Negocio</label>
+            </div>
+
+            <div className="floating-input-group">
+              <textarea 
+                className="floating-input custom-scrollbar"
+                placeholder=" "
+                rows={4}
+                value={profile.knowledgeBase} 
+                onChange={e => setProfile({...profile, knowledgeBase: e.target.value})}
+                style={{ resize: 'none' }}
+              />
+              <label className="floating-label">Base de Conocimiento</label>
+            </div>
+
+            <div className="floating-input-group">
+              <textarea 
+                className="floating-input custom-scrollbar"
+                placeholder=" "
+                rows={3}
+                value={profile.productsCatalog} 
+                onChange={e => setProfile({...profile, productsCatalog: e.target.value})}
+                style={{ resize: 'none' }}
+              />
+              <label className="floating-label">Catálogo de Productos</label>
+            </div>
+
+            <div className="floating-input-group">
+              <textarea 
+                className="floating-input custom-scrollbar"
+                placeholder=" "
+                rows={2}
+                value={profile.persona} 
+                onChange={e => setProfile({...profile, persona: e.target.value})}
+                style={{ resize: 'none' }}
+              />
+              <label className="floating-label">Personalidad del Agente</label>
+            </div>
           </div>
         </div>
+        )}
+
+        {/* STEP 2: RIGHT PANE (Chat Interface) */}
+        {onboardingStep === 2 && (
+        <div 
+          className="glass-panel-premium slide-up" 
+          style={{ 
+            width: '100%', 
+            maxWidth: 600, 
+            height: '75vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: 0, 
+            overflow: 'hidden',
+          }}
+        >
+          {/* Header */}
+          <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Asistente de Configuración
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+              Responde mis preguntas para entrenar a tu IA.
+            </p>
+          </div>
+
+          {/* Chat Area */}
+          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: 'rgba(0,0,0,0.1)' }}>
+            {messages.map((msg) => (
+              <div key={msg.id} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                <div style={{
+                  padding: '14px 18px',
+                  borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                  background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-color), #8b5cf6)' : 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  border: msg.role === 'model' ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                  boxShadow: msg.role === 'user' ? '0 8px 24px rgba(139, 92, 246, 0.25)' : '0 4px 12px rgba(0,0,0,0.1)',
+                  backdropFilter: msg.role === 'model' ? 'blur(10px)' : 'none'
+                }}>
+                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.95rem' }}>{msg.parts[0].text}</p>
+                </div>
+                
+                {msg.options && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                    {msg.options.map((opt, idx) => (
+                      <button 
+                        key={idx} 
+                        style={{ 
+                          fontSize: '0.85rem', padding: '10px 18px', borderRadius: 'var(--border-radius-full)', 
+                          backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', 
+                          color: '#fff', cursor: 'pointer', transition: 'background 0.2s' 
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                        onClick={() => handleSend(opt)}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && !isCreating && (
+              <div style={{ alignSelf: 'flex-start', padding: '14px 20px', borderRadius: '20px 20px 20px 4px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                <div className="typing-indicator" style={{ display: 'flex', gap: 6 }}>
+                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
+                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
+                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
+                </div>
+              </div>
+            )}
+            {isCreating && (
+              <div style={{ alignSelf: 'center', padding: '14px 24px', borderRadius: 24, backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, backdropFilter: 'blur(10px)' }}>
+                <div className="spinner-small" style={{ borderTopColor: '#10b981' }}></div>
+                {t('onboarding.configuring')}
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input Area */}
+          <div style={{ padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleSend(input); }} style={{ display: 'flex', gap: 12 }}>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={t('onboarding.placeholder')}
+                disabled={isLoading || isCreating || showFinalStep}
+                style={{
+                  flex: 1,
+                  padding: '16px 24px',
+                  borderRadius: 'var(--border-radius-full)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  color: '#fff',
+                  outline: 'none',
+                  fontSize: '0.95rem',
+                  transition: 'border-color 0.3s, box-shadow 0.3s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent-color)';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+              <button 
+                type="submit" 
+                disabled={!input.trim() || isLoading || isCreating || showFinalStep}
+                style={{ 
+                  borderRadius: 'var(--border-radius-full)', 
+                  padding: '0 24px',
+                  background: (!input.trim() || isLoading || isCreating) ? 'rgba(255,255,255,0.1)' : 'var(--accent-color)',
+                  color: (!input.trim() || isLoading || isCreating) ? 'rgba(255,255,255,0.5)' : '#fff',
+                  border: 'none',
+                  cursor: (!input.trim() || isLoading || isCreating) ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                  transition: 'background 0.3s'
+                }}
+              >
+                {t('onboarding.send')}
+              </button>
+            </form>
+          </div>
+        </div>
+        )}
 
       </div>
-      )}
       <style dangerouslySetInnerHTML={{__html: `
+        /* Glassmorphism */
+        .glass-panel-premium {
+          background: rgba(255, 255, 255, 0.04);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+          border-radius: 24px;
+        }
+
+        /* Floating Labels */
+        .floating-input-group {
+          position: relative;
+          margin-bottom: 8px;
+        }
+        .floating-input {
+          width: 100%;
+          padding: 20px 16px 8px;
+          background: rgba(0, 0, 0, 0.2) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          border-radius: 12px !important;
+          color: #fff !important;
+          font-size: 0.95rem;
+          transition: border-color 0.3s, box-shadow 0.3s;
+          outline: none;
+        }
+        .floating-input:focus {
+          border-color: var(--accent-color) !important;
+          box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+        .floating-label {
+          position: absolute;
+          left: 16px;
+          top: 16px;
+          color: var(--text-secondary);
+          font-size: 0.95rem;
+          pointer-events: none;
+          transition: 0.2s ease all;
+        }
+        .floating-input:focus ~ .floating-label,
+        .floating-input:not(:placeholder-shown) ~ .floating-label {
+          top: 6px;
+          font-size: 0.7rem;
+          color: var(--accent-color);
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Stepper */
+        .stepper-container {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        .step {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: rgba(255,255,255,0.4);
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: color 0.4s;
+        }
+        .step.active {
+          color: #fff;
+        }
+        .step-number {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.85rem;
+          transition: all 0.4s;
+        }
+        .step.active .step-number {
+          background: var(--accent-color);
+          color: #fff;
+          box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+        }
+        .step-line {
+          width: 48px;
+          height: 2px;
+          background: rgba(255,255,255,0.1);
+          transition: background 0.4s;
+        }
+        .step-line.active {
+          background: var(--accent-color);
+        }
+
+        /* Animations */
+        .slide-up {
+          animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .spinner-small {
+          width: 16px;
+          height: 16px;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         @keyframes bounce {
           0%, 80%, 100% { transform: scale(0); }
           40% { transform: scale(1); }

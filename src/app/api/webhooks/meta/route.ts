@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
-import { getCompanyByWhatsAppId } from '@/lib/firebase/dbUtils';
+import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId } from '@/lib/firebase/dbUtils';
 import { sendAdminAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
             let messageText = message.text?.body || "";
             
             // Look up company by businessPhoneId in Firebase
-            const company = await getCompanyByWhatsAppId(businessPhoneId);
+            const company: any = await getCompanyByWhatsAppId(businessPhoneId);
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
@@ -135,6 +135,92 @@ export async function POST(request: Request) {
               console.log(`✅ Message sent back to ${senderPhone}`);
             } else {
               console.warn("⚠️ No Meta Access Token found for company or environment. Cannot send reply.");
+            }
+          }
+        }
+      }
+      return NextResponse.json({ status: "EVENT_RECEIVED" }, { status: 200 });
+    }
+
+    // Check if this is a Messenger (Page) or Instagram event
+    if (body.object === "page" || body.object === "instagram") {
+      const isInstagram = body.object === "instagram";
+      const platform = isInstagram ? "instagram" : "messenger";
+      
+      for (const entry of body.entry) {
+        if (entry.messaging) {
+          for (const messagingEvent of entry.messaging) {
+            if (messagingEvent.message) {
+              const senderId = messagingEvent.sender.id;
+              const recipientId = messagingEvent.recipient.id; // Page ID or IG Account ID
+              let messageText = messagingEvent.message.text || "";
+              
+              if (!messageText && !messagingEvent.message.attachments) continue;
+              
+              let company: any = null;
+              if (isInstagram) {
+                company = await getCompanyByInstagramId(recipientId);
+              } else {
+                company = await getCompanyByFacebookPageId(recipientId);
+              }
+
+              if (!company) {
+                console.warn(`⚠️ No company found for ${platform} ID: ${recipientId}`);
+                continue;
+              }
+
+              const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
+
+              console.log(`\n============================`);
+              console.log(`💬 NEW ${platform.toUpperCase()} MESSAGE`);
+              console.log(`From: ${senderId}`);
+              console.log(`To ID: ${recipientId}`);
+              console.log(`Message: ${messageText}`);
+              console.log(`============================\n`);
+
+              const context = {
+                knowledgeBase: company.knowledgeBase || "",
+                productsCatalog: company.productsCatalog || "",
+                calendlyLink: company.calendlyLink || "",
+                persona: company.persona || "Eres un asistente virtual amable y profesional."
+              };
+
+              const { response } = await processUserMessage(
+                company.id, 
+                senderId, 
+                messageText || "[Archivo/Attachment Recibido]", 
+                context,
+                null, 
+                platform as any
+              );
+
+              if (!response) {
+                 console.log("🔇 No response from AI. Skipping Meta API call.");
+                 continue;
+              }
+
+              console.log(`🤖 AI Response generated: ${response}`);
+
+              if (accessToken) {
+                try {
+                  await fetch(`https://graph.facebook.com/v19.0/me/messages`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${accessToken}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      recipient: { id: senderId },
+                      message: { text: response }
+                    })
+                  });
+                  console.log(`✅ Message sent back to ${senderId} via ${platform}`);
+                } catch (err) {
+                  console.error(`❌ Failed to send ${platform} message:`, err);
+                }
+              } else {
+                console.warn(`⚠️ No Meta Access Token found to send ${platform} reply.`);
+              }
             }
           }
         }

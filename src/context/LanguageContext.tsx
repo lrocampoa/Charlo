@@ -14,13 +14,13 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType>({
-  language: 'en',
+  language: 'es',
   setLanguage: () => {},
   t: () => '',
 });
 
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
-  const [language, setLanguageState] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('es');
 
   useEffect(() => {
     // Load preference from local storage on mount
