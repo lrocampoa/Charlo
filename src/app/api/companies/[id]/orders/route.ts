@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { adminDb, verifyIdToken } from '@/lib/firebase/admin';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await verifyIdToken(request);
     if (!userId || !adminDb) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id: companyId } = params;
+    const { id: companyId } = await params;
 
     // Optional: Verify that this company belongs to the user
     const compRef = await adminDb.collection('companies').doc(companyId).get();
