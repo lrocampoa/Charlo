@@ -119,7 +119,6 @@ export async function POST(request: Request) {
             console.log(`🤖 AI Response generated: ${response}`);
 
             // Send response back via Meta Graph API
-            const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
             if (accessToken) {
               await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
                 method: 'POST',
