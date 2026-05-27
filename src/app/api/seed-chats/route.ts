@@ -9,20 +9,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized or Firebase not configured" }, { status: 401 });
     }
 
+    const db = adminDb;
+
     // Get all companies for this user
-    const companiesSnapshot = await adminDb.collection('companies').where('ownerId', '==', userId).get();
+    const companiesSnapshot = await db.collection('companies').where('ownerId', '==', userId).get();
     
     if (companiesSnapshot.empty) {
        return NextResponse.json({ error: "No companies found" }, { status: 404 });
     }
 
-    const batch = adminDb.batch();
+    const batch = db.batch();
 
     companiesSnapshot.forEach(doc => {
       const companyId = doc.id;
 
       // Session 1: AI Handling
-      const session1Ref = adminDb.collection('sessions').doc(`${companyId}_+50688881111`);
+      const session1Ref = db.collection('sessions').doc(`${companyId}_+50688881111`);
       batch.set(session1Ref, {
         companyId: companyId,
         sessionId: "+50688881111",
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
       });
 
       // Session 2: Needs Human
-      const session2Ref = adminDb.collection('sessions').doc(`${companyId}_+50699992222`);
+      const session2Ref = db.collection('sessions').doc(`${companyId}_+50699992222`);
       batch.set(session2Ref, {
         companyId: companyId,
         sessionId: "+50699992222",

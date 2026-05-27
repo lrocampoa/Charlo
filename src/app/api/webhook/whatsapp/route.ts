@@ -61,7 +61,9 @@ export async function POST(request: Request) {
               console.log(`WhatsApp Message from ${from} routed to company ${companyConfig.id}`);
               
               const aiResult = await processUserMessage(companyConfig.id, from, userText, companyConfig as any);
-              await sendWhatsAppMessage(from, aiResult.response, process.env.WHATSAPP_TOKEN, phoneId);
+              if (aiResult.response) {
+                await sendWhatsAppMessage(from, aiResult.response, process.env.WHATSAPP_TOKEN, phoneId);
+              }
             }
           }
         }

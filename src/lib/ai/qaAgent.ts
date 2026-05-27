@@ -11,7 +11,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function runQAAnalysis(companyId: string, sessionId: string) {
   try {
     const rawHistory = await getRawSessionHistory(companyId, sessionId);
-    if (rawHistory.length === 0) return { knowledgeGapFound: false };
+    if (!rawHistory || rawHistory.length === 0) return { knowledgeGapFound: false };
 
     const transcript = rawHistory.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
 

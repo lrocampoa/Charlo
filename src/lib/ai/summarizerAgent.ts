@@ -11,7 +11,7 @@ export async function runSummarizerAgent(companyId: string, customerId: string) 
   try {
     // 1. Fetch raw session history (to get the latest transcript)
     const rawHistory = await getRawSessionHistory(companyId, customerId);
-    if (rawHistory.length === 0) return;
+    if (!rawHistory || rawHistory.length === 0) return;
 
     // Convert history array to a readable transcript string for the AI
     const transcript = rawHistory.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
