@@ -106,6 +106,7 @@ export default function OnboardingPage() {
               const data = await res.json();
               
               if (res.ok && data.success) {
+                console.log("META DEBUG INFO:", data.debugLogs); // Output everything for debugging
                 setMetaToken(data.accessToken);
                 if (data.phoneId) setPhoneId(data.phoneId);
                 if (data.facebookPageId) setFacebookPageId(data.facebookPageId);

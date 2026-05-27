@@ -14,6 +14,8 @@ export interface Company {
   whatsappNumber?: string; // customer-facing number
   instagramLink?: string;
   facebookLink?: string;
+  facebookPageId?: string;
+  instagramAccountId?: string;
   metaAccessToken?: string; // For Meta Graph API calls
   wabaId?: string; // WhatsApp Business Account ID
   ownerId?: string;

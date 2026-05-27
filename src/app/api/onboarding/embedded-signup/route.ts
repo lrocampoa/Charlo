@@ -18,6 +18,8 @@ export async function POST(req: Request) {
     // 1. Exchange code for System User Access Token
     const tokenRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}`);
     const tokenData = await tokenRes.json();
+    
+    let debugLogs: any = { tokenData };
 
     if (tokenData.error) {
       console.error("Error exchanging code:", tokenData.error);
@@ -31,6 +33,7 @@ export async function POST(req: Request) {
     const appAccessToken = `${clientId}|${clientSecret}`;
     const debugRes = await fetch(`https://graph.facebook.com/v19.0/debug_token?input_token=${accessToken}&access_token=${appAccessToken}`);
     const debugData = await debugRes.json();
+    debugLogs.debugData = debugData;
 
     if (debugData.error) {
       console.error("Error debugging token:", debugData.error);
@@ -38,10 +41,51 @@ export async function POST(req: Request) {
 
     let wabaId = null;
     const granularScopes = debugData.data?.granular_scopes || [];
-    const whatsappScope = granularScopes.find((s: any) => s.scope === 'whatsapp_business_management');
     
-    if (whatsappScope && whatsappScope.target_ids && whatsappScope.target_ids.length > 0) {
-      wabaId = whatsappScope.target_ids[0];
+    const whatsappScopes = granularScopes.filter((s: any) => 
+      s.scope === 'whatsapp_business_management' || 
+      s.scope === 'whatsapp_business_messaging'
+    );
+    
+    for (const scope of whatsappScopes) {
+      if (scope.target_ids && scope.target_ids.length > 0) {
+        wabaId = scope.target_ids[0];
+        break;
+      }
+    }
+
+    // Fallback: If not found in granular_scopes, try via /me/businesses
+    if (!wabaId) {
+      try {
+        const bizRes = await fetch(`https://graph.facebook.com/v19.0/me/businesses?access_token=${accessToken}`);
+        const bizData = await bizRes.json();
+        debugLogs.bizData = bizData;
+        
+        if (bizData.data && bizData.data.length > 0) {
+          debugLogs.businessWabaAttempts = [];
+          for (const biz of bizData.data) {
+            // Check owned
+            const waRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/owned_whatsapp_business_accounts?access_token=${accessToken}`);
+            const waData = await waRes.json();
+            debugLogs.businessWabaAttempts.push({ type: 'owned', bizId: biz.id, data: waData });
+            if (waData.data && waData.data.length > 0) {
+              wabaId = waData.data[0].id;
+              break;
+            }
+            // Check client
+            const clientWaRes = await fetch(`https://graph.facebook.com/v19.0/${biz.id}/client_whatsapp_business_accounts?access_token=${accessToken}`);
+            const clientWaData = await clientWaRes.json();
+            debugLogs.businessWabaAttempts.push({ type: 'client', bizId: biz.id, data: clientWaData });
+            if (clientWaData.data && clientWaData.data.length > 0) {
+              wabaId = clientWaData.data[0].id;
+              break;
+            }
+          }
+        }
+      } catch (e: any) {
+        debugLogs.bizError = e.message;
+        console.error("Fallback WABA fetch error:", e);
+      }
     }
 
     // 3. Fetch Phone Number ID using the WABA ID
@@ -51,6 +95,7 @@ export async function POST(req: Request) {
     if (wabaId) {
       const phonesRes = await fetch(`https://graph.facebook.com/v19.0/${wabaId}/phone_numbers?access_token=${accessToken}`);
       const phonesData = await phonesRes.json();
+      debugLogs.phonesData = phonesData;
       
       if (phonesData.data && phonesData.data.length > 0) {
         phoneId = phonesData.data[0].id;
@@ -60,6 +105,8 @@ export async function POST(req: Request) {
         } else if (phonesData.data[0].display_phone_number) {
           wabaName = `Negocio (${phonesData.data[0].display_phone_number})`;
         }
+      } else {
+        console.warn("Phones fetch returned empty or error:", phonesData);
       }
     }
 
@@ -89,8 +136,9 @@ export async function POST(req: Request) {
         pageId = pagesData.data[0].id;
         const pageToken = pagesData.data[0].access_token;
         
-        const detailRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=name,about,phone,website,emails,instagram_business_account&access_token=${pageToken}`);
+        const detailRes = await fetch(`https://graph.facebook.com/v19.0/${pageId}?fields=name,about,phone,website,emails,instagram_business_account,business&access_token=${pageToken}`);
         const detailData = await detailRes.json();
+        debugLogs.pageDetailData = detailData;
 
         if (detailData.name) fbName = detailData.name;
         if (detailData.about) about = detailData.about;
@@ -98,6 +146,40 @@ export async function POST(req: Request) {
         if (detailData.phone) fbPhone = detailData.phone;
         if (detailData.instagram_business_account) {
           instagramId = detailData.instagram_business_account.id;
+        }
+
+        // Additional WABA Fallback using Page's linked Business
+        if (!wabaId && detailData.business && detailData.business.id) {
+          const bizId = detailData.business.id;
+          try {
+            const waRes = await fetch(`https://graph.facebook.com/v19.0/${bizId}/owned_whatsapp_business_accounts?access_token=${accessToken}`);
+            const waData = await waRes.json();
+            debugLogs.pageBusinessOwnedWaData = waData;
+            if (waData.data && waData.data.length > 0) {
+              wabaId = waData.data[0].id;
+            } else {
+              const clientWaRes = await fetch(`https://graph.facebook.com/v19.0/${bizId}/client_whatsapp_business_accounts?access_token=${accessToken}`);
+              const clientWaData = await clientWaRes.json();
+              debugLogs.pageBusinessClientWaData = clientWaData;
+              if (clientWaData.data && clientWaData.data.length > 0) {
+                wabaId = clientWaData.data[0].id;
+              }
+            }
+          } catch (e: any) {
+            debugLogs.pageBusinessError = e.message;
+            console.error("Page Business WABA fetch error:", e);
+          }
+          
+          // Re-attempt phone fetch if we just found the WABA ID
+          if (wabaId && !phoneId) {
+            try {
+              const phonesRes = await fetch(`https://graph.facebook.com/v19.0/${wabaId}/phone_numbers?access_token=${accessToken}`);
+              const phonesData = await phonesRes.json();
+              if (phonesData.data && phonesData.data.length > 0) {
+                phoneId = phonesData.data[0].id;
+              }
+            } catch (e) {}
+          }
         }
       } else if (pagesData.error) {
         console.warn("Pages API error (might need to add scopes to Configuration):", pagesData.error);
@@ -124,7 +206,8 @@ export async function POST(req: Request) {
       profileUpdate: {
         name: finalName,
         knowledgeBase: finalKnowledgeBase,
-      }
+      },
+      debugLogs // Expose for client-side debugging
     });
 
   } catch (error: any) {
