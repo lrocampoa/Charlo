@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
+
+declare global {
+  interface Window {
+    fbAsyncInit: () => void;
+    FB: any;
+  }
+}
 
 type Message = {
   id: string;
@@ -25,7 +34,11 @@ export default function OnboardingPage() {
   const [isCreating, setIsCreating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // New states for Split Pane
+  // New states for UX Flow
+  const [onboardingStep, setOnboardingStep] = useState(1); // 1 = Connect Accounts, 2 = Chat
+  const [extractedProvider, setExtractedProvider] = useState<string | null>(null);
+
+  // Profile States
   const [hasStarted, setHasStarted] = useState(false);
   const [profile, setProfile] = useState({
     name: '',
@@ -39,34 +52,175 @@ export default function OnboardingPage() {
   const [finalBusinessArgs, setFinalBusinessArgs] = useState<any>(null);
   const [metaToken, setMetaToken] = useState("");
   const [phoneId, setPhoneId] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleConnectGoogle = async () => {
+    try {
+      setIsExtracting(true);
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/business.manage');
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      
+      if (token) {
+        await extractDataFromProvider('google', token);
+      }
+    } catch (e: any) {
+      console.error("Google Connect Error:", e);
+      if (e.code !== 'auth/popup-closed-by-user') {
+        alert("Error al conectar con Google: " + e.message);
+      }
+    } finally {
+      setIsExtracting(false);
+      setOnboardingStep(2); // Move to chat regardless of success/fail to unblock
+    }
+  };
+
+  const handleConnectFacebook = async () => {
+    try {
+      setIsExtracting(true);
+      
+      if (!window.FB) {
+        throw new Error("El SDK de Facebook no ha cargado. Por favor, recarga la página.");
+      }
+
+      window.FB.login((response: any) => {
+        const handleResponse = async () => {
+          if (response.authResponse?.code) {
+            const code = response.authResponse.code;
+            
+            try {
+              // Exchange code for token and extract WABA info on backend
+              const res = await fetch('/api/onboarding/embedded-signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+              });
+              const data = await res.json();
+              
+              if (res.ok && data.success) {
+                setMetaToken(data.accessToken);
+                if (data.phoneId) setPhoneId(data.phoneId);
+                
+                setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+                setExtractedProvider('Meta');
+              } else {
+                alert("No pudimos extraer la información. Continúa manual. Error: " + (data.error || 'Unknown'));
+              }
+            } catch (e) {
+              console.error("Backend exchange error:", e);
+              alert("Error al comunicarse con el servidor.");
+            } finally {
+              setIsExtracting(false);
+              setOnboardingStep(2);
+            }
+          } else {
+            console.error("Facebook Connect Error: No code received", response);
+            setIsExtracting(false);
+            setOnboardingStep(2);
+          }
+        };
+        handleResponse();
+      }, {
+        config_id: '2262599374275303',
+        response_type: 'code',
+        override_default_response_type: true
+      });
+      
+    } catch (e: any) {
+      console.error("Facebook Connect Error:", e);
+      alert("Error al conectar con Facebook: " + (e.message || "Requiere HTTPS o Hubo un problema."));
+      setIsExtracting(false);
+      setOnboardingStep(2);
+    }
+  };
+
+  const extractDataFromProvider = async (provider: 'google' | 'facebook', token: string) => {
+    try {
+      const res = await fetch('/api/onboarding/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, token })
+      });
+      const data = await res.json();
+      
+      if (res.ok && data.profileUpdate) {
+        // Automatically merge the extracted data into the UI profile
+        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        setExtractedProvider(provider === 'google' ? 'Google' : 'Meta');
+        
+        // Auto-fill the Phone Number ID if the API managed to find it
+        if (data.extractedPhoneId) {
+          setPhoneId(data.extractedPhoneId);
+        }
+      } else {
+        alert("No pudimos extraer información útil de esta cuenta. Por favor, continúa manual.");
+      }
+    } catch (e) {
+      console.error("Extraction error:", e);
+    }
+  };
+
   useEffect(() => {
-    if (user && messages.length === 0) {
+    if (user && messages.length === 0 && onboardingStep === 2) {
       const name = user.displayName?.split(' ')[0]; // We only use displayName as a confident name
-      const greeting = name 
-        ? `¡Hola ${name}! Soy Charlo, tu especialista de onboarding. 🚀\n¿Cómo se llama tu negocio?`
-        : `¡Hola! Soy Charlo, tu especialista de onboarding. 🚀\nPara empezar a configurar tu IA, ¿cómo te llamas?`;
+      
+      let greeting = "";
+      if (extractedProvider) {
+        greeting = `¡Hola ${name || ''}! Vi que conectaste tu cuenta de ${extractedProvider}. He llenado tu perfil con toda la información que pude encontrar.\n\nRevisemos lo que tenemos. ¿Qué más te gustaría agregar o corregir?`;
+      } else {
+        greeting = name 
+          ? `¡Hola ${name}! Soy Charlo, tu especialista de onboarding. 🚀\n¿Cómo se llama tu negocio?`
+          : `¡Hola! Soy Charlo, tu especialista de onboarding. 🚀\nPara empezar a configurar tu IA, ¿cómo te llamas?`;
+      }
         
       setMessages([{ id: '1', role: 'model', parts: [{ text: greeting }] }]);
+      setHasStarted(true); // Automatically open the side panel
     }
-  }, [user, messages.length]);
+  }, [user, messages.length, onboardingStep, extractedProvider]);
+
+  // Load Facebook SDK
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.FB) {
+      window.fbAsyncInit = function() {
+        window.FB.init({
+          appId      : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+          cookie     : true,
+          xfbml      : true,
+          version    : 'v19.0'
+        });
+      };
+
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0] as any;
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s) as any; js.id = id;
+         js.src = "https://connect.facebook.net/es_LA/sdk.js";
+         fjs.parentNode.insertBefore(js, fjs);
+       }(document, 'script', 'facebook-jssdk'));
+    }
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading, isCreating]);
 
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, isSilent = false) => {
     if (!text.trim() || isLoading || isCreating) return;
 
     if (!hasStarted) setHasStarted(true);
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ text }] };
     const currentHistory = messages.map(m => ({ ...m, options: undefined }));
-    setMessages([...currentHistory, userMsg]);
+    
+    if (!isSilent) {
+      setMessages([...currentHistory, userMsg]);
+    }
     setInput('');
     setIsLoading(true);
 
@@ -92,15 +246,11 @@ export default function OnboardingPage() {
         throw new Error(data.error || "Error from server");
       }
 
-      if (data.toolCall && data.toolCall.name === 'update_profile_preview') {
-        // AI sent us new profile data!
-        setProfile(prev => ({ ...prev, ...data.toolCall.args }));
-        // Add a silent system message if you don't want it, or just use the text if provided
-        if (data.text) {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'model', parts: [{ text: data.text }] }]);
-        }
-      } 
-      else if (data.toolCall && data.toolCall.name === 'ask_multiple_choice') {
+      if (data.profileUpdate) {
+        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+      }
+
+      if (data.toolCall && data.toolCall.name === 'ask_multiple_choice') {
         const newMessage: Message = { 
           id: Date.now().toString(), 
           role: 'model', 
@@ -221,7 +371,55 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* LEFT PANE: Profile Editor (Only visible after interacting) */}
+      {/* STEP 1: INITIAL CONNECTION SCREEN */}
+      {onboardingStep === 1 && (
+        <div className="glass-panel" style={{ maxWidth: 600, padding: 40, textAlign: 'center', animation: 'scaleIn 0.4s ease-out' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            Acelera tu configuración
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginBottom: 32, lineHeight: 1.6 }}>
+            Para no hacerte tantas preguntas, primero conecta tu cuenta de negocio. Extraeremos automáticamente tu nombre, dirección, horarios y catálogos directamente de tus redes oficiales.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+            <button 
+              onClick={handleConnectGoogle} 
+              disabled={isExtracting}
+              className="btn-primary" 
+              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#ffffff', color: '#000' }}
+            >
+              {isExtracting ? 'Conectando...' : '🌐 Conectar Google Business'}
+            </button>
+            
+            <button 
+              onClick={handleConnectFacebook}
+              disabled={isExtracting}
+              className="btn-primary" 
+              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff' }}
+            >
+              {isExtracting ? 'Conectando...' : '🔵 Conectar Meta (Facebook/WhatsApp)'}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '8px 0' }}>
+              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>O hazlo desde cero</span>
+              <div style={{ flex: 1, height: 1, backgroundColor: 'var(--border-color)' }} />
+            </div>
+
+            <button 
+              onClick={() => setOnboardingStep(2)}
+              disabled={isExtracting}
+              className="btn-secondary"
+              style={{ padding: '16px 24px', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border-color)' }}
+            >
+              ✍️ Configurar manualmente con Charlo
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2: LEFT PANE (Profile) - Only visible in Step 2 */}
+      {onboardingStep === 2 && (
       <div 
         className="glass-panel" 
         style={{ 
@@ -282,8 +480,10 @@ export default function OnboardingPage() {
           </label>
         </div>
       </div>
+      )}
 
-      {/* RIGHT PANE: Chat Interface */}
+      {/* STEP 2: RIGHT PANE (Chat Interface) */}
+      {onboardingStep === 2 && (
       <div 
         className="glass-panel" 
         style={{ 
@@ -394,6 +594,7 @@ export default function OnboardingPage() {
         </div>
 
       </div>
+      )}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes bounce {
           0%, 80%, 100% { transform: scale(0); }

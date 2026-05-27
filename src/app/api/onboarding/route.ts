@@ -4,44 +4,46 @@ import { sendAdminAlert } from '@/lib/notifications';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-const getSystemInstruction = (userContext?: any) => `You are the Charlo AI B2B Onboarding Specialist. Your goal is to help a business owner configure their first AI Agent for their company.
+const getSystemInstruction = (userContext?: any) => `You are Charlo, an expert AI B2B Onboarding Specialist. Your goal is to configure an AI Agent for a business owner.
 You are energetic, welcoming, and very smart. 
 
 **USER CONTEXT:**
 The user's name is: ${userContext?.name || "Unknown"}
 The user's email is: ${userContext?.email || "Unknown"}
-If the user's name is "Unknown", they were just asked for their name. Acknowledge their name, and then proceed to ask about their business.
+If the user's name is "Unknown", they were just asked for their name. Acknowledge it briefly.
 
 **STRICT STATE MACHINE WORKFLOW:**
 
-**STEP 1: IDENTITY**
-- You must ask for the business name.
-- If they provide a name, use 'search_google_places' to find it. 
-- If 'search_google_places' fails or returns empty, YOU MUST immediately use 'search_google_web' (the native google search tool) to find their website, facebook page, or info about the business.
-- When you find candidates, use 'ask_multiple_choice' to confirm: "¿Es alguno de estos tu local/negocio?". Include a "Ninguno" option. Do not assume any result is correct without their confirmation.
+**STEP 1: IDENTITY & SEARCH**
+- Ask for the business name.
+- Once they provide a name, you MUST use 'search_google_places' to find it.
+- When 'search_google_places' returns results, use 'ask_multiple_choice' to let the user confirm their business. 
+- **CRITICAL**: When creating the multiple choice options, you MUST append \`[ID: <place_id>]\` to the end of each option string so we don't lose the ID. (Example option: "Happy Outlet (Santo Domingo) [ID: ChIJ...]")
+- If the user sends a message containing \`[ID: ...]\`, DO NOT ask them to confirm again. Proceed IMMEDIATELY to STEP 2 by calling 'get_place_details' using that exact ID.
 
 **STEP 2: EXTRACTION & PREVIEW**
-- Once they confirm a location/website, use 'get_place_details' (if it was a Google Place) or analyze the web results.
-- **CRITICAL:** Call 'update_profile_preview' immediately to update the left pane on their screen with the info you found (name, hours, basic rules).
-- Tell the user: "He actualizado tu perfil en el panel izquierdo. Revisa si la información es correcta y modifícala ahí mismo si falta algo."
+- Call 'get_place_details' using the place_id the user selected.
+- **CRITICAL:** Call 'update_profile_preview' immediately to update the left pane with the info you found (name, hours, location, website).
+- Tell the user: "He autocompletado tu perfil con la información de Google. Revisa el panel izquierdo."
 
-**STEP 3: FILLING THE GAPS**
-- Review the current Profile State (passed into the prompt context).
-- Identify what is missing to make a great AI Assistant. You need:
-   1. The catalog of products/services and prices.
-   2. Payment methods.
-   3. A primary contact channel (WhatsApp, Instagram, etc.).
-- Ask them ONE question at a time to fill these gaps. 
-- **CRITICAL:** Every time they give you a piece of information (e.g., "Aceptamos efectivo y Sinpe"), YOU MUST call 'update_profile_preview' to inject that into the \`knowledgeBase\` or \`productsCatalog\` so they see it updating in real-time.
+**STEP 3: DEEP INTERVIEW (BE INSISTENT)**
+- The user may have already connected their Google or Meta accounts. Review the CURRENT PROFILE STATE carefully before asking questions to see if their catalog, address, or hours are already there.
+- If they provide a Google Maps name manually, use 'search_google_places'.
+- You must aggressively but politely ask for missing information. Ask ONE specific question at a time. You MUST collect:
+   1. Catalog of products/services with EXACT prices or price ranges. (If they say "Vendemos ropa", ask "¡Excelente! ¿Podrías darme algunos precios de referencia? Por ejemplo, ¿cuánto cuestan las blusas o los pantalones?")
+   2. Payment methods accepted (Cash, Cards, SINPE, Transfer, etc).
+   3. Return policies or warranties.
+   4. Channels to Automate: Ask them specifically WHICH channels they want this AI to monitor and reply to automatically (e.g. WhatsApp, Instagram DMs, Facebook Messenger).
+- **CRITICAL:** Every time they give you a new piece of information, YOU MUST call 'update_profile_preview' to inject that into the \`knowledgeBase\` or \`productsCatalog\` so they see it updating in real-time.
+- If the user skips a question or gives a short answer, politely insist on getting more details. 
 
 **STEP 4: FINALIZATION**
-- Once the profile looks solid (has name, some knowledge base, and a catalog), ask them to confirm if everything on the left pane looks perfect.
+- Once the profile has a good catalog, prices, hours, and policies, ask them to confirm if everything looks perfect.
 - Only when they confirm, call the 'create_business' tool to finish the onboarding.
 
 RULES TO AVOID LOOPING:
-- NEVER call the same tool twice with the exact same arguments in a row.
-- If a tool fails to return what you need, fallback to asking the user directly.
-- Always wait for the user's response before proceeding to the next step.`;
+- NEVER ask the exact same question twice.
+- NEVER call 'search_google_places' if the user already clicked a button with an ID.`;
 
 const onboardingTools: FunctionDeclaration[] = [
   {
@@ -116,13 +118,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Gemini API Key missing" }, { status: 500 });
     }
 
-    // Add googleSearch retrieval natively (this allows Gemini to search the web as a fallback!)
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',
       systemInstruction: getSystemInstruction(userContext),
       tools: [
-        { functionDeclarations: onboardingTools },
-        { googleSearch: {} } as any // Native Google Search fallback!
+        { functionDeclarations: onboardingTools }
       ],
     });
 
@@ -148,7 +148,9 @@ export async function POST(request: Request) {
 
     // Loop to handle server-side tools
     let loopCount = 0;
-    while (functionCalls && functionCalls.length > 0 && loopCount < 3) {
+    let pendingProfileUpdate = null;
+
+    while (functionCalls && functionCalls.length > 0 && loopCount < 5) {
       loopCount++;
       const call = functionCalls[0];
       
@@ -182,7 +184,10 @@ export async function POST(request: Request) {
         result = await chat.sendMessage([{
           functionResponse: {
             name: 'search_google_places',
-            response: { results: searchResults }
+            response: { 
+              results: searchResults, 
+              instruction: "RESULTS FOUND. Use ask_multiple_choice to let the user pick. CRITICAL: Append '[ID: <place_id>]' to the end of each option string so the ID is preserved." 
+            }
           }
         }]);
         responseText = result.response.text();
@@ -197,6 +202,7 @@ export async function POST(request: Request) {
         
         if (apiKey && !placeId.startsWith("mock_")) {
           try {
+            // Include more detailed fields like business_status and formatted_phone_number
             const res = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,formatted_address,formatted_phone_number,website,opening_hours,rating&key=${apiKey}`);
             const data = await res.json();
             if (data.result) {
@@ -225,8 +231,21 @@ export async function POST(request: Request) {
         responseText = result.response.text();
         functionCalls = result.response.functionCalls();
       }
+      else if (call.name === 'update_profile_preview') {
+        pendingProfileUpdate = call.args;
+        
+        // We tell Gemini it successfully updated the profile so it continues generating text
+        result = await chat.sendMessage([{
+          functionResponse: {
+            name: 'update_profile_preview',
+            response: { success: true }
+          }
+        }]);
+        responseText = result.response.text();
+        functionCalls = result.response.functionCalls();
+      }
       else {
-        // Break out of the loop for frontend tools (create_business, update_profile_preview, ask_multiple_choice)
+        // Break out of the loop for frontend tools (create_business, ask_multiple_choice)
         break;
       }
     }
@@ -235,27 +254,26 @@ export async function POST(request: Request) {
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
       
-      if (call.name === 'update_profile_preview') {
+      if (call.name === 'create_business') {
         return NextResponse.json({ 
-          text: responseText, 
-          toolCall: { name: 'update_profile_preview', args: call.args }
-        });
-      } 
-      else if (call.name === 'create_business') {
-        return NextResponse.json({ 
-          text: "¡Excelente! Estoy guardando tu negocio en este momento...", 
-          toolCall: { name: 'create_business', args: call.args }
+          text: responseText || "¡Excelente! Estoy guardando tu negocio en este momento...", 
+          toolCall: { name: 'create_business', args: call.args },
+          profileUpdate: pendingProfileUpdate
         });
       } 
       else if (call.name === 'ask_multiple_choice') {
         return NextResponse.json({
-          text: (call.args as any).question,
-          toolCall: { name: 'ask_multiple_choice', args: call.args }
+          text: (call.args as any).question || responseText,
+          toolCall: { name: 'ask_multiple_choice', args: call.args },
+          profileUpdate: pendingProfileUpdate
         });
       }
     }
 
-    return NextResponse.json({ text: responseText });
+    return NextResponse.json({ 
+      text: responseText,
+      profileUpdate: pendingProfileUpdate 
+    });
     
   } catch (error: any) {
     console.error("Onboarding Agent Error:", error);
