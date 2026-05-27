@@ -8,11 +8,14 @@ if (!admin.apps.length) {
   } else {
     try {
       // Fix potential formatting issues in the strings from Render/Vercel
-      let pk = process.env.FIREBASE_PRIVATE_KEY;
-      pk = pk.replace(/\\n/g, '\n').replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+      let pk = process.env.FIREBASE_PRIVATE_KEY || '';
+      // A valid PEM key never contains quotes. Remove them completely.
+      pk = pk.replace(/["']/g, '');
+      // Handle literal newlines or escaped newlines
+      pk = pk.replace(/\\n/g, '\n').replace(/\\r/g, '').trim();
       
-      const pId = process.env.FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
-      const cEmail = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+      const pId = (process.env.FIREBASE_PROJECT_ID || '').replace(/["']/g, '').trim();
+      const cEmail = (process.env.FIREBASE_CLIENT_EMAIL || '').replace(/["']/g, '').trim();
 
       admin.initializeApp({
         credential: admin.credential.cert({
