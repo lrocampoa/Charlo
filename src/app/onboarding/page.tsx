@@ -477,6 +477,43 @@ export default function OnboardingPage() {
           </div>
 
           <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
+            
+            {/* Canales Conectados */}
+            <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Canales Conectados
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {phoneId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> WhatsApp
+                    <button onClick={() => setPhoneId('')} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {facebookPageId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Messenger
+                    <button onClick={() => setFacebookPageId(null)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {instagramAccountId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.3)', color: '#ec4899', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Instagram
+                    <button onClick={() => setInstagramAccountId(null)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {extractedProvider === 'Google' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.3)', color: '#ea4335', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Google
+                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#ea4335', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {!phoneId && !facebookPageId && !instagramAccountId && extractedProvider !== 'Google' && (
+                  <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', padding: '4px 0' }}>Ningún canal vinculado</span>
+                )}
+              </div>
+            </div>
+
             <div className="floating-input-group">
               <input 
                 type="text" 
