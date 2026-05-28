@@ -91,7 +91,32 @@ export default function OnboardingPage() {
         throw new Error("El SDK de Facebook no ha cargado. Por favor, recarga la página.");
       }
 
+      let extractedWabaId: string | null = null;
+      let extractedPhoneId: string | null = null;
+
+      const messageListener = (event: MessageEvent) => {
+        if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+        try {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          if (data && data.type === 'WA_EMBEDDED_SIGNUP') {
+            console.log("META POST-MESSAGE RECIBIDO:", data);
+            if (data.event === 'FINISH' || data.event === 'WABA_ONBOARDING_COMPLETED') {
+              extractedWabaId = data.data?.waba_id || null;
+              extractedPhoneId = data.data?.phone_number_id || null;
+              console.log("IDs atrapados en frontend -> WABA:", extractedWabaId, "Phone:", extractedPhoneId);
+            }
+          }
+        } catch (e) {
+          // Ignore non-JSON messages
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
       window.FB.login((response: any) => {
+        // Remove listener after login flow closes
+        setTimeout(() => window.removeEventListener('message', messageListener), 2000);
+
         const handleResponse = async () => {
           if (response.authResponse?.code) {
             const code = response.authResponse.code;
@@ -101,7 +126,11 @@ export default function OnboardingPage() {
               const res = await fetch('/api/onboarding/embedded-signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ 
+                  code,
+                  wabaId: extractedWabaId,
+                  phoneId: extractedPhoneId
+                })
               });
               const data = await res.json();
               

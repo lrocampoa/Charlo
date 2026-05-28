@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { code } = await req.json();
+    const { code, wabaId: clientWabaId, phoneId: clientPhoneId } = await req.json();
 
     if (!code) {
       return NextResponse.json({ success: false, error: 'Missing code' }, { status: 400 });
@@ -39,18 +39,20 @@ export async function POST(req: Request) {
       console.error("Error debugging token:", debugData.error);
     }
 
-    let wabaId = null;
-    const granularScopes = debugData.data?.granular_scopes || [];
+    let wabaId = clientWabaId || null;
     
-    const whatsappScopes = granularScopes.filter((s: any) => 
-      s.scope === 'whatsapp_business_management' || 
-      s.scope === 'whatsapp_business_messaging'
-    );
-    
-    for (const scope of whatsappScopes) {
-      if (scope.target_ids && scope.target_ids.length > 0) {
-        wabaId = scope.target_ids[0];
-        break;
+    if (!wabaId) {
+      const granularScopes = debugData.data?.granular_scopes || [];
+      const whatsappScopes = granularScopes.filter((s: any) => 
+        s.scope === 'whatsapp_business_management' || 
+        s.scope === 'whatsapp_business_messaging'
+      );
+      
+      for (const scope of whatsappScopes) {
+        if (scope.target_ids && scope.target_ids.length > 0) {
+          wabaId = scope.target_ids[0];
+          break;
+        }
       }
     }
 
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Fetch Phone Number ID using the WABA ID
-    let phoneId = null;
+    let phoneId = clientPhoneId || null;
     let wabaName = "Mi Negocio de WhatsApp";
 
     if (wabaId) {
@@ -97,9 +99,15 @@ export async function POST(req: Request) {
       const phonesData = await phonesRes.json();
       debugLogs.phonesData = phonesData;
       
-      if (phonesData.data && phonesData.data.length > 0) {
+      if (!phoneId && phonesData.data && phonesData.data.length > 0) {
         phoneId = phonesData.data[0].id;
-        // Optionally get the verified name if available
+      }
+      
+      if (!phoneId) {
+        debugLogs.phoneError = "No phone numbers found for WABA " + wabaId;
+      }
+      
+      if (phonesData.data && phonesData.data.length > 0) {
         if (phonesData.data[0].verified_name) {
           wabaName = phonesData.data[0].verified_name;
         } else if (phonesData.data[0].display_phone_number) {
