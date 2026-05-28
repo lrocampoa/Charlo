@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || "charlo_secret_token_2026";
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "charlo_secret_token_2026";
 
   if (mode && token) {
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
               return NextResponse.json({ status: "ignored", reason: "unknown_phone_id" }, { status: 200 });
             }
 
-            const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
+            const accessToken = company.metaAccessToken || process.env.WHATSAPP_TOKEN;
 
             // --- IMAGE PROCESSING ---
             let imagePart = null;
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
                 continue;
               }
 
-              const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
+              const accessToken = company.metaAccessToken || process.env.WHATSAPP_TOKEN;
 
               console.log(`\n============================`);
               console.log(`💬 NEW ${platform.toUpperCase()} MESSAGE`);

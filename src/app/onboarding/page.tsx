@@ -163,11 +163,7 @@ export default function OnboardingPage() {
       }, {
         config_id: '2262599374275303',
         response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          feature: 'whatsapp_embedded_signup',
-          sessionInfoVersion: '3'
-        }
+        override_default_response_type: true
       });
       
     } catch (e: any) {

@@ -30,8 +30,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // 4. Send via Meta API if platform is whatsapp
     if (platform === "whatsapp") {
-      const accessToken = company.metaAccessToken || process.env.META_ACCESS_TOKEN;
-      const businessPhoneId = company.whatsappPhoneNumberId || process.env.META_PHONE_ID;
+      const accessToken = company.metaAccessToken || process.env.WHATSAPP_TOKEN;
+      const businessPhoneId = company.whatsappPhoneNumberId || process.env.WHATSAPP_PHONE_NUMBER_ID;
 
       if (accessToken && businessPhoneId) {
         try {
