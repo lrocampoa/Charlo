@@ -42,7 +42,7 @@ export async function POST(request: Request) {
             let messageText = message.text?.body || "";
             
             // Look up company by businessPhoneId in Firebase
-            const company: any = await getCompanyByWhatsAppId(businessPhoneId);
+            let company: any = await getCompanyByWhatsAppId(businessPhoneId);
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
