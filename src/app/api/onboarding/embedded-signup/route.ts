@@ -40,9 +40,9 @@ export async function POST(req: Request) {
     }
 
     let wabaId = clientWabaId || null;
+    const granularScopes = debugData.data?.granular_scopes || [];
     
     if (!wabaId) {
-      const granularScopes = debugData.data?.granular_scopes || [];
       const whatsappScopes = granularScopes.filter((s: any) => 
         s.scope === 'whatsapp_business_management' || 
         s.scope === 'whatsapp_business_messaging'
