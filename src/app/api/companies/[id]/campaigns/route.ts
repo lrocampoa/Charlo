@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: companyId } = await params;
-    const { templateName, languageCode } = await request.json();
+    const { templateName, languageCode, targetPhones } = await request.json();
 
     if (!templateName || !languageCode) {
       return NextResponse.json({ error: 'Faltan campos obligatorios (Template Name o Language Code)' }, { status: 400 });
@@ -51,9 +51,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // Fetch CRM
-    const customers = await getCustomersByCompany(companyId);
+    let customers = await getCustomersByCompany(companyId);
+    
+    // Filter if specific targets were provided
+    if (targetPhones && Array.isArray(targetPhones) && targetPhones.length > 0) {
+      customers = customers.filter(c => targetPhones.includes(c.customerId));
+    }
+
     if (customers.length === 0) {
-      return NextResponse.json({ error: 'No hay clientes en el CRM para enviar la campaña.' }, { status: 400 });
+      return NextResponse.json({ error: 'No hay clientes en el CRM (o en la selección) para enviar la campaña.' }, { status: 400 });
     }
 
     let sentCount = 0;

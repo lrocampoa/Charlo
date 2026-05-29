@@ -17,6 +17,9 @@ export async function processUserMessage(
     calendlyLink: string; 
     persona: string;
     geminiCacheId?: string;
+    activeAgents?: string[];
+    bookingConfig?: any;
+    servicesList?: any[];
   },
   imagePart?: { data: string, mimeType: string } | null,
   platform: "whatsapp" | "web" = "whatsapp"
@@ -66,8 +69,21 @@ export async function processUserMessage(
     return { routing: { intent: "PAYMENT" }, response };
   }
   
-  // 4. Call Specialized Agent with History and CRM Facts
-  switch (routing.intent) {
+  // 4. Check active agents
+  let finalIntent = routing.intent;
+  const activeAgents = context.activeAgents || ['SALES', 'BOOKING']; // Default to all if not set
+
+  if (finalIntent === 'SALES' && !activeAgents.includes('SALES')) {
+    console.log(`[Orchestrator] SALES intent detected, but Sales Agent is disabled. Falling back to CUSTOMER_SERVICE.`);
+    finalIntent = 'CUSTOMER_SERVICE';
+  }
+  if (finalIntent === 'BOOKING' && !activeAgents.includes('BOOKING')) {
+    console.log(`[Orchestrator] BOOKING intent detected, but Booking Agent is disabled. Falling back to CUSTOMER_SERVICE.`);
+    finalIntent = 'CUSTOMER_SERVICE';
+  }
+
+  // 5. Call Specialized Agent with History and CRM Facts
+  switch (finalIntent) {
     case "CUSTOMER_SERVICE":
       response = await handleCustomerServiceQuery(message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
@@ -75,7 +91,16 @@ export async function processUserMessage(
       response = await handleSalesQuery(message, history, context.productsCatalog, crmFacts);
       break;
     case "BOOKING":
-      response = await handleBookingQuery(message, history, context.calendlyLink, crmFacts);
+      response = await handleBookingQuery(
+        companyId, 
+        sessionId, 
+        message, 
+        history, 
+        context.calendlyLink, 
+        crmFacts, 
+        context.bookingConfig,
+        context.servicesList || []
+      );
       break;
     case "ESCALATION":
       response = "Entiendo su frustración. Un agente humano se pondrá en contacto con usted en breve.";

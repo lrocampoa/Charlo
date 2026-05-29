@@ -9,6 +9,7 @@ export const en = {
     agents: "Agent Config",
     simulator: "AI Simulator (Test)",
     settings: "Settings",
+    reservations: "Reservations",
     signOut: "Sign Out"
   },
   
@@ -117,13 +118,18 @@ export const en = {
     uploaded: "Uploaded Knowledge",
     active: "Active",
     uploadPdf: "Upload PDF / Image",
-    scrapeWeb: "Scrape Website",
+    scrapeWeb: "Add Link",
     actionQueue: "Action Library Queue",
     actionQueueDesc: "When the AI doesn't know how to handle a specific request, it creates a ticket here for you to write the procedure.",
     missingSop: "Missing SOP",
     ago: "hours ago",
     writeProcedure: "Write Procedure",
     completedSop: "Completed SOP",
+    noDataSources: "No data sources uploaded yet. Add a website, document, or PDF below.",
+    addLinkTitle: "Add Link",
+    addLinkSubtitle: "Enter Website, Google Doc, or Google Sheet URL (Must be publicly shared):",
+    cancel: "Cancel",
+    scan: "Scan"
   },
   
   // Onboarding

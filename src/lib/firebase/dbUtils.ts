@@ -14,8 +14,31 @@ export async function getCompanies(userId: string) {
 
 export async function createCompany(companyData: any) {
   const id = `company_${Date.now()}`;
-  const newCompany = { id, ...companyData, createdAt: new Date().toISOString() };
+  
+  // Extract services if present so they don't pollute the root doc
+  const { extractedServices, ...rootData } = companyData;
+  
+  const newCompany = { id, ...rootData, createdAt: new Date().toISOString() };
   await getDb().collection('companies').doc(id).set(newCompany);
+  
+  // Save extracted services to subcollection if they exist
+  if (extractedServices && Array.isArray(extractedServices)) {
+    const batch = getDb().batch();
+    extractedServices.forEach((service: any) => {
+      const serviceRef = getDb().collection('companies').doc(id).collection('services').doc();
+      batch.set(serviceRef, {
+        name: service.name,
+        description: service.description || '',
+        price: service.price || 0,
+        durationMinutes: service.durationMinutes || 60,
+        capacity: service.capacity || 1,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      });
+    });
+    await batch.commit();
+  }
+  
   return newCompany;
 }
 
@@ -34,9 +57,20 @@ export async function deleteCompany(companyId: string) {
 }
 
 // --- COMPANIES (TENANTS) ---
-export async function getCompanyConfig(companyId: string) {
-  const doc = await getDb().collection('companies').doc(companyId).get();
-  return doc.exists ? doc.data() : null;
+export async function getCompanyConfig(companyId: string): Promise<any> {
+  const db = adminDb;
+  if (!db) throw new Error("DB not initialized");
+  
+  const doc = await db.collection('companies').doc(companyId).get();
+  if (!doc.exists) return null;
+  
+  const data = doc.data();
+
+  // Fetch Services List
+  const servicesSnapshot = await db.collection('companies').doc(companyId).collection('services').get();
+  const servicesList = servicesSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() }));
+
+  return { ...data, servicesList };
 }
 
 export async function getCompanyByWhatsAppId(phoneId: string) {
@@ -279,4 +313,23 @@ export async function saveCampaign(companyId: string, campaignData: any) {
 export async function getCampaigns(companyId: string) {
   const snapshot = await getDb().collection('companies').doc(companyId).collection('campaigns').orderBy('createdAt', 'desc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+// --- DATA SOURCES (KNOWLEDGE BASE) ---
+export async function getDataSources(companyId: string) {
+  const snapshot = await getDb().collection('companies').doc(companyId).collection('data_sources').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function saveDataSource(companyId: string, data: { name: string; type: string; extractedText: string }) {
+  const docRef = await getDb().collection('companies').doc(companyId).collection('data_sources').add({
+    ...data,
+    createdAt: new Date().toISOString()
+  });
+  return { id: docRef.id, ...data };
+}
+
+export async function deleteDataSource(companyId: string, sourceId: string) {
+  await getDb().collection('companies').doc(companyId).collection('data_sources').doc(sourceId).delete();
+  return { success: true };
 }

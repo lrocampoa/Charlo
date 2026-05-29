@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI, FunctionDeclaration, SchemaType } from '@google/generative-ai';
 import { sendAdminAlert } from '@/lib/notifications';
+import * as cheerio from 'cheerio';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -36,10 +37,12 @@ If the user's name is "Unknown", they were just asked for their name. Acknowledg
    4. Channels to Automate: Ask them specifically WHICH channels they want this AI to monitor and reply to automatically (e.g. WhatsApp, Instagram DMs, Facebook Messenger).
 - **CRITICAL:** Every time they give you a new piece of information, YOU MUST call 'update_profile_preview' to inject that into the \`knowledgeBase\` or \`productsCatalog\` so they see it updating in real-time.
 - If the user skips a question or gives a short answer, politely insist on getting more details. 
+- **CRITICAL LINK VALIDATION:** If the user sends a link (URL) in the chat, YOU MUST immediately use the 'scrape_url_live' tool to read it. If it fails or is private, tell the user: "Traté de leer el link pero parece ser privado o inaccesible. ¿Podrías darme acceso o copiarme el texto aquí?". Do not assume the link worked unless 'scrape_url_live' returns text.
 
 **STEP 4: FINALIZATION**
 - Once the profile has a good catalog, prices, hours, and policies, ask them to confirm if everything looks perfect.
 - Only when they confirm, call the 'create_business' tool to finish the onboarding.
+- **CRITICAL (SERVICE EXTRACTION):** When you call 'create_business', if the business offers bookable services (e.g. haircuts, tours, classes, consultations), you MUST populate the 'extractedServices' array with the structured data. Dedos the durationMinutes (default 60) and capacity (default 1) if not explicitly mentioned.
 
 RULES TO AVOID LOOPING:
 - NEVER ask the exact same question twice.
@@ -55,7 +58,22 @@ const onboardingTools: FunctionDeclaration[] = [
         name: { type: SchemaType.STRING },
         persona: { type: SchemaType.STRING },
         productsCatalog: { type: SchemaType.STRING },
-        knowledgeBase: { type: SchemaType.STRING }
+        knowledgeBase: { type: SchemaType.STRING },
+        extractedServices: {
+          type: SchemaType.ARRAY,
+          description: "If this is a service-based business, extract their bookable services into this structured list so we can automatically populate their Booking Engine.",
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              name: { type: SchemaType.STRING },
+              description: { type: SchemaType.STRING },
+              price: { type: SchemaType.NUMBER },
+              durationMinutes: { type: SchemaType.NUMBER, description: "Default to 60 if unknown" },
+              capacity: { type: SchemaType.NUMBER, description: "Max people per slot. Default 1 for 1-on-1 appts. Higher for classes/tours." }
+            },
+            required: ['name', 'price', 'durationMinutes', 'capacity']
+          }
+        }
       },
       required: [],
     },
@@ -106,6 +124,17 @@ const onboardingTools: FunctionDeclaration[] = [
         place_id: { type: SchemaType.STRING, description: 'The place_id returned by search_google_places.' }
       },
       required: ['place_id'],
+    },
+  },
+  {
+    name: 'scrape_url_live',
+    description: 'Scrapes the text content of a public URL provided by the user.',
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        url: { type: SchemaType.STRING, description: 'The URL to scrape.' }
+      },
+      required: ['url'],
     },
   }
 ];
@@ -239,6 +268,46 @@ export async function POST(request: Request) {
           functionResponse: {
             name: 'update_profile_preview',
             response: { success: true }
+          }
+        }]);
+        responseText = result.response.text();
+        functionCalls = result.response.functionCalls();
+      }
+      else if (call.name === 'scrape_url_live') {
+        const args = call.args as any;
+        const url = args.url;
+        
+        let scrapedText = "";
+        let errorMsg = "";
+        
+        try {
+          let fetchUrl = url;
+          if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
+          
+          const res = await fetch(fetchUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+          });
+          
+          if (!res.ok) {
+            errorMsg = "HTTP Error: " + res.status;
+          } else {
+            const html = await res.text();
+            const $ = cheerio.load(html);
+            $('script, style, noscript, iframe').remove();
+            scrapedText = $('body').text().replace(/\s+/g, ' ').trim().slice(0, 15000); // Limit to 15k chars to avoid token blowout
+            
+            if (scrapedText.length < 50) {
+              errorMsg = "Page contains too little text. Might be a single page app or protected content.";
+            }
+          }
+        } catch (e: any) {
+          errorMsg = e.message || "Network error fetching URL";
+        }
+        
+        result = await chat.sendMessage([{
+          functionResponse: {
+            name: 'scrape_url_live',
+            response: errorMsg ? { success: false, error: errorMsg } : { success: true, text: scrapedText }
           }
         }]);
         responseText = result.response.text();

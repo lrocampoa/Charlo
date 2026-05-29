@@ -65,6 +65,25 @@ export default function CustomersPage() {
                   <div style={{ marginTop: 4, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                     {t('customers.lastActive')}: {customer.lastInteractionAt ? formatDistanceToNow(new Date(customer.lastInteractionAt), { addSuffix: true }) : 'N/A'}
                   </div>
+                  {(customer.lifetimeValue > 0 || customer.orders?.length > 0 || customer.reservations?.length > 0) && (
+                    <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                      {customer.lifetimeValue > 0 && (
+                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                          LTV: ${customer.lifetimeValue}
+                        </span>
+                      )}
+                      {customer.orders?.length > 0 && (
+                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                          Órdenes: {customer.orders.length}
+                        </span>
+                      )}
+                      {customer.reservations?.length > 0 && (
+                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                          Reservas: {customer.reservations.length}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               

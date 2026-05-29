@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch this context from Firebase based on the embedded companyId
-    let companyConfig = await getCompanyConfig(companyId);
+    let companyConfig: any = await getCompanyConfig(companyId);
 
     if (!companyConfig) {
       // Fallback for demo purposes if company not found
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
         knowledgeBase: "Our business hours are 9 AM to 5 PM, Mon-Fri. We offer organic coffee and pastries.",
         productsCatalog: "- Cappuccino: 2000 CRC\n- Latte: 2500 CRC\n- Croissant: 1500 CRC",
         calendlyLink: "https://calendly.com/mock-business",
-        persona: "Pura vida and very friendly, use Costa Rican slang."
+        persona: "Pura vida and very friendly, use Costa Rican slang.",
+        servicesList: []
       };
     }
 

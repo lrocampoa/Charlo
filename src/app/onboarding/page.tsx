@@ -55,6 +55,8 @@ export default function OnboardingPage() {
   const [facebookPageId, setFacebookPageId] = useState<string | null>(null);
   const [instagramAccountId, setInstagramAccountId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -200,6 +202,59 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleScrapeUrl = async () => {
+    if (!websiteUrl) return;
+    setIsExtracting(true);
+    try {
+      const res = await fetch('/api/onboarding/scrape-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: websiteUrl })
+      });
+      const data = await res.json();
+      if (res.ok && data.profileUpdate) {
+        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        setExtractedProvider('Website');
+      } else {
+        alert("Error extrayendo sitio web: " + (data.error || "Desconocido"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red.");
+    } finally {
+      setIsExtracting(false);
+      setOnboardingStep(2);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/onboarding/upload-file', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.profileUpdate) {
+        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        setExtractedProvider('Documento');
+      } else {
+        alert("Error procesando archivo: " + (data.error || "Desconocido"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de red.");
+    } finally {
+      setIsExtracting(false);
+      setOnboardingStep(2);
+    }
+  };
+
   useEffect(() => {
     if (user && messages.length === 0 && onboardingStep === 2) {
       const name = user.displayName?.split(' ')[0]; // We only use displayName as a confident name
@@ -333,6 +388,7 @@ export default function OnboardingPage() {
           whatsappPhoneNumberId: skipMeta ? undefined : phoneId,
           facebookPageId: skipMeta ? undefined : facebookPageId,
           instagramAccountId: skipMeta ? undefined : instagramAccountId,
+          extractedServices: finalBusinessArgs?.extractedServices || [],
         })
       });
       
@@ -466,6 +522,45 @@ export default function OnboardingPage() {
                 {isExtracting ? 'Conectando...' : 'Conectar Meta (WhatsApp)'}
               </button>
 
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="text"
+                    value={websiteUrl}
+                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    placeholder="www.tu-sitio.com"
+                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: '#fff', outline: 'none' }}
+                  />
+                  <button 
+                    onClick={handleScrapeUrl}
+                    disabled={isExtracting || !websiteUrl}
+                    className="btn-primary" 
+                    style={{ width: '100%', padding: '12px', marginTop: 8, fontSize: '1rem', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '12px' }}
+                  >
+                    🌐 Escanear Sitio Web
+                  </button>
+                </div>
+                
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <input 
+                    type="file" 
+                    accept="application/pdf,image/*" 
+                    ref={fileInputRef} 
+                    style={{ display: 'none' }} 
+                    onChange={handleFileUpload}
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isExtracting}
+                    className="btn-secondary" 
+                    style={{ flex: 1, padding: '16px', fontSize: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px dashed rgba(255,255,255,0.3)', borderRadius: '12px' }}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>📸</span>
+                    Subir Menú / PDF
+                  </button>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '16px 0' }}>
                 <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>O</span>
@@ -538,7 +633,13 @@ export default function OnboardingPage() {
                     <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#ea4335', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
                   </div>
                 )}
-                {!phoneId && !facebookPageId && !instagramAccountId && extractedProvider !== 'Google' && (
+                {(extractedProvider === 'Website' || extractedProvider === 'Documento') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#8b5cf6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> {extractedProvider}
+                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {!phoneId && !facebookPageId && !instagramAccountId && !extractedProvider && (
                   <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', padding: '4px 0' }}>Ningún canal vinculado</span>
                 )}
               </div>

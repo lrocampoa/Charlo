@@ -9,6 +9,7 @@ export const es = {
     agents: "Configuración de Agentes",
     simulator: "Simulador de IA",
     settings: "Ajustes",
+    reservations: "Reservas",
     signOut: "Cerrar Sesión"
   },
   
@@ -117,13 +118,18 @@ export const es = {
     uploaded: "Conocimiento Subido",
     active: "Activo",
     uploadPdf: "Subir PDF / Imagen",
-    scrapeWeb: "Escanear Sitio Web",
+    scrapeWeb: "Añadir Enlace",
     actionQueue: "Cola de Tareas Pendientes",
     actionQueueDesc: "Cuando la IA no sabe cómo manejar una solicitud específica, crea un ticket aquí para que escribas el procedimiento.",
     missingSop: "SOP Faltante",
     ago: "horas atrás",
     writeProcedure: "Escribir Procedimiento",
     completedSop: "SOP Completado",
+    noDataSources: "Aún no hay fuentes de datos subidas. Añade un sitio web, documento o PDF abajo.",
+    addLinkTitle: "Añadir Enlace",
+    addLinkSubtitle: "Ingresa la URL del Sitio Web, Google Doc o Google Sheet (Debe ser público):",
+    cancel: "Cancelar",
+    scan: "Escanear"
   },
   
   // Onboarding

@@ -34,11 +34,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     let cacheName = null;
     let cacheExpiry = null;
 
-    // Build the new cache if they provided Advanced SOPs
-    if (advancedSOPs && advancedSOPs.trim().length > 0) {
+    // Fetch all active data sources
+    const dataSourcesSnapshot = await companyRef.collection('data_sources').get();
+
+    // Parse SOP Cards if it's JSON
+    let xmlSops = "";
+    if (advancedSOPs) {
+      try {
+        const cards = JSON.parse(advancedSOPs);
+        if (Array.isArray(cards)) {
+          xmlSops = "<standard_operating_procedures>\n";
+          cards.forEach(card => {
+            if (card.title || card.content) {
+              xmlSops += `  <procedure name="${card.title || 'Untitled'}">\n    ${card.content || ''}\n  </procedure>\n`;
+            }
+          });
+          xmlSops += "</standard_operating_procedures>";
+        } else {
+          xmlSops = advancedSOPs; // Fallback
+        }
+      } catch (e) {
+        xmlSops = advancedSOPs; // Fallback
+      }
+    }
+
+    let masterKnowledgeText = xmlSops + "\n";
+    
+    dataSourcesSnapshot.forEach(doc => {
+      const data = doc.data();
+      if (data.extractedText) {
+        masterKnowledgeText += `\n\n<document name="${data.name}">\n${data.extractedText}\n</document>`;
+      }
+    });
+
+    // Build the new cache if they provided Advanced SOPs or Data Sources
+    if (masterKnowledgeText.trim().length > 0) {
       try {
          // Create new cache
-         cacheName = await createCompanyCache(companyId, advancedSOPs, persona || currentData?.persona);
+         cacheName = await createCompanyCache(companyId, masterKnowledgeText, persona || currentData?.persona);
          const expiry = new Date();
          expiry.setHours(expiry.getHours() + 24);
          cacheExpiry = expiry.toISOString();

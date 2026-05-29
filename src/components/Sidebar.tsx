@@ -21,6 +21,8 @@ export default function Sidebar() {
     { name: `🧠 ${t('sidebar.knowledge')}`, path: '/dashboard/knowledge' },
     { name: `⚠️ Mejora Continua`, path: '/dashboard/gaps' },
     { name: `🤖 ${t('sidebar.agents')}`, path: '/dashboard/agents' },
+    { name: `📅 ${t('sidebar.reservations')}`, path: '/dashboard/reservations' },
+    { name: `🏷️ Servicios`, path: '/dashboard/services' },
     { name: "🛍️ Órdenes", path: '/dashboard/orders' },
     { name: "💳 Pagos", path: '/dashboard/payments' },
     { name: "📢 Campañas", path: '/dashboard/campaigns' },

@@ -23,6 +23,12 @@ export interface Company {
   advancedSOPs?: string;
   geminiCacheId?: string;
   geminiCacheExpiry?: string;
+  activeAgents?: string[];
+  bookingConfig?: {
+    syncSource?: string;
+    maxCapacity?: number;
+    operatingHours?: string;
+  };
 }
 
 interface CompanyContextType {
