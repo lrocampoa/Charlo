@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id: companyId } = await params;
 
     const compRef = await adminDb.collection('companies').doc(companyId).get();
-    if (!compRef.exists || compRef.data()?.userId !== userId) {
+    if (!compRef.exists || compRef.data()?.ownerId !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

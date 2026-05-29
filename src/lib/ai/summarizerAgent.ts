@@ -11,10 +11,10 @@ export async function runSummarizerAgent(companyId: string, customerId: string) 
   try {
     // 1. Fetch raw session history (to get the latest transcript)
     const rawHistory = await getRawSessionHistory(companyId, customerId);
-    if (!rawHistory || rawHistory.length === 0) return;
+    if (!rawHistory || !rawHistory.history || rawHistory.history.length === 0) return;
 
     // Convert history array to a readable transcript string for the AI
-    const transcript = rawHistory.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
+    const transcript = rawHistory.history.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
 
     // 2. Fetch existing CRM profile
     const existingProfile = await getCustomerProfile(companyId, customerId);

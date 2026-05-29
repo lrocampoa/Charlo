@@ -15,7 +15,8 @@ export async function processUserMessage(
     knowledgeBase: string; 
     productsCatalog: string; 
     calendlyLink: string; 
-    persona: string 
+    persona: string;
+    geminiCacheId?: string;
   },
   imagePart?: { data: string, mimeType: string } | null,
   platform: "whatsapp" | "web" = "whatsapp"
@@ -37,6 +38,13 @@ export async function processUserMessage(
 
   // 1. Fetch Short-Term Memory (Today's History)
   const history = await getSessionHistory(companyId, sessionId);
+
+  // Gemini's ChatSession will append the new userInput automatically via `sendMessage`.
+  // Since we already saved the message to DB, it is currently the last element in `history`.
+  // We must remove it from `history` before passing it to `startChat` to prevent a 'roles must alternate' error.
+  if (history.length > 0 && history[history.length - 1].role === 'user') {
+    history.pop();
+  }
 
   // 2. Fetch Long-Term Memory (CRM Facts)
   const crmProfile = await getCustomerProfile(companyId, sessionId);
@@ -61,7 +69,7 @@ export async function processUserMessage(
   // 4. Call Specialized Agent with History and CRM Facts
   switch (routing.intent) {
     case "CUSTOMER_SERVICE":
-      response = await handleCustomerServiceQuery(message, history, context.knowledgeBase, context.persona, crmFacts);
+      response = await handleCustomerServiceQuery(message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
     case "SALES":
       response = await handleSalesQuery(message, history, context.productsCatalog, crmFacts);
@@ -77,7 +85,7 @@ export async function processUserMessage(
       response = "Por favor, envíe una captura de pantalla del comprobante de SINPE Móvil para verificar el pago.";
       break;
     default:
-      response = await handleCustomerServiceQuery(message, history, context.knowledgeBase, context.persona, crmFacts);
+      response = await handleCustomerServiceQuery(message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
   }
   

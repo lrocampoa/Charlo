@@ -11,7 +11,7 @@ export async function handlePaymentImage(
   try {
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',
-      systemInstruction: "Eres un analista financiero. El usuario acaba de enviar una imagen. Si la imagen es un comprobante de transferencia bancaria o SINPE Móvil, extrae EXACTAMENTE el monto transferido (como un número) y el número de referencia. Responde estrictamente en formato JSON válido: { \"esComprobante\": true, \"monto\": 15000, \"referencia\": \"123456789\" }. Si NO es un comprobante de pago, responde { \"esComprobante\": false }."
+      systemInstruction: "Eres un analista financiero experto. Analiza la imagen. Si es un comprobante de transferencia bancaria o SINPE Móvil, extrae los siguientes datos exactos. Responde estrictamente en formato JSON válido: { \"esComprobante\": true, \"monto\": 15000, \"referencia\": \"123456789\", \"nombreRemitente\": \"Juan Perez\", \"fecha\": \"2024-05-15 14:30\", \"telefonoDestino\": \"88888888\" }. Si algún dato no aparece, ponlo como null. Si NO es un comprobante de pago, responde { \"esComprobante\": false }."
     });
 
     const result = await model.generateContent([
@@ -35,8 +35,15 @@ export async function handlePaymentImage(
 
     if (data.esComprobante && data.monto) {
       // Register the payment in the DB!
-      await registerPayment(companyId, customerId, data.monto, data.referencia || 'N/A', 'SINPE Móvil');
-      return `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
+      await registerPayment(companyId, customerId, {
+        amount: data.monto,
+        reference: data.referencia || 'N/A',
+        senderName: data.nombreRemitente || 'N/A',
+        receiptDate: data.fecha || new Date().toISOString(),
+        destinationPhone: data.telefonoDestino || 'N/A',
+        method: 'SINPE Móvil'
+      });
+      return `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} a nombre de ${data.nombreRemitente || 'cliente'} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
     } else {
       return "Recibí la imagen, pero no parece ser un comprobante de pago válido. Si tienes dudas, dime cómo puedo ayudarte.";
     }

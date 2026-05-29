@@ -8,6 +8,28 @@ export default function DashboardOverview() {
   const { selectedCompanyId, selectedCompany } = useCompany();
   const { t } = useLanguage();
 
+  const [metrics, setMetrics] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    async function fetchAnalytics() {
+      if (!selectedCompanyId) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/companies/${selectedCompanyId}/analytics`);
+        if (res.ok) {
+          const data = await res.json();
+          setMetrics(data.metrics);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAnalytics();
+  }, [selectedCompanyId]);
+
   return (
     <div className="fade-in">
       <div style={{ marginBottom: 32 }}>
@@ -19,29 +41,31 @@ export default function DashboardOverview() {
         <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
           {t('overview.noBusiness')}
         </div>
+      ) : loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando métricas...</div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginBottom: 40 }}>
             {/* Stat Cards */}
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.totalConversations')}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>1,284</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>↑ 12% this week</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Conversaciones Totales</span>
+              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalConversations || 0}</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>Mensajes totales: {metrics?.totalMessages || 0}</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.avgResolutionTime')}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>1m 45s</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>↓ 15s faster</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Tiempo Ahorrado (Estimado)</span>
+              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.hoursSaved || 0}h</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>Basado en 5 min por resolución</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.botDeflectionRate')}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>86%</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>↑ 2% this week</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Resolución por IA</span>
+              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.aiResolutionRate || 0}%</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{metrics?.aiHandled || 0} chats manejados solos</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.escalations')}</span>
-              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>14%</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Stable</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Escalaciones a Humanos</span>
+              <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.humanHandled || 0}</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Requieren atención</span>
             </div>
           </div>
 

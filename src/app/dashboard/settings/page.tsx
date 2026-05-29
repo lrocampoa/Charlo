@@ -12,7 +12,9 @@ export default function SettingsPage() {
   
   const [metaToken, setMetaToken] = useState('');
   const [phoneId, setPhoneId] = useState('');
+  const [advancedSOPs, setAdvancedSOPs] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isBuildingBrain, setIsBuildingBrain] = useState(false);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
@@ -20,6 +22,7 @@ export default function SettingsPage() {
     if (selectedCompany) {
       setMetaToken(selectedCompany.metaAccessToken || '');
       setPhoneId(selectedCompany.whatsappPhoneNumberId || '');
+      setAdvancedSOPs(selectedCompany.advancedSOPs || '');
     }
   }, [selectedCompany]);
 
@@ -53,6 +56,39 @@ export default function SettingsPage() {
       alert('Error de red al guardar.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveAdvancedSOPs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCompanyId || !user) return;
+    
+    setIsBuildingBrain(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/companies/${selectedCompanyId}/sops`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          advancedSOPs: advancedSOPs
+        })
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        await refreshCompanies();
+        alert(data.message || 'SOPs guardados y cerebro AI actualizado.');
+      } else {
+        alert(data.error || 'Error al compilar los SOPs.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al guardar.');
+    } finally {
+      setIsBuildingBrain(false);
     }
   };
 
@@ -170,6 +206,40 @@ export default function SettingsPage() {
               <button type="submit" className="btn-primary" disabled={isSaving} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
                 {isSaving ? 'Guardando...' : t('settings.saveChanges')}
               </button>
+            </form>
+          </div>
+        )}
+
+        {/* Advanced SOPs / Knowledge Base */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🧠</span> Base de Conocimiento Avanzada (SOPs)
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 16 }}>
+              Pega aquí tus manuales de operaciones, políticas y preguntas frecuentes. Si es un texto muy largo, nuestro sistema creará un "Cerebro AI" en caché para responder más rápido y sin errores.
+            </p>
+            <form onSubmit={handleSaveAdvancedSOPs} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <textarea 
+                value={advancedSOPs}
+                onChange={(e) => setAdvancedSOPs(e.target.value)}
+                placeholder="Pega tu manual de operaciones, políticas de reembolso, precios detallados, etc."
+                rows={10}
+                style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical', fontFamily: 'monospace' }}
+              />
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {selectedCompany.geminiCacheId ? (
+                    <span style={{ color: '#10b981' }}>✅ Cerebro AI Activo (Caché optimizada)</span>
+                  ) : (
+                    <span>ℹ️ Usando texto estándar (sin caché).</span>
+                  )}
+                </div>
+                <button type="submit" className="btn-primary" disabled={isBuildingBrain}>
+                  {isBuildingBrain ? 'Compilando Cerebro AI...' : 'Guardar y Compilar'}
+                </button>
+              </div>
             </form>
           </div>
         )}

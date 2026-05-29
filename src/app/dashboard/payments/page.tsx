@@ -53,10 +53,10 @@ export default function PaymentsPage() {
             <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
               <tr>
                 <th style={{ padding: '16px 24px', fontWeight: 500 }}>Referencia</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Cliente</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Método</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Teléfono (WhatsApp)</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Remitente (AI)</th>
                 <th style={{ padding: '16px 24px', fontWeight: 500 }}>Monto</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Fecha Escaneo</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Fecha Comprobante</th>
               </tr>
             </thead>
             <tbody>
@@ -64,10 +64,10 @@ export default function PaymentsPage() {
                 <tr key={payment.id} style={{ borderBottom: idx === payments.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
                   <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{payment.reference || 'N/A'}</td>
                   <td style={{ padding: '16px 24px' }}>{payment.customerId}</td>
-                  <td style={{ padding: '16px 24px' }}>{payment.method}</td>
-                  <td style={{ padding: '16px 24px', fontWeight: 600, color: '#10b981' }}>\${payment.amount}</td>
+                  <td style={{ padding: '16px 24px', color: 'var(--text-secondary)' }}>{payment.senderName || 'N/A'}</td>
+                  <td style={{ padding: '16px 24px', fontWeight: 600, color: '#10b981' }}>₡{payment.amount?.toLocaleString('es-CR')}</td>
                   <td style={{ padding: '16px 24px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    {new Date(payment.createdAt).toLocaleString()}
+                    {payment.receiptDate ? new Date(payment.receiptDate).toLocaleString() : new Date(payment.createdAt).toLocaleString()}
                   </td>
                 </tr>
               ))}

@@ -20,6 +20,9 @@ export interface Company {
   wabaId?: string; // WhatsApp Business Account ID
   ownerId?: string;
   needsWebsiteUpsell?: boolean;
+  advancedSOPs?: string;
+  geminiCacheId?: string;
+  geminiCacheExpiry?: string;
 }
 
 interface CompanyContextType {

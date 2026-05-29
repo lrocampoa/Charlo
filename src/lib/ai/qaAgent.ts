@@ -11,9 +11,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function runQAAnalysis(companyId: string, sessionId: string) {
   try {
     const rawHistory = await getRawSessionHistory(companyId, sessionId);
-    if (!rawHistory || rawHistory.length === 0) return { knowledgeGapFound: false };
+    if (!rawHistory || !rawHistory.history || rawHistory.history.length === 0) return { knowledgeGapFound: false };
 
-    const transcript = rawHistory.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
+    const transcript = rawHistory.history.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
 
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-3.5-flash',

@@ -81,6 +81,30 @@ export async function saveKnowledgeGap(companyId: string, gapData: any) {
   });
 }
 
+export async function getKnowledgeGaps(companyId: string) {
+  const snapshot = await getDb()
+    .collection('companies')
+    .doc(companyId)
+    .collection('knowledge_gaps')
+    .where('status', '==', 'pending')
+    .orderBy('createdAt', 'desc')
+    .get();
+    
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function updateKnowledgeGap(companyId: string, gapId: string, updates: any) {
+  await getDb()
+    .collection('companies')
+    .doc(companyId)
+    .collection('knowledge_gaps')
+    .doc(gapId)
+    .update({
+      ...updates,
+      lastUpdated: new Date().toISOString()
+    });
+}
+
 // --- CUSTOMERS (LONG-TERM CRM PROFILES) ---
 export async function getCustomersByCompany(companyId: string) {
   const snapshot = await getDb().collection('customers').where('companyId', '==', companyId).get();
@@ -125,10 +149,19 @@ export async function getSessionHistory(companyId: string, sessionId: string) {
   const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
   const recentHistory = history.filter((msg: any) => msg.timestamp >= twentyFourHoursAgo);
   
-  return recentHistory.map((msg: any) => ({
-    role: msg.role,
-    parts: msg.parts
-  }));
+  const normalizedHistory: any[] = [];
+  for (const msg of recentHistory) {
+    let role = msg.role === 'human' ? 'model' : msg.role;
+    if (role !== 'user' && role !== 'model') role = 'user'; // fallback
+    
+    if (normalizedHistory.length > 0 && normalizedHistory[normalizedHistory.length - 1].role === role) {
+      normalizedHistory[normalizedHistory.length - 1].parts[0].text += `\n${msg.parts[0].text}`;
+    } else {
+      normalizedHistory.push({ role, parts: [{ text: msg.parts[0].text || "" }] });
+    }
+  }
+  
+  return normalizedHistory;
 }
 
 export async function getRawSessionHistory(companyId: string, sessionId: string) {
@@ -188,6 +221,15 @@ export async function updateSessionStatus(companyId: string, sessionId: string, 
   });
 }
 
+export async function getCompanySessions(companyId: string) {
+  const snapshot = await getDb()
+    .collection('sessions')
+    .where('companyId', '==', companyId)
+    .get();
+  
+  return snapshot.docs.map(doc => doc.data());
+}
+
 // --- ORDERS ---
 export async function getOrders(companyId: string) {
   const snapshot = await getDb().collection('orders').where('companyId', '==', companyId).orderBy('createdAt', 'desc').get();
@@ -209,20 +251,32 @@ export async function createOrder(companyId: string, customerId: string, items: 
 
 // --- PAYMENTS ---
 export async function getPayments(companyId: string) {
-  const snapshot = await getDb().collection('payments').where('companyId', '==', companyId).orderBy('createdAt', 'desc').get();
+  const snapshot = await getDb().collection('companies').doc(companyId).collection('payments').orderBy('createdAt', 'desc').get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-export async function registerPayment(companyId: string, customerId: string, amount: number, reference: string, method: string = "SINPE Móvil") {
+export async function registerPayment(companyId: string, customerId: string, paymentData: any) {
   const payment = {
     companyId,
-    customerId,
-    amount,
-    reference,
-    method,
+    customerId, // Phone number
+    ...paymentData,
     status: 'verified',
     createdAt: new Date().toISOString()
   };
-  const docRef = await getDb().collection('payments').add(payment);
+  const docRef = await getDb().collection('companies').doc(companyId).collection('payments').add(payment);
   return { id: docRef.id, ...payment };
+}
+
+// --- CAMPAIGNS ---
+export async function saveCampaign(companyId: string, campaignData: any) {
+  const docRef = await getDb().collection('companies').doc(companyId).collection('campaigns').add({
+    ...campaignData,
+    createdAt: new Date().toISOString()
+  });
+  return { id: docRef.id, ...campaignData };
+}
+
+export async function getCampaigns(companyId: string) {
+  const snapshot = await getDb().collection('companies').doc(companyId).collection('campaigns').orderBy('createdAt', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
