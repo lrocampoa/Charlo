@@ -2,14 +2,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { useCompany } from '@/context/CompanyContext';
-import { formatDistanceToNow } from 'date-fns';
-import { useLanguage } from '@/context/LanguageContext';
-
-export default function CustomersPage() {
-  const { selectedCompanyId, selectedCompany } = useCompany();
-  const { t } = useLanguage();
-import React, { useEffect, useState } from 'react';
-import { useCompany } from '@/context/CompanyContext';
 import { formatDistanceToNow, format, differenceInDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useLanguage } from '@/context/LanguageContext';
@@ -20,6 +12,8 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+
+  useEffect(() => {
     if (!selectedCompanyId) return;
     
     const fetchCustomers = async () => {

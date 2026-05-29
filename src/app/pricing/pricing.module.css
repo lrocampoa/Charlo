@@ -1,0 +1,376 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+.container {
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  background-color: #0f1115;
+  color: #ffffff;
+  padding: 6rem 2rem;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Dynamic Ambient Glow */
+.glowBackground {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(111, 66, 193, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.header {
+  text-align: center;
+  max-width: 800px;
+  margin-bottom: 5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.pillBadge {
+  display: inline-block;
+  background: rgba(111, 66, 193, 0.2);
+  color: #d0bfff;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(111, 66, 193, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(to right, #ffffff, #a3a3a3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.subtitle strong {
+  color: #d0bfff;
+}
+
+/* Pricing Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  max-width: 1200px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  align-items: stretch;
+}
+
+/* Pricing Cards - Glassmorphism */
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  position: relative;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.highlighted {
+  background: linear-gradient(180deg, rgba(45, 27, 84, 0.4) 0%, rgba(20, 15, 38, 0.4) 100%);
+  border: 1px solid rgba(111, 66, 193, 0.5);
+  box-shadow: 0 0 40px rgba(111, 66, 193, 0.15);
+  transform: scale(1.02);
+}
+
+.highlighted:hover {
+  transform: scale(1.02) translateY(-8px);
+  box-shadow: 0 25px 50px rgba(111, 66, 193, 0.25);
+}
+
+.popularBadge {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #6f42c1, #8a58e6);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(111, 66, 193, 0.4);
+  white-space: nowrap;
+}
+
+.cardHeader {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.planName {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f3f4f6;
+  margin-bottom: 1rem;
+}
+
+.priceContainer {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+
+.currency {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-right: 0.25rem;
+}
+
+.price {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.period {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin-left: 0.25rem;
+}
+
+.targetAudience {
+  font-size: 0.95rem;
+  color: #d1d5db;
+  line-height: 1.5;
+}
+
+.featureList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+  margin-bottom: 2.5rem;
+}
+
+.featureList li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: #d1d5db;
+  line-height: 1.5;
+}
+
+.check {
+  color: #4ade80;
+  font-weight: bold;
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.checkHighlight {
+  color: #a78bfa;
+  font-weight: bold;
+  margin-right: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.highlightFeature {
+  background: rgba(111, 66, 193, 0.15);
+  padding: 1rem;
+  border-radius: 12px;
+  margin: -0.5rem -1rem 1rem -1rem;
+  border-left: 3px solid #a78bfa;
+}
+
+.highlightFeature strong {
+  color: #ffffff;
+}
+
+/* Buttons */
+.primaryButton {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #6f42c1, #8a58e6);
+  color: white;
+  font-weight: 600;
+  font-size: 1.05rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(111, 66, 193, 0.3);
+}
+
+.primaryButton:hover {
+  background: linear-gradient(90deg, #7c4fd6, #9b68fb);
+  box-shadow: 0 6px 20px rgba(111, 66, 193, 0.5);
+  transform: translateY(-2px);
+}
+
+.secondaryButton {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.05rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Addons Section */
+.addonsSection {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 6rem;
+  z-index: 1;
+}
+
+.addonsTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.addonsSubtitle {
+  text-align: center;
+  color: #9ca3af;
+  margin-bottom: 3rem;
+  font-size: 1.1rem;
+}
+
+.addonsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+}
+
+.addonCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.3s ease;
+}
+
+.addonCard:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.addonIcon {
+  font-size: 2.5rem;
+  margin-right: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  height: 60px;
+  width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.addonContent {
+  flex-grow: 1;
+}
+
+.addonName {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+}
+
+.addonDesc {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.addonPriceTag {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #a78bfa;
+  margin-left: 1.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.addonPricePeriod {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: #9ca3af;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .highlighted {
+    transform: scale(1);
+  }
+  
+  .highlighted:hover {
+    transform: translateY(-8px);
+  }
+  
+  .addonsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .addonCard {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .addonIcon {
+    margin: 0 0 1rem 0;
+  }
+  
+  .addonPriceTag {
+    margin: 1rem 0 0 0;
+    text-align: center;
+  }
+}
