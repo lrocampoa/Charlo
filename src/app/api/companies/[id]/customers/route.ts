@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getCustomersByCompany } from '@/lib/firebase/dbUtils';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb, verifyOwnership } from '@/lib/firebase/admin';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    
+    const isOwner = await verifyOwnership(request, id);
+    if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
     const customers = await getCustomersByCompany(id);
     
     // Fetch orders and reservations to attach to customer profiles

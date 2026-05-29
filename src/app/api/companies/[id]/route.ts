@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
 import { updateCompany, deleteCompany } from '@/lib/firebase/dbUtils';
+import { verifyOwnership } from '@/lib/firebase/admin';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    
+    const isOwner = await verifyOwnership(request, id);
+    if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
     const body = await request.json();
     const updated = await updateCompany(id, body);
     
@@ -21,6 +26,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
+    
+    const isOwner = await verifyOwnership(request, id);
+    if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
     await deleteCompany(id);
     return NextResponse.json({ success: true });
   } catch (error) {

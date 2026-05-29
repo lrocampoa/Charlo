@@ -51,4 +51,16 @@ export async function verifyIdToken(req: Request): Promise<string | null> {
   }
 }
 
+export async function verifyOwnership(req: Request, companyId: string): Promise<boolean> {
+  const userId = await verifyIdToken(req);
+  if (!userId || !adminDb) return false;
+  try {
+    const doc = await adminDb.collection('companies').doc(companyId).get();
+    if (!doc.exists) return false;
+    return doc.data()?.ownerId === userId;
+  } catch (e) {
+    return false;
+  }
+}
+
 export { adminDb, adminAuth };
