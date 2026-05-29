@@ -22,7 +22,11 @@ export async function processUserMessage(
 ) {
   console.log(`[Orchestrator] Processing message for company ${companyId}, session ${sessionId}`);
 
-  // 0. Check session status
+  // 0. Save User Message to Short-Term Memory FIRST
+  // This ensures human operators can see incoming messages even if AI is disabled
+  await saveSessionMessage(companyId, sessionId, "user", message, platform, sessionId);
+
+  // 0.5 Check session status
   const sessionDoc = await getRawSessionHistory(companyId, sessionId);
   const status = sessionDoc?.status || 'ai_handling';
 
@@ -49,8 +53,7 @@ export async function processUserMessage(
     console.log(`[Orchestrator] Intercepted image for payment validation`);
     response = await handlePaymentImage(companyId, sessionId, imagePart);
     
-    // Save Interaction
-    await saveSessionMessage(companyId, sessionId, "user", "[Envío un comprobante de pago]", platform, sessionId);
+    // Save Interaction for model only (user message was saved above)
     await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
     return { routing: { intent: "PAYMENT" }, response };
   }
