@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
 import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId } from '@/lib/firebase/dbUtils';
@@ -29,7 +30,40 @@ export async function GET(request: Request) {
 // This is where all incoming WhatsApp messages will arrive.
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const rawBody = await request.text();
+
+    // Verify Webhook Signature
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    if (appSecret) {
+      const signatureHeader = request.headers.get("x-hub-signature-256");
+
+      if (!signatureHeader) {
+        console.warn("⚠️ Missing x-hub-signature-256 header. Rejecting request.");
+        return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+      }
+
+      const expectedSignature = crypto
+        .createHmac("sha256", appSecret)
+        .update(rawBody)
+        .digest("hex");
+
+      const expectedSignatureWithPrefix = `sha256=${expectedSignature}`;
+
+      try {
+        const sigBuf = Buffer.from(signatureHeader);
+        const expectedBuf = Buffer.from(expectedSignatureWithPrefix);
+
+        if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+          console.warn("⚠️ Invalid webhook signature. Rejecting request.");
+          return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
+      } catch (e) {
+        console.warn("⚠️ Error verifying signature. Rejecting request.", e);
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    }
+
+    const body = JSON.parse(rawBody);
 
     // Check if this is a WhatsApp API event
     if (body.object === "whatsapp_business_account") {
