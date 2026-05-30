@@ -825,7 +825,7 @@ export default function OnboardingPage() {
         )}
 
       </div>
-      <style dangerouslySetInnerHTML={{__html: `
+      <style>{`
         /* Glassmorphism */
         .glass-panel-premium {
           background: rgba(255, 255, 255, 0.04);
@@ -960,7 +960,7 @@ export default function OnboardingPage() {
           from { transform: scale(0.95); opacity: 0; }
           to { transform: scale(1); opacity: 1; }
         }
-      `}} />
+      `}</style>
     </div>
   );
 }
