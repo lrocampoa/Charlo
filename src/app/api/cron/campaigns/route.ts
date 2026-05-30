@@ -3,8 +3,8 @@ import { adminDb } from '@/lib/firebase/admin';
 
 export async function GET(request: Request) {
   // In a real app, verify a Cron Secret to ensure only Vercel/Scheduler can call this
-  // const authHeader = request.headers.get('authorization');
-  // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const db = adminDb;
