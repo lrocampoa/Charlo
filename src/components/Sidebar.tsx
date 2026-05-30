@@ -13,6 +13,9 @@ export default function Sidebar() {
   const { companies, selectedCompanyId, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
 
+  const isAdmin = user?.email?.endsWith('@charlo.ai') || user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+
+
   const navItems = [
     { name: `📊 ${t('sidebar.overview')}`, path: '/dashboard' },
     { name: `🏢 ${t('sidebar.manageBusinesses')}`, path: '/dashboard/companies' },
@@ -79,6 +82,19 @@ export default function Sidebar() {
           }}>
             ⚙️ {t('sidebar.settings')}
           </Link>
+          {isAdmin && (
+            <Link href="/admin" style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--border-radius-sm)',
+                backgroundColor: pathname === '/admin' ? 'var(--bg-secondary)' : 'transparent',
+                color: pathname === '/admin' ? 'var(--accent-color)' : 'var(--text-secondary)',
+                fontWeight: pathname === '/admin' ? 600 : 400,
+                transition: 'all var(--transition-fast)'
+            }}>
+              👑 Admin Dashboard
+            </Link>
+          )}
+
         </div>
       </nav>
       <div style={{ padding: '24px', borderTop: '1px solid var(--border-color)' }}>
