@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { verifyIdToken } from '@/lib/firebase/admin';
+import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No token provided" }, { status: 400 });
     }
 
-    let profileUpdate: any = {};
+    let profileUpdate: Record<string, unknown> = {};
 
     if (provider === 'google') {
       // 1. Get Accounts
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       
       let hoursStr = "Horarios:\n";
       if (loc.regularHours?.periods) {
-        loc.regularHours.periods.forEach((p: any) => {
+        loc.regularHours.periods.forEach((p: Record<string, unknown>) => {
           hoursStr += `- Día ${p.openDay}: ${p.openTime} a ${p.closeTime}\n`;
         });
       }
@@ -109,8 +109,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, profileUpdate });
     
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Extraction error:", error);
-    return NextResponse.json({ error: error.message || "Extraction failed" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Extraction failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
