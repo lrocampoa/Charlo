@@ -22,13 +22,14 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@types/node": "^20",
+    "@types/node": "^20.19.41",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }
