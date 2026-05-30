@@ -157,7 +157,7 @@ export async function POST(request: Request) {
       ],
     });
 
-    let validHistory = history.map((msg: any) => ({
+    const validHistory = history.map((msg: any) => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: msg.parts,
     }));

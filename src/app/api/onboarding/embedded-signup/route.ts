@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const tokenRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?client_id=${clientId}&client_secret=${clientSecret}&code=${code}`);
     const tokenData = await tokenRes.json();
     
-    let debugLogs: any = { tokenData };
+    const debugLogs: any = { tokenData };
 
     if (tokenData.error) {
       console.error("Error exchanging code:", tokenData.error);

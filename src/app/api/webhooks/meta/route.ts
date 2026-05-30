@@ -42,7 +42,7 @@ export async function POST(request: Request) {
             let messageText = message.text?.body || "";
             
             // Look up company by businessPhoneId in Firebase
-            let company: any = await getCompanyByWhatsAppId(businessPhoneId);
+            const company: any = await getCompanyByWhatsAppId(businessPhoneId);
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
             if (messagingEvent.message) {
               const senderId = messagingEvent.sender.id;
               const recipientId = messagingEvent.recipient.id; // Page ID or IG Account ID
-              let messageText = messagingEvent.message.text || "";
+              const messageText = messagingEvent.message.text || "";
               
               if (!messageText && !messagingEvent.message.attachments) continue;
               
