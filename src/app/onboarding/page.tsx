@@ -286,7 +286,7 @@ export default function OnboardingPage() {
       };
 
       (function(d, s, id){
-         var js, fjs = d.getElementsByTagName(s)[0] as any;
+         let js, fjs = d.getElementsByTagName(s)[0] as any;
          if (d.getElementById(id)) {return;}
          js = d.createElement(s) as any; js.id = id;
          js.src = "https://connect.facebook.net/es_LA/sdk.js";
