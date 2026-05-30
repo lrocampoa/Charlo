@@ -53,9 +53,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       reservations = reservationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reservation));
     }
 
+    const ordersByCustomer: Record<string, Order[]> = {};
+    for (const order of orders) {
+      if (!ordersByCustomer[order.customerId]) {
+        ordersByCustomer[order.customerId] = [];
+      }
+      ordersByCustomer[order.customerId].push(order);
+    }
+
+    const reservationsByCustomer: Record<string, Reservation[]> = {};
+    for (const reservation of reservations) {
+      if (!reservationsByCustomer[reservation.customerId]) {
+        reservationsByCustomer[reservation.customerId] = [];
+      }
+      reservationsByCustomer[reservation.customerId].push(reservation);
+    }
+
     const enrichedCustomers = customers.map(customer => {
-      const customerOrders = orders.filter((o: Order) => o.customerId === customer.customerId);
-      const customerReservations = reservations.filter((r: Reservation) => r.customerId === customer.customerId);
+      const customerOrders = ordersByCustomer[customer.customerId] || [];
+      const customerReservations = reservationsByCustomer[customer.customerId] || [];
       
       const lifetimeValue = customerOrders.reduce((sum, order: Order) => sum + (Number(order.total) || 0), 0);
 

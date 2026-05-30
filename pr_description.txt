@@ -1,0 +1,10 @@
+🔒 fix(security): Verify Meta webhook signature to prevent spoofing
+
+🎯 What: The vulnerability fixed
+The POST endpoint for Meta webhooks did not verify the `x-hub-signature-256` header, allowing attackers to spoof webhook events and inject malicious data.
+
+⚠️ Risk: The potential impact if left unfixed
+Attackers could send unauthorized messages, manipulate business logic, or trigger unintended actions within the application without being detected.
+
+🛡️ Solution: How the fix addresses the vulnerability
+Added HMAC-SHA256 signature verification using the `FACEBOOK_APP_SECRET`. The raw request body is now verified against the `x-hub-signature-256` header before processing the payload. We also use `crypto.timingSafeEqual` to avoid timing attacks.
