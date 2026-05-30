@@ -1,5 +1,6 @@
 import { verifyIdToken } from '@/lib/firebase/admin';
 import { NextResponse } from 'next/server';
+import { verifyIdToken } from '@/lib/firebase/admin';
 
 export async function POST(req: Request) {
   try {

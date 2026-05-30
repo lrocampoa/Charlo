@@ -72,6 +72,9 @@ export async function POST(request: Request) {
 
     // Check if this is a WhatsApp API event
     if (body.object === "whatsapp_business_account") {
+      // Cache for businessPhoneId to avoid redundant DB calls in the loop
+      const companyCache: Record<string, any> = {};
+
       for (const entry of body.entry) {
         for (const change of entry.changes) {
           if (change.value && change.value.messages) {
@@ -80,8 +83,12 @@ export async function POST(request: Request) {
             const businessPhoneId = change.value.metadata.phone_number_id;
             let messageText = message.text?.body || "";
             
-            // Look up company by businessPhoneId in Firebase
-            const company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = await getCompanyByWhatsAppId(businessPhoneId);
+            // Look up company by businessPhoneId in Firebase (memoized)
+            let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = companyCache[businessPhoneId];
+            if (company === undefined) {
+              company = await getCompanyByWhatsAppId(businessPhoneId);
+              companyCache[businessPhoneId] = company || null;
+            }
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
@@ -186,6 +193,9 @@ export async function POST(request: Request) {
       const isInstagram = body.object === "instagram";
       const platform = isInstagram ? "instagram" : "messenger";
       
+      // Cache for recipientId to avoid redundant DB calls in the loop
+      const companyCache: Record<string, any> = {};
+
       for (const entry of body.entry) {
         if (entry.messaging) {
           for (const messagingEvent of entry.messaging) {
@@ -196,11 +206,14 @@ export async function POST(request: Request) {
               
               if (!messageText && !messagingEvent.message.attachments) continue;
               
-              let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = null
-              if (isInstagram) {
-                company = await getCompanyByInstagramId(recipientId);
-              } else {
-                company = await getCompanyByFacebookPageId(recipientId);
+              let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = companyCache[recipientId];
+              if (company === undefined) {
+                if (isInstagram) {
+                  company = await getCompanyByInstagramId(recipientId);
+                } else {
+                  company = await getCompanyByFacebookPageId(recipientId);
+                }
+                companyCache[recipientId] = company || null;
               }
 
               if (!company) {
