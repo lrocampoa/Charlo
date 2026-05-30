@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verifyIdToken } from '@/lib/firebase/admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: Request) {
   try {
+    const userId = await verifyIdToken(request);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { url } = await request.json();
 
     if (!url) return NextResponse.json({ error: 'URL is required' }, { status: 400 });
