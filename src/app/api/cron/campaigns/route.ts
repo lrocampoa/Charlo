@@ -11,44 +11,84 @@ export async function GET(request: Request) {
     if (!db) return NextResponse.json({ error: 'DB not initialized' }, { status: 500 });
 
     const companiesSnapshot = await db.collection('companies').get();
+
+    // 1. Gather configured companies
+    const validCompanies = new Map();
+    for (const doc of companiesSnapshot.docs) {
+      const data = doc.data();
+      if (data.whatsappPhoneNumberId && data.metaAccessToken) {
+        validCompanies.set(doc.id, data);
+      }
+    }
+
+    if (validCompanies.size === 0) {
+      return NextResponse.json({ success: true, executed: true, totalMessagesSent: 0 });
+    }
+
+    // 2. Fetch all active triggers across all valid companies in one query
+    const triggersSnapshot = await db.collectionGroup('triggers').where('isActive', '==', true).get();
+
+    const triggersByCompany = new Map();
+    const companiesNeedingOrders = new Set<string>();
+    const companiesNeedingReservations = new Set<string>();
+
+    triggersSnapshot.forEach(doc => {
+      const companyId = doc.ref.parent.parent?.id;
+      if (!companyId || !validCompanies.has(companyId)) return;
+
+      const trigger = doc.data();
+
+      if (!triggersByCompany.has(companyId)) triggersByCompany.set(companyId, []);
+      triggersByCompany.get(companyId).push(trigger);
+
+      if (trigger.condition === 'pending_cart_2h') {
+        companiesNeedingOrders.add(companyId);
+      } else if (trigger.condition === 'reservation_upcoming_24h') {
+        companiesNeedingReservations.add(companyId);
+      }
+    });
+
+    // 3. Concurrently fetch only the necessary data per company to avoid OOM
+    const ordersByCompany = new Map();
+    const reservationsByCompany = new Map();
+
+    await Promise.all([
+      // Fetch Orders
+      ...Array.from(companiesNeedingOrders).map(async (companyId) => {
+        const ordersSnapshot = await db.collection('orders')
+          .where('companyId', '==', companyId)
+          .where('status', '==', 'pending')
+          .get();
+        ordersByCompany.set(companyId, ordersSnapshot.docs.map(d => d.data()));
+      }),
+      // Fetch Reservations
+      ...Array.from(companiesNeedingReservations).map(async (companyId) => {
+        const resSnapshot = await db.collection('companies').doc(companyId).collection('reservations').get();
+        reservationsByCompany.set(companyId, resSnapshot.docs.map(d => d.data()));
+      })
+    ]);
+
     let totalMessagesSent = 0;
 
-    for (const companyDoc of companiesSnapshot.docs) {
-      const companyId = companyDoc.id;
-      const companyData = companyDoc.data();
-
-      // Skip if WhatsApp is not configured
-      if (!companyData.whatsappPhoneNumberId || !companyData.metaAccessToken) continue;
-
-      // Fetch active triggers
-      const triggersSnapshot = await db.collection('companies').doc(companyId).collection('triggers').where('isActive', '==', true).get();
-      if (triggersSnapshot.empty) continue;
-
-      for (const triggerDoc of triggersSnapshot.docs) {
-        const trigger = triggerDoc.data();
+    // 4. Evaluate triggers locally
+    for (const [companyId, triggers] of triggersByCompany.entries()) {
+      const companyData = validCompanies.get(companyId);
+      for (const trigger of triggers as any[]) {
         console.log(`[CRON] Evaluating Trigger '${trigger.name}' for Company ${companyId}`);
 
-        // Mock Evaluation Logic (In production, this queries 'orders', 'reservations', etc.)
         let matchedUsers: string[] = [];
 
         if (trigger.condition === 'pending_cart_2h') {
-          // Query pending orders older than 2h
-          const ordersSnapshot = await db.collection('orders')
-            .where('companyId', '==', companyId)
-            .where('status', '==', 'pending')
-            .get();
-          
-          ordersSnapshot.forEach(doc => {
-            const data = doc.data();
-            // Mock time check
-            matchedUsers.push(data.customerPhone || data.customerId);
-          });
+          const companyOrders = ordersByCompany.get(companyId) || [];
+          for (const o of companyOrders) {
+            matchedUsers.push(o.customerPhone || o.customerId);
+          }
         } 
         else if (trigger.condition === 'reservation_upcoming_24h') {
-          const resSnapshot = await db.collection('companies').doc(companyId).collection('reservations').get();
-          resSnapshot.forEach(doc => {
-            matchedUsers.push(doc.data().customerPhone || doc.data().customerId);
-          });
+          const companyRes = reservationsByCompany.get(companyId) || [];
+          for (const r of companyRes) {
+            matchedUsers.push(r.customerPhone || r.customerId);
+          }
         }
         else {
           // Mock generic match for demo purposes

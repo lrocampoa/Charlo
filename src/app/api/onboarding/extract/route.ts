@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
+import { verifyIdToken } from '@/lib/firebase/admin';
 
 export async function POST(req: Request) {
   try {
+    const userId = await verifyIdToken(req);
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { provider, token } = await req.json();
 
     if (!token) {
