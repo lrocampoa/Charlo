@@ -1,3 +1,4 @@
+import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
 import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId } from '@/lib/firebase/dbUtils';
@@ -11,7 +12,12 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "charlo_secret_token_2026";
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+
+  if (!VERIFY_TOKEN) {
+    console.error("WHATSAPP_VERIFY_TOKEN is not configured.");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
 
   if (mode && token) {
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
@@ -29,10 +35,46 @@ export async function GET(request: Request) {
 // This is where all incoming WhatsApp messages will arrive.
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const rawBody = await request.text();
+
+    // Verify Webhook Signature
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    if (appSecret) {
+      const signatureHeader = request.headers.get("x-hub-signature-256");
+
+      if (!signatureHeader) {
+        console.warn("⚠️ Missing x-hub-signature-256 header. Rejecting request.");
+        return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+      }
+
+      const expectedSignature = crypto
+        .createHmac("sha256", appSecret)
+        .update(rawBody)
+        .digest("hex");
+
+      const expectedSignatureWithPrefix = `sha256=${expectedSignature}`;
+
+      try {
+        const sigBuf = Buffer.from(signatureHeader);
+        const expectedBuf = Buffer.from(expectedSignatureWithPrefix);
+
+        if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+          console.warn("⚠️ Invalid webhook signature. Rejecting request.");
+          return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
+      } catch (e) {
+        console.warn("⚠️ Error verifying signature. Rejecting request.", e);
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
+    }
+
+    const body = JSON.parse(rawBody);
 
     // Check if this is a WhatsApp API event
     if (body.object === "whatsapp_business_account") {
+      // Cache for businessPhoneId to avoid redundant DB calls in the loop
+      const companyCache: Record<string, any> = {};
+
       for (const entry of body.entry) {
         for (const change of entry.changes) {
           if (change.value && change.value.messages) {
@@ -41,8 +83,12 @@ export async function POST(request: Request) {
             const businessPhoneId = change.value.metadata.phone_number_id;
             let messageText = message.text?.body || "";
             
-            // Look up company by businessPhoneId in Firebase
-            let company: any = await getCompanyByWhatsAppId(businessPhoneId);
+            // Look up company by businessPhoneId in Firebase (memoized)
+            let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = companyCache[businessPhoneId];
+            if (company === undefined) {
+              company = await getCompanyByWhatsAppId(businessPhoneId);
+              companyCache[businessPhoneId] = company || null;
+            }
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
@@ -147,21 +193,27 @@ export async function POST(request: Request) {
       const isInstagram = body.object === "instagram";
       const platform = isInstagram ? "instagram" : "messenger";
       
+      // Cache for recipientId to avoid redundant DB calls in the loop
+      const companyCache: Record<string, any> = {};
+
       for (const entry of body.entry) {
         if (entry.messaging) {
           for (const messagingEvent of entry.messaging) {
             if (messagingEvent.message) {
               const senderId = messagingEvent.sender.id;
               const recipientId = messagingEvent.recipient.id; // Page ID or IG Account ID
-              let messageText = messagingEvent.message.text || "";
+              const messageText = messagingEvent.message.text || "";
               
               if (!messageText && !messagingEvent.message.attachments) continue;
               
-              let company: any = null;
-              if (isInstagram) {
-                company = await getCompanyByInstagramId(recipientId);
-              } else {
-                company = await getCompanyByFacebookPageId(recipientId);
+              let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = companyCache[recipientId];
+              if (company === undefined) {
+                if (isInstagram) {
+                  company = await getCompanyByInstagramId(recipientId);
+                } else {
+                  company = await getCompanyByFacebookPageId(recipientId);
+                }
+                companyCache[recipientId] = company || null;
               }
 
               if (!company) {
@@ -191,7 +243,7 @@ export async function POST(request: Request) {
                 messageText || "[Archivo/Attachment Recibido]", 
                 context,
                 null, 
-                platform as any
+                platform as any // eslint-disable-line @typescript-eslint/no-explicit-any
               );
 
               if (!response) {
@@ -229,7 +281,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json({ error: "Unsupported event" }, { status: 404 });
-  } catch (error: any) {
+  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
     console.error("Meta Webhook Error:", error);
     await sendAdminAlert("WhatsApp Webhook Critical Error", error?.message || String(error));
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

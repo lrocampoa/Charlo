@@ -122,13 +122,15 @@ export default function ServicesPage() {
     try {
       const token = await user.getIdToken();
       // Save all in sequence or batch
-      for (const s of suggestedServices) {
-        await fetch(`/api/companies/${selectedCompanyId}/services`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(s)
-        });
-      }
+      await Promise.all(
+        suggestedServices.map(s =>
+          fetch(`/api/companies/${selectedCompanyId}/services`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(s)
+          })
+        )
+      );
       await fetchServices();
       setIsAiModalOpen(false);
       setSuggestedServices([]);
