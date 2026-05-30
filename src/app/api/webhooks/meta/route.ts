@@ -12,7 +12,12 @@ export async function GET(request: Request) {
   const token = url.searchParams.get("hub.verify_token");
   const challenge = url.searchParams.get("hub.challenge");
 
-  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || "charlo_secret_token_2026";
+  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+
+  if (!VERIFY_TOKEN) {
+    console.error("WHATSAPP_VERIFY_TOKEN is not configured.");
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
 
   if (mode && token) {
     if (mode === "subscribe" && token === VERIFY_TOKEN) {
@@ -76,7 +81,7 @@ export async function POST(request: Request) {
             let messageText = message.text?.body || "";
             
             // Look up company by businessPhoneId in Firebase
-            let company: any = await getCompanyByWhatsAppId(businessPhoneId);
+            const company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = await getCompanyByWhatsAppId(businessPhoneId);
             
             if (!company) {
               console.warn(`⚠️ No company found for WhatsApp Phone ID: ${businessPhoneId}`);
@@ -187,11 +192,11 @@ export async function POST(request: Request) {
             if (messagingEvent.message) {
               const senderId = messagingEvent.sender.id;
               const recipientId = messagingEvent.recipient.id; // Page ID or IG Account ID
-              let messageText = messagingEvent.message.text || "";
+              const messageText = messagingEvent.message.text || "";
               
               if (!messageText && !messagingEvent.message.attachments) continue;
               
-              let company: any = null;
+              let company: any /* eslint-disable-line @typescript-eslint/no-explicit-any */ = null
               if (isInstagram) {
                 company = await getCompanyByInstagramId(recipientId);
               } else {
@@ -225,7 +230,7 @@ export async function POST(request: Request) {
                 messageText || "[Archivo/Attachment Recibido]", 
                 context,
                 null, 
-                platform as any
+                platform as any // eslint-disable-line @typescript-eslint/no-explicit-any
               );
 
               if (!response) {
@@ -263,7 +268,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json({ error: "Unsupported event" }, { status: 404 });
-  } catch (error: any) {
+  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
     console.error("Meta Webhook Error:", error);
     await sendAdminAlert("WhatsApp Webhook Critical Error", error?.message || String(error));
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
