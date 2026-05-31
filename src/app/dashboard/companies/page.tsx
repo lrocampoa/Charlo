@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCompany, Company } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
+import { TeamManagement } from '@/components/TeamManagement';
 
 export default function CompaniesPage() {
   const { companies, refreshCompanies, isLoading } = useCompany();
@@ -21,6 +22,10 @@ export default function CompaniesPage() {
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [inviteModalCompany, setInviteModalCompany] = useState<Company | null>(null);
+  const [inviteLink, setInviteLink] = useState('');
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
   const handleOpenModal = (company?: Company) => {
     if (company) {
@@ -67,6 +72,31 @@ export default function CompaniesPage() {
     }
   };
 
+  const handleGenerateInvite = async (company: Company) => {
+    setInviteModalCompany(company);
+    setInviteLink('');
+    setIsGeneratingInvite(true);
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(`/api/companies/${company.id}/invites`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInviteLink(`${window.location.origin}/invite/${data.id}`);
+      } else {
+        alert("Failed to generate invite: " + data.error);
+        setInviteModalCompany(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setInviteModalCompany(null);
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading businesses...</div>;
 
   return (
@@ -91,8 +121,9 @@ export default function CompaniesPage() {
             <h3 style={{ fontSize: '1.25rem', marginBottom: 8, color: 'var(--text-primary)', fontWeight: 600, paddingRight: c.id.startsWith('demo_') ? 60 : 0 }}>{c.name || t('companies.unnamed')}</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 24, fontFamily: 'monospace' }}>{t('companies.id')}: {c.id}</p>
             
-            <div style={{ marginTop: 'auto', display: 'flex', gap: 12 }}>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => handleOpenModal(c)}>{t('companies.editConfig')}</button>
+            <div style={{ marginTop: 'auto', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button className="btn-secondary" style={{ flex: 1, minWidth: 100 }} onClick={() => handleOpenModal(c)}>{t('companies.editConfig')}</button>
+              <button className="btn-secondary" style={{ flex: 1, minWidth: 100 }} onClick={() => handleGenerateInvite(c)}>Invite Team</button>
               <button className="btn-secondary" style={{ padding: '0 16px', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }} onClick={() => confirmDeleteModal(c)}>{t('companies.delete')}</button>
             </div>
           </div>
@@ -184,6 +215,15 @@ export default function CompaniesPage() {
                 </button>
               </div>
             </form>
+
+            {editingCompany && (
+              <div style={{ marginTop: 32, paddingTop: 32, borderTop: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>👥</span> Team Access
+                </h4>
+                <TeamManagement companyId={editingCompany.id} ownerId={editingCompany.ownerId || ''} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -218,6 +258,43 @@ export default function CompaniesPage() {
               >
                 {isDeleting ? 'Borrando...' : 'Confirmar Borrado'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {inviteModalCompany && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
+          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32 }}>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>Invite Team Members</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
+              Share this link with anyone you want to join <strong>{inviteModalCompany.name || 'this business'}</strong>. They will be granted member access.
+            </p>
+            
+            {isGeneratingInvite ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Generating link...</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={inviteLink}
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }}
+                />
+                <button 
+                  className="btn-primary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteLink);
+                    alert("Copied to clipboard!");
+                  }}
+                >
+                  Copy Link
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn-secondary" onClick={() => setInviteModalCompany(null)}>Done</button>
             </div>
           </div>
         </div>

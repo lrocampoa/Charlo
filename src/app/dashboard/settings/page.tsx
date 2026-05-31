@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCompany } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
+import { TeamManagement } from '@/components/TeamManagement';
 
 export default function SettingsPage() {
   const { t, language, setLanguage } = useLanguage();
@@ -135,6 +136,16 @@ export default function SettingsPage() {
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No tienes canales conectados actualmente.</p>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Team Management */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>👥</span> Accesos de Equipo
+            </h2>
+            <TeamManagement companyId={selectedCompany.id} ownerId={selectedCompany.ownerId || ''} />
           </div>
         )}
 

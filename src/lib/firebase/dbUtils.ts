@@ -1,5 +1,5 @@
 import { adminDb } from './admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Filter } from 'firebase-admin/firestore';
 
 function getDb() {
   if (!adminDb) throw new Error("Firebase Admin DB is not initialized. Check server credentials.");
@@ -8,7 +8,12 @@ function getDb() {
 
 // --- BUSINESS CRUD ---
 export async function getCompanies(userId: string) {
-  const snapshot = await getDb().collection('companies').where('ownerId', '==', userId).get();
+  const snapshot = await getDb().collection('companies').where(
+    Filter.or(
+      Filter.where('ownerId', '==', userId),
+      Filter.where('teamMembers', 'array-contains', userId)
+    )
+  ).get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
@@ -18,7 +23,7 @@ export async function createCompany(companyData: any) {
   // Extract services if present so they don't pollute the root doc
   const { extractedServices, ...rootData } = companyData;
   
-  const newCompany = { id, ...rootData, createdAt: new Date().toISOString() };
+  const newCompany = { id, ...rootData, teamMembers: [], createdAt: new Date().toISOString() };
   await getDb().collection('companies').doc(id).set(newCompany);
   
   // Save extracted services to subcollection if they exist
@@ -333,3 +338,45 @@ export async function deleteDataSource(companyId: string, sourceId: string) {
   await getDb().collection('companies').doc(companyId).collection('data_sources').doc(sourceId).delete();
   return { success: true };
 }
+
+// --- TEAM INVITES ---
+export async function generateInviteLink(companyId: string, createdBy: string) {
+  const inviteRef = getDb().collection('invites').doc();
+  const inviteData = {
+    companyId,
+    createdBy,
+    role: 'member',
+    status: 'active',
+    createdAt: new Date().toISOString()
+  };
+  await inviteRef.set(inviteData);
+  return { id: inviteRef.id, ...inviteData };
+}
+
+export async function acceptInvite(inviteId: string, userId: string) {
+  const inviteRef = getDb().collection('invites').doc(inviteId);
+  const inviteDoc = await inviteRef.get();
+  
+  if (!inviteDoc.exists) {
+    throw new Error('Invite not found');
+  }
+  
+  const inviteData = inviteDoc.data();
+  if (inviteData?.status !== 'active') {
+    throw new Error('Invite is no longer active');
+  }
+  
+  const companyId = inviteData?.companyId;
+  const companyRef = getDb().collection('companies').doc(companyId);
+  
+  // Add user to teamMembers
+  await companyRef.update({
+    teamMembers: FieldValue.arrayUnion(userId)
+  });
+  
+  // Optional: Mark invite as used, or keep it active for multiple uses. 
+  // For a general team link, keeping it active is often desired unless revoked.
+  
+  return { companyId, success: true };
+}
+

@@ -16,7 +16,7 @@ describe('bookingService', () => {
       const mockCollection = jest.fn().mockReturnThis();
 
       // Setup the chain
-      (adminDb.collection as jest.Mock).mockImplementation(mockCollection);
+      (adminDb!.collection as jest.Mock).mockImplementation(mockCollection);
       mockCollection.mockImplementation(() => ({
         doc: mockDoc,
         where: mockWhere,
