@@ -28,6 +28,7 @@ export default function Sidebar() {
     { name: `🏷️ Servicios`, path: '/dashboard/services' },
     { name: "🛍️ Órdenes", path: '/dashboard/orders' },
     { name: "💳 Pagos", path: '/dashboard/payments' },
+    { name: "🎁 Fidelización", path: '/dashboard/loyalty' },
     { name: "📢 Campañas", path: '/dashboard/campaigns' },
     { name: `🎮 ${t('sidebar.simulator')}`, path: '/dashboard/test' },
   ];

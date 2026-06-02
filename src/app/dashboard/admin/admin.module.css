@@ -1,0 +1,255 @@
+.adminContainer {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: var(--font-inter, sans-serif);
+  color: var(--text-primary, #1e293b);
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, #1e293b, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header p {
+  color: #64748b;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Grid Layout */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 1024px) {
+  .chartsGrid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.tablesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .tablesGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Stat Cards */
+.statCard {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.statTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.iconContainer {
+  padding: 10px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statValue {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.statSubtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.up { color: #10b981; font-weight: 500; }
+.down { color: #ef4444; font-weight: 500; }
+
+/* Tables Container */
+.tableContainer, .chartContainer, .escalationsContainer {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.tableTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 20px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.table td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 0.95rem;
+}
+
+.table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.topRank {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.businessName {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.highlightText {
+  color: #10b981;
+  font-weight: 600;
+  background: #ecfdf5;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* Escalations Widget */
+.escalationList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.escalationItem {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff1f2;
+  border: 1px solid #ffe4e6;
+  gap: 16px;
+}
+
+.escalationIcon {
+  color: #ef4444;
+  margin-top: 2px;
+}
+
+.escalationContent {
+  flex: 1;
+}
+
+.escalationHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.escalationCompany {
+  font-weight: 600;
+  color: #9f1239;
+  font-size: 0.95rem;
+}
+
+.escalationTime {
+  font-size: 0.8rem;
+  color: #f43f5e;
+}
+
+.escalationReason {
+  font-size: 0.9rem;
+  color: #be123c;
+  margin: 0 0 4px 0;
+}
+
+.escalationCustomer {
+  font-size: 0.85rem;
+  color: #fda4af;
+}
+
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  color: #64748b;
+  font-size: 1.1rem;
+}

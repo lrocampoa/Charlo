@@ -1,4 +1,6 @@
-import { adminDb } from './admin';
+import { adminDb, adminAuth } from './admin';
+import { sendAdminKnowledgeGapAlert } from '../email/service';
+import { sendAdminWhatsAppAlert } from '../whatsapp/service';
 import { FieldValue, Filter } from 'firebase-admin/firestore';
 
 function getDb() {
@@ -118,6 +120,31 @@ export async function saveKnowledgeGap(companyId: string, gapData: any) {
     status: 'pending',
     createdAt: new Date().toISOString()
   });
+
+  // Try to send alerts
+  try {
+    const doc = await getDb().collection('companies').doc(companyId).get();
+    if (doc.exists) {
+      const companyConfig = doc.data();
+      const ownerId = companyConfig?.ownerId;
+      if (ownerId && adminAuth) {
+        const userRecord = await adminAuth.getUser(ownerId);
+        
+        // Send email
+        if (userRecord.email) {
+          sendAdminKnowledgeGapAlert(userRecord.email, gapData).catch(err => console.error("Error triggering email alert:", err));
+        }
+        
+        // Send WhatsApp if phone number exists
+        const phoneNumber = userRecord.phoneNumber || companyConfig?.ownerPhone;
+        if (phoneNumber) {
+          sendAdminWhatsAppAlert(phoneNumber, gapData, companyConfig).catch(err => console.error("Error triggering WhatsApp alert:", err));
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch owner details for alerts:", err);
+  }
 }
 
 export async function getKnowledgeGaps(companyId: string) {

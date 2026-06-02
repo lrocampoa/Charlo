@@ -11,50 +11,74 @@ export default function SettingsPage() {
   const { selectedCompanyId, companies, refreshCompanies } = useCompany();
   const { user } = useAuth();
   
-  const [metaToken, setMetaToken] = useState('');
-  const [phoneId, setPhoneId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isFbSdkLoaded, setIsFbSdkLoaded] = useState(false);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
   useEffect(() => {
-    if (selectedCompany) {
-      setMetaToken(selectedCompany.metaAccessToken || '');
-      setPhoneId(selectedCompany.whatsappPhoneNumberId || '');
+    // Load Facebook SDK
+    if ((window as any).FB) {
+      setIsFbSdkLoaded(true);
+      return;
     }
-  }, [selectedCompany]);
-
-  const handleSaveWhatsAppConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCompanyId || !user) return;
     
-    setIsSaving(true);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/companies/${selectedCompanyId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          metaAccessToken: metaToken,
-          whatsappPhoneNumberId: phoneId
-        })
+    (window as any).fbAsyncInit = function() {
+      (window as any).FB.init({
+        appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
+        autoLogAppEvents : true,
+        xfbml            : true,
+        version          : 'v19.0' // Use current Graph API version
       });
-      
-      if (res.ok) {
-        await refreshCompanies();
-        alert('Configuración guardada exitosamente.');
+      setIsFbSdkLoaded(true);
+    };
+
+    const script = document.createElement('script');
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  }, []);
+
+  const handleMetaLogin = () => {
+    if (!(window as any).FB || !selectedCompanyId || !user) return;
+    
+    (window as any).FB.login(async (response: any) => {
+      if (response.authResponse) {
+        setIsSaving(true);
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch(`/api/companies/${selectedCompanyId}/meta-auth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              accessToken: response.authResponse.accessToken 
+            })
+          });
+          
+          if (res.ok) {
+            await refreshCompanies();
+            alert('Conexión con Meta exitosa.');
+          } else {
+            alert('Error al conectar con Meta.');
+          }
+        } catch (e) {
+          console.error(e);
+          alert('Error de red al conectar.');
+        } finally {
+          setIsSaving(false);
+        }
       } else {
-        alert('Error al guardar la configuración.');
+        console.log('User cancelled login or did not fully authorize.');
       }
-    } catch (e) {
-      console.error(e);
-      alert('Error de red al guardar.');
-    } finally {
-      setIsSaving(false);
-    }
+    }, {
+      scope: 'whatsapp_business_management,whatsapp_business_messaging,pages_messaging,pages_read_engagement,pages_show_list,instagram_manage_messages,instagram_basic',
+      extras: { feature: 'whatsapp_embedded_signup', version: 2 },
+      return_scopes: true
+    });
   };
 
 
@@ -149,40 +173,34 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* WhatsApp Integration */}
+        {/* Meta Integration */}
         {selectedCompany && (
           <div className="glass-panel">
             <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#25D366' }}>💬</span> {t('settings.whatsappIntegration')}
+              <span style={{ color: '#1877F2' }}>🌐</span> Conectar Meta Business
             </h2>
-            <form onSubmit={handleSaveWhatsAppConfig} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                {t('settings.metaToken')}
-                <input 
-                  type="password"
-                  value={metaToken}
-                  onChange={(e) => setMetaToken(e.target.value)}
-                  placeholder="EAALxxxxxxxxxxxxxx"
-                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
-                />
-              </label>
-
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                {t('settings.phoneId')}
-                <input 
-                  type="text"
-                  value={phoneId}
-                  onChange={(e) => setPhoneId(e.target.value)}
-                  placeholder="123456789012345"
-                  style={{ padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace' }}
-                />
-              </label>
-
-              <button type="submit" className="btn-primary" disabled={isSaving} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
-                {isSaving ? 'Guardando...' : t('settings.saveChanges')}
-              </button>
-            </form>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: '0.9rem' }}>
+              Conecta tu cuenta de WhatsApp, página de Facebook y cuenta de Instagram en un solo paso para gestionar todos tus mensajes desde Charlo.
+            </p>
+            <button 
+              onClick={handleMetaLogin} 
+              disabled={!isFbSdkLoaded || isSaving}
+              style={{ 
+                background: '#1877F2', 
+                color: 'white', 
+                border: 'none', 
+                padding: '12px 24px', 
+                borderRadius: '8px', 
+                fontWeight: 600, 
+                cursor: (!isFbSdkLoaded || isSaving) ? 'not-allowed' : 'pointer',
+                opacity: (!isFbSdkLoaded || isSaving) ? 0.7 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              {isSaving ? 'Conectando...' : 'Conectar con Meta'}
+            </button>
           </div>
         )}
 

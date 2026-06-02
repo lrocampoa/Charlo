@@ -38,6 +38,28 @@ export default function CustomersPage() {
     return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>{t('customers.noBusiness')}</div>;
   }
 
+  // Helper to format facts gracefully
+  const renderFactGroup = (title: string, items: any, icon: string) => {
+    if (!items) return null;
+    const itemsArray = Array.isArray(items) ? items : [items];
+    if (itemsArray.length === 0) return null;
+    
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>{icon}</span> {title}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {itemsArray.map((item, idx) => (
+            <span key={idx} style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)' }}>
+              {String(item)}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fade-in">
       <div style={{ marginBottom: 32 }}>
@@ -55,70 +77,91 @@ export default function CustomersPage() {
           {t('customers.noProfiles')}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-          {customers.map((customer, idx) => (
-            <div 
-              key={idx} 
-              className="glass-panel" 
-              style={{ padding: 24, cursor: 'pointer', transition: 'all 0.2s' }}
-              onClick={() => setSelectedCustomer(customer)}
-              onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                  {customer.customerId?.substring(0, 2).toUpperCase() || 'CU'}
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 600 }}>{customer.extractedFacts?.name || customer.customerId}</h3>
-                  <div style={{ marginTop: 4, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    {t('customers.lastActive')}: {customer.lastInteractionAt ? formatDistanceToNow(new Date(customer.lastInteractionAt), { addSuffix: true }) : 'N/A'}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
+          {customers.map((customer, idx) => {
+            const facts = customer.extractedFacts || {};
+            const customerName = facts.name || customer.customerId;
+            const hasPhone = customerName !== customer.customerId;
+            
+            // Get latest order and reservation
+            const latestOrder = customer.orders?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+            const latestRes = customer.reservations?.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+            return (
+              <div 
+                key={idx} 
+                className="glass-panel" 
+                style={{ padding: 24, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
+                onClick={() => setSelectedCustomer(customer)}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                {/* Header Section */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', flexShrink: 0 }}>
+                    {customerName?.substring(0, 2).toUpperCase() || 'CU'}
                   </div>
-                  {(customer.lifetimeValue > 0 || customer.orders?.length > 0 || customer.reservations?.length > 0) && (
-                    <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                      {customer.lifetimeValue > 0 && (
-                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                          LTV: ${customer.lifetimeValue}
-                        </span>
-                      )}
-                      {customer.orders?.length > 0 && (
-                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                          Órdenes: {customer.orders.length}
-                        </span>
-                      )}
-                      {customer.reservations?.length > 0 && (
-                        <span style={{ fontSize: '0.8rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '2px 8px', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                          Reservas: {customer.reservations.length}
-                        </span>
-                      )}
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customerName}</h3>
+                    {hasPhone && (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                        📞 {customer.customerId}
+                      </div>
+                    )}
+                    <div style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Última interacción: {customer.lastInteractionAt ? formatDistanceToNow(new Date(customer.lastInteractionAt), { addSuffix: true, locale: es }) : 'Reciente'}
                     </div>
+                  </div>
+                </div>
+                
+                {/* Highlights (Orders & Res) */}
+                {(latestOrder || latestRes || customer.lifetimeValue > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border-color)' }}>
+                    {customer.lifetimeValue > 0 && (
+                      <div style={{ fontSize: '0.8rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                        <strong>LTV:</strong> ${customer.lifetimeValue.toFixed(2)}
+                      </div>
+                    )}
+                    {latestOrder && (
+                      <div style={{ fontSize: '0.8rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        <strong>Última Compra:</strong> ${latestOrder.total} ({format(new Date(latestOrder.createdAt), 'd MMM')})
+                      </div>
+                    )}
+                    {latestRes && (
+                      <div style={{ fontSize: '0.8rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        <strong>Última Reserva:</strong> {latestRes.serviceName || 'Servicio'} ({format(new Date(latestRes.date), 'd MMM')})
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Extracted Facts Snippet */}
+                <div style={{ flex: 1 }}>
+                  {Object.keys(facts).length === 0 ? (
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', padding: '20px 0' }}>
+                      Aún no hay datos extraídos para este cliente.
+                    </div>
+                  ) : (
+                    <>
+                      {renderFactGroup("Ubicación", facts.location || facts.address, "📍")}
+                      {renderFactGroup("Restricciones/Dieta", facts.dietary_restrictions || facts.diet, "🥗")}
+                      {renderFactGroup("Familia", facts.family, "👨‍👩‍👧")}
+                      {renderFactGroup("Mascotas", facts.pets, "🐾")}
+                      {renderFactGroup("Preferencias", facts.preferences, "⭐")}
+                      {renderFactGroup("Lista de Deseos", facts.wishlist, "🎁")}
+                      
+                      {/* Render any other random facts */}
+                      {Object.entries(facts).map(([key, value]) => {
+                        const knownKeys = ['name', 'location', 'address', 'dietary_restrictions', 'diet', 'family', 'pets', 'preferences', 'wishlist'];
+                        if (knownKeys.includes(key.toLowerCase())) return null;
+                        return renderFactGroup(key.replace(/_/g, ' '), value, "📌");
+                      })}
+                    </>
                   )}
                 </div>
               </div>
-              
-              <div style={{ background: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
-                <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>{t('customers.extractedFacts')}</h4>
-                {Object.keys(customer.extractedFacts || {}).length === 0 ? (
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{t('customers.noFacts')}</p>
-                ) : (
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {Object.entries(customer.extractedFacts).map(([key, value]: [string, any]) => {
-                      if (key === 'name' || key === 'knowledgeGapFound' || key === 'missingSopTitle' || key === 'severity' || key === 'description') return null;
-                      
-                      const displayValue = Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value);
-                      
-                      return (
-                        <li key={key} style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <span style={{ color: 'var(--accent-color)', fontWeight: 600, marginRight: 8, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}:</span>
-                          <span style={{ color: 'var(--text-primary)' }}>{displayValue}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -129,75 +172,81 @@ export default function CustomersPage() {
           backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
         }}>
-          <div className="glass-panel" style={{ width: '90%', maxWidth: 800, maxHeight: '90vh', overflowY: 'auto', padding: 0, position: 'relative' }}>
+          <div className="glass-panel" style={{ width: '90%', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto', padding: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
-            <div style={{ padding: 24, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 60, height: 60, borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 'bold' }}>
-                  {selectedCustomer.customerId?.substring(0, 2).toUpperCase() || 'CU'}
+            <div style={{ padding: 32, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', fontWeight: 'bold' }}>
+                  {(selectedCustomer.extractedFacts?.name || selectedCustomer.customerId)?.substring(0, 2).toUpperCase() || 'CU'}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{selectedCustomer.extractedFacts?.name || selectedCustomer.customerId}</h2>
-                  <p style={{ color: 'var(--text-secondary)' }}>ID/Phone: {selectedCustomer.customerId}</p>
+                  <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{selectedCustomer.extractedFacts?.name || selectedCustomer.customerId}</h2>
+                  <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                    <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      📞 {selectedCustomer.customerId}
+                    </span>
+                    <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      🕒 {selectedCustomer.lastInteractionAt ? formatDistanceToNow(new Date(selectedCustomer.lastInteractionAt), { addSuffix: true, locale: es }) : 'N/A'}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button 
                 onClick={() => setSelectedCustomer(null)}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', width: 32, height: 32, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}
               >
                 ×
               </button>
             </div>
 
             {/* Content */}
-            <div style={{ padding: 32 }}>
+            <div style={{ padding: 32, flex: 1, display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32 }}>
               
-              {/* AI INSIGHTS BLOCK */}
-              {(() => {
-                const res = selectedCustomer.reservations || [];
-                if (res.length >= 2) {
-                  // Sort oldest to newest for calculation
-                  const sortedRes = [...res].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                  let totalDays = 0;
-                  for (let i = 1; i < sortedRes.length; i++) {
-                    totalDays += differenceInDays(new Date(sortedRes[i].date), new Date(sortedRes[i-1].date));
-                  }
-                  const avgDays = Math.round(totalDays / (sortedRes.length - 1));
-                  const lastRes = sortedRes[sortedRes.length - 1];
-                  const nextVisitDate = addDays(new Date(lastRes.date), avgDays);
-                  const isOverdue = new Date() > nextVisitDate;
-                  const mostFrequentService = lastRes.serviceName || "su servicio habitual";
+              {/* Main Column: Insights & Timeline */}
+              <div>
+                {/* AI INSIGHTS BLOCK */}
+                {(() => {
+                  const res = selectedCustomer.reservations || [];
+                  if (res.length >= 2) {
+                    const sortedRes = [...res].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    let totalDays = 0;
+                    for (let i = 1; i < sortedRes.length; i++) {
+                      totalDays += differenceInDays(new Date(sortedRes[i].date), new Date(sortedRes[i-1].date));
+                    }
+                    const avgDays = Math.round(totalDays / (sortedRes.length - 1));
+                    const lastRes = sortedRes[sortedRes.length - 1];
+                    const nextVisitDate = addDays(new Date(lastRes.date), avgDays);
+                    const isOverdue = new Date() > nextVisitDate;
+                    const mostFrequentService = lastRes.serviceName || "su servicio habitual";
 
-                  return (
-                    <div style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 12, padding: 20, marginBottom: 32 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: '1.2rem' }}>✨</span>
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#a78bfa' }}>AI Smart Insight</h4>
-                      </div>
-                      <p style={{ fontSize: '0.95rem', lineHeight: 1.5, marginBottom: 16 }}>
-                        Este cliente suele reservar <strong>{mostFrequentService}</strong> cada <strong>{avgDays} días</strong> en promedio. 
-                        Su próxima visita predicha {isOverdue ? 'era para el' : 'es para el'} <strong>{format(nextVisitDate, "dd 'de' MMMM", { locale: es })}</strong>.
-                      </p>
-                      {isOverdue && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ color: '#f87171', fontSize: '0.9rem', fontWeight: 600 }}>⚠️ Retrasado por {differenceInDays(new Date(), nextVisitDate)} días.</span>
-                          <button className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => alert("Funcionalidad en desarrollo: Trigger WhatsApp Template")}>
-                            Enviar Seguimiento
-                          </button>
+                    return (
+                      <div style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: 16, padding: 24, marginBottom: 32 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <span style={{ fontSize: '1.4rem' }}>✨</span>
+                          <h4 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#a78bfa' }}>AI Smart Insight</h4>
                         </div>
-                      )}
-                    </div>
-                  );
-                }
-                return null;
-              })()}
+                        <p style={{ fontSize: '1rem', lineHeight: 1.6, marginBottom: 16 }}>
+                          Este cliente suele reservar <strong>{mostFrequentService}</strong> cada <strong>{avgDays} días</strong> en promedio. 
+                          Su próxima visita predicha {isOverdue ? 'era para el' : 'es para el'} <strong>{format(nextVisitDate, "dd 'de' MMMM", { locale: es })}</strong>.
+                        </p>
+                        {isOverdue && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(0,0,0,0.2)', padding: '12px 16px', borderRadius: 8 }}>
+                            <span style={{ color: '#f87171', fontSize: '0.95rem', fontWeight: 600 }}>⚠️ Retrasado por {differenceInDays(new Date(), nextVisitDate)} días.</span>
+                            <button className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.9rem', marginLeft: 'auto' }} onClick={() => alert("Funcionalidad en desarrollo: Trigger WhatsApp Template")}>
+                              Enviar Seguimiento
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                
                 {/* TIMELINE */}
                 <div>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 16, borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>Historial de Actividad</h4>
+                  <h4 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: 20, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>Historial de Actividad</h4>
                   
                   {(() => {
                     const timeline = [
@@ -205,26 +254,28 @@ export default function CustomersPage() {
                       ...(selectedCustomer.orders || []).map((o: any) => ({ type: 'order', date: new Date(o.createdAt), data: o }))
                     ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-                    if (timeline.length === 0) return <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No hay actividad registrada.</p>;
+                    if (timeline.length === 0) return <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', padding: 20, textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: 12 }}>No hay actividad registrada (reservas o compras).</p>;
 
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderLeft: '2px solid var(--border-color)', paddingLeft: 16, marginLeft: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, borderLeft: '2px solid var(--border-color)', paddingLeft: 24, marginLeft: 12 }}>
                         {timeline.map((item, i) => (
                           <div key={i} style={{ position: 'relative' }}>
-                            <div style={{ position: 'absolute', left: -25, top: 4, width: 14, height: 14, borderRadius: '50%', background: item.type === 'reservation' ? '#f59e0b' : '#3b82f6', border: '2px solid var(--bg-primary)' }}></div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
+                            <div style={{ position: 'absolute', left: -35, top: 4, width: 18, height: 18, borderRadius: '50%', background: item.type === 'reservation' ? '#f59e0b' : '#3b82f6', border: '3px solid var(--bg-primary)' }}></div>
+                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 500 }}>
                               {format(item.date, "dd MMM yyyy, HH:mm", { locale: es })}
                             </div>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid var(--border-color)' }}>
                               {item.type === 'reservation' ? (
                                 <div>
-                                  <strong style={{ color: '#fcd34d' }}>📅 Reserva Confirmada</strong>
-                                  <p style={{ fontSize: '0.9rem', marginTop: 4 }}>{item.data.serviceName} - {format(new Date(item.data.date), "dd/MM/yyyy")}</p>
+                                  <strong style={{ color: '#fcd34d', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: 8 }}>📅 Reserva Confirmada</strong>
+                                  <p style={{ fontSize: '1rem', marginTop: 8, color: 'var(--text-primary)' }}>Servicio: {item.data.serviceName}</p>
+                                  <p style={{ fontSize: '0.9rem', marginTop: 4, color: 'var(--text-secondary)' }}>Para el {format(new Date(item.data.date), "dd/MM/yyyy")}</p>
                                 </div>
                               ) : (
                                 <div>
-                                  <strong style={{ color: '#93c5fd' }}>🛒 Orden de Compra</strong>
-                                  <p style={{ fontSize: '0.9rem', marginTop: 4 }}>Total: ${item.data.total}</p>
+                                  <strong style={{ color: '#93c5fd', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: 8 }}>🛒 Orden de Compra</strong>
+                                  <p style={{ fontSize: '1rem', marginTop: 8, color: 'var(--text-primary)' }}>Total: ${item.data.total}</p>
+                                  <p style={{ fontSize: '0.9rem', marginTop: 4, color: 'var(--text-secondary)' }}>{item.data.items?.length || 0} artículo(s)</p>
                                 </div>
                               )}
                             </div>
@@ -234,31 +285,37 @@ export default function CustomersPage() {
                     );
                   })()}
                 </div>
-
-                {/* FACTS */}
-                <div>
-                   <h4 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 16, borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>Datos Extraídos</h4>
-                   <div style={{ background: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
-                    {Object.keys(selectedCustomer.extractedFacts || {}).length === 0 ? (
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>{t('customers.noFacts')}</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {Object.entries(selectedCustomer.extractedFacts).map(([key, value]: [string, any]) => {
-                          if (key === 'name' || key === 'knowledgeGapFound' || key === 'missingSopTitle' || key === 'severity' || key === 'description') return null;
-                          const displayValue = Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value);
-                          return (
-                            <li key={key} style={{ fontSize: '0.95rem' }}>
-                              <div style={{ color: 'var(--accent-color)', fontWeight: 600, textTransform: 'capitalize', marginBottom: 2 }}>{key.replace(/_/g, ' ')}</div>
-                              <div style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: 6 }}>{displayValue}</div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-
               </div>
+
+              {/* Sidebar Column: Extracted Facts */}
+              <div>
+                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: 24, borderRadius: 16, border: '1px solid var(--border-color)', position: 'sticky', top: 32 }}>
+                  <h4 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.4rem' }}>🧠</span> Memoria del CRM
+                  </h4>
+                  
+                  {Object.keys(selectedCustomer.extractedFacts || {}).length === 0 ? (
+                    <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Aún no hay datos extraídos. El AI enriquecerá este perfil a medida que converse con el cliente.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      {renderFactGroup("Ubicación", selectedCustomer.extractedFacts.location || selectedCustomer.extractedFacts.address, "📍")}
+                      {renderFactGroup("Restricciones/Dieta", selectedCustomer.extractedFacts.dietary_restrictions || selectedCustomer.extractedFacts.diet, "🥗")}
+                      {renderFactGroup("Familia", selectedCustomer.extractedFacts.family, "👨‍👩‍👧")}
+                      {renderFactGroup("Mascotas", selectedCustomer.extractedFacts.pets, "🐾")}
+                      {renderFactGroup("Preferencias", selectedCustomer.extractedFacts.preferences, "⭐")}
+                      {renderFactGroup("Lista de Deseos", selectedCustomer.extractedFacts.wishlist, "🎁")}
+                      
+                      {/* Render any other random facts */}
+                      {Object.entries(selectedCustomer.extractedFacts).map(([key, value]: [string, any]) => {
+                        const knownKeys = ['name', 'location', 'address', 'dietary_restrictions', 'diet', 'family', 'pets', 'preferences', 'wishlist'];
+                        if (knownKeys.includes(key.toLowerCase())) return null;
+                        return renderFactGroup(key.replace(/_/g, ' '), value, "📌");
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -266,3 +323,4 @@ export default function CustomersPage() {
     </div>
   );
 }
+

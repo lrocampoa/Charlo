@@ -78,6 +78,11 @@ export async function POST(request: Request) {
       for (const entry of body.entry) {
         for (const change of entry.changes) {
           if (change.value && change.value.messages) {
+            let profileName = "";
+            if (change.value.contacts && change.value.contacts.length > 0) {
+              profileName = change.value.contacts[0].profile?.name || "";
+            }
+
             const message = change.value.messages[0];
             const senderPhone = message.from;
             const businessPhoneId = change.value.metadata.phone_number_id;
@@ -144,7 +149,8 @@ export async function POST(request: Request) {
               knowledgeBase: company.knowledgeBase || "",
               productsCatalog: company.productsCatalog || "",
               calendlyLink: company.calendlyLink || "",
-              persona: company.persona || "Eres un asistente virtual amable y profesional."
+              persona: company.persona || "Eres un asistente virtual amable y profesional.",
+              customerName: profileName
             };
 
             // Call Gemini Orchestrator

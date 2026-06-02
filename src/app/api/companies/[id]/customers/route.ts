@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCustomersByCompany } from '@/lib/firebase/dbUtils';
+import { getCustomersByCompany, getCompanySessions } from '@/lib/firebase/dbUtils';
 import { adminDb, verifyOwnership } from '@/lib/firebase/admin';
 
 // Local interfaces to resolve 'any' type
@@ -38,8 +38,32 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const isOwner = await verifyOwnership(request, id);
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
-    const customers = await getCustomersByCompany(id);
+    const [dbCustomers, sessions] = await Promise.all([
+      getCustomersByCompany(id),
+      getCompanySessions(id)
+    ]);
     
+    // Merge sessions into customers to ensure every conversation is treated as a customer
+    const customersMap: Record<string, any> = {};
+    for (const c of dbCustomers) {
+      customersMap[c.customerId] = { ...c };
+    }
+
+    for (const s of sessions) {
+      const customerId = s.sessionId;
+      if (!customersMap[customerId]) {
+        customersMap[customerId] = {
+          companyId: id,
+          customerId,
+          extractedFacts: {},
+          createdAt: s.lastUpdated || new Date(s.updatedAt || Date.now()).toISOString()
+        };
+      }
+      customersMap[customerId].lastInteractionAt = s.lastUpdated || new Date(s.updatedAt || Date.now()).toISOString();
+    }
+
+    const allCustomers = Object.values(customersMap);
+
     // Fetch orders and reservations to attach to customer profiles
     let orders: Order[] = [];
     let reservations: Reservation[] = [];
@@ -69,7 +93,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       reservationsByCustomer[reservation.customerId].push(reservation);
     }
 
-    const enrichedCustomers = customers.map(customer => {
+    const enrichedCustomers = allCustomers.map(customer => {
       const customerOrders = ordersByCustomer[customer.customerId] || [];
       const customerReservations = reservationsByCustomer[customer.customerId] || [];
       
@@ -81,6 +105,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         reservations: customerReservations,
         lifetimeValue
       };
+    });
+
+    // Sort by most recent interaction
+    enrichedCustomers.sort((a, b) => {
+      const dateA = new Date(a.lastInteractionAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.lastInteractionAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
     });
 
     return NextResponse.json({ customers: enrichedCustomers });

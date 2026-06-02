@@ -20,11 +20,17 @@ export async function processUserMessage(
     activeAgents?: string[];
     bookingConfig?: any;
     servicesList?: any[];
+    customerName?: string;
   },
   imagePart?: { data: string, mimeType: string } | null,
-  platform: "whatsapp" | "web" = "whatsapp"
+  platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp"
 ) {
   console.log(`[Orchestrator] Processing message for company ${companyId}, session ${sessionId}`);
+
+  // Inject Meta Profile Name so the AI knows who is speaking
+  if (context.customerName) {
+    message = `[Meta Profile Name: ${context.customerName}] ${message}`;
+  }
 
   // 0. Save User Message to Short-Term Memory FIRST
   // This ensures human operators can see incoming messages even if AI is disabled
@@ -122,7 +128,10 @@ export async function processUserMessage(
   // 6. Trigger Summarizer & QA Agents Asynchronously
   // We do not await these, we just let them run in the background.
   runSummarizerAgent(companyId, sessionId).catch(err => console.error("Summarizer failed:", err));
-  runQAAnalysis(companyId, sessionId).catch(err => console.error("QA Agent failed:", err));
+  
+  if (response.includes("KNOWLEDGE_GAP")) {
+    runQAAnalysis(companyId, sessionId).catch(err => console.error("QA Agent failed:", err));
+  }
 
   return {
     routing,

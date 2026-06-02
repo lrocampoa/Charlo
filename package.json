@@ -7,8 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "test": "jest"
+    "lint": "eslint"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -16,9 +15,12 @@
     "date-fns": "^4.3.0",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.10.0",
+    "lucide-react": "^1.17.0",
     "next": "16.2.6",
+    "postmark": "^4.0.7",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

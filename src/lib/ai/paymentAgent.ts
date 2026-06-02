@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { registerPayment } from '../firebase/dbUtils';
+import { registerPayment, getCustomerProfile, getCompany } from '../firebase/dbUtils';
+import { dispatchUberFlash } from '../services/uberFlash';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -43,7 +44,31 @@ export async function handlePaymentImage(
         destinationPhone: data.telefonoDestino || 'N/A',
         method: 'SINPE Móvil'
       });
-      return `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} a nombre de ${data.nombreRemitente || 'cliente'} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
+      
+      let baseResponse = `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} a nombre de ${data.nombreRemitente || 'cliente'} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
+      
+      // Dispatch Uber Flash
+      try {
+        const company = await getCompany(companyId);
+        const crmProfile = await getCustomerProfile(companyId, customerId);
+        const crmFacts = crmProfile?.extractedFacts || {};
+        
+        // Find best address
+        let deliveryAddress = crmFacts.address_home || crmFacts.address_work || crmFacts.address_other || crmFacts.location;
+        
+        if (deliveryAddress && company?.deliveryConfig?.uberEnabled) {
+          const dispatchRes = await dispatchUberFlash(companyId, deliveryAddress, company.deliveryConfig);
+          if (dispatchRes.success) {
+             baseResponse += `\n\n🚗 **Uber Flash Solicitado**\nTu orden está confirmada y hemos enviado un Uber Flash a recogerla. Va en camino hacia: ${deliveryAddress}. Tiempo estimado: ${dispatchRes.estimatedDeliveryTime}.\nSigue tu paquete aquí: ${dispatchRes.trackingLink}`;
+          }
+        } else if (company?.deliveryConfig?.uberEnabled) {
+           baseResponse += `\n\nNo tengo guardada tu ubicación exacta para el envío por Uber Flash. Por favor dímela para coordinar la entrega.`;
+        }
+      } catch (e) {
+        console.error("Error dispatching Uber Flash:", e);
+      }
+
+      return baseResponse;
     } else {
       return "Recibí la imagen, pero no parece ser un comprobante de pago válido. Si tienes dudas, dime cómo puedo ayudarte.";
     }
