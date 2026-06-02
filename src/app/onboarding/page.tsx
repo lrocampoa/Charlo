@@ -44,7 +44,8 @@ export default function OnboardingPage() {
     name: '',
     knowledgeBase: '',
     productsCatalog: '',
-    persona: 'Eres un asistente virtual amable y servicial.'
+    persona: 'Eres un asistente virtual amable y servicial.',
+    needsWebsiteUpsell: false
   });
 
   // Final Step States
@@ -81,8 +82,12 @@ export default function OnboardingPage() {
       }
     } finally {
       setIsExtracting(false);
-      setOnboardingStep(2); // Move to chat regardless of success/fail to unblock
     }
+  };
+
+  const handleNoWebsite = () => {
+    setProfile(prev => ({ ...prev, needsWebsiteUpsell: true }));
+    setOnboardingStep(3);
   };
 
   const handleConnectFacebook = async () => {
@@ -223,7 +228,6 @@ export default function OnboardingPage() {
       alert("Error de red.");
     } finally {
       setIsExtracting(false);
-      setOnboardingStep(2);
     }
   };
 
@@ -251,12 +255,11 @@ export default function OnboardingPage() {
       alert("Error de red.");
     } finally {
       setIsExtracting(false);
-      setOnboardingStep(2);
     }
   };
 
   useEffect(() => {
-    if (user && messages.length === 0 && onboardingStep === 2) {
+    if (user && messages.length === 0 && onboardingStep === 3) {
       const name = user.displayName?.split(' ')[0]; // We only use displayName as a confident name
       
       let greeting = "";
@@ -389,6 +392,7 @@ export default function OnboardingPage() {
           facebookPageId: skipMeta ? undefined : facebookPageId,
           instagramAccountId: skipMeta ? undefined : instagramAccountId,
           extractedServices: finalBusinessArgs?.extractedServices || [],
+          needsWebsiteUpsell: profile.needsWebsiteUpsell,
         })
       });
       
@@ -420,17 +424,17 @@ export default function OnboardingPage() {
       <div className="stepper-container slide-up">
         <div className={`step ${onboardingStep >= 1 ? 'active' : ''}`}>
           <div className="step-number">1</div>
-          <span>Conectar</span>
+          <span>Conectar Meta</span>
         </div>
         <div className={`step-line ${onboardingStep >= 2 ? 'active' : ''}`} />
         <div className={`step ${onboardingStep >= 2 ? 'active' : ''}`}>
           <div className="step-number">2</div>
-          <span>Entrenar IA</span>
+          <span>Negocio & Web</span>
         </div>
-        <div className={`step-line ${showFinalStep ? 'active' : ''}`} />
-        <div className={`step ${showFinalStep ? 'active' : ''}`}>
+        <div className={`step-line ${onboardingStep >= 3 ? 'active' : ''}`} />
+        <div className={`step ${onboardingStep >= 3 ? 'active' : ''}`}>
           <div className="step-number">3</div>
-          <span>Listo</span>
+          <span>Entrenar IA</span>
         </div>
       </div>
 
@@ -450,55 +454,97 @@ export default function OnboardingPage() {
             <div className="glass-panel-premium" style={{ width: 500, padding: 40, display: 'flex', flexDirection: 'column', gap: 24, animation: 'scaleIn 0.3s ease-out' }}>
               <div style={{ textAlign: 'center' }}>
                 <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>¡Ya casi terminamos!</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Charlo ha configurado tu agente inteligentemente. Ahora puedes conectarlo a tu cuenta de WhatsApp (Opcional).</p>
+                <p style={{ color: 'var(--text-secondary)' }}>Charlo ha configurado tu agente inteligentemente.</p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div className="floating-input-group">
-                  <input 
-                    type="password"
-                    className="floating-input"
-                    value={metaToken}
-                    onChange={e => setMetaToken(e.target.value)}
-                    placeholder=" "
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                  <label className="floating-label">Token de Acceso de Meta (Opcional)</label>
+              {metaToken ? (
+                <div style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center', color: '#10b981' }}>
+                  ✅ Cuenta de Meta y WhatsApp configurada exitosamente.
                 </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>Ahora puedes conectarlo a tu cuenta de WhatsApp (Opcional).</p>
+                  <div className="floating-input-group">
+                    <input 
+                      type="password"
+                      className="floating-input"
+                      value={metaToken}
+                      onChange={e => setMetaToken(e.target.value)}
+                      placeholder=" "
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                    <label className="floating-label">Token de Acceso de Meta (Opcional)</label>
+                  </div>
 
-                <div className="floating-input-group">
-                  <input 
-                    type="text"
-                    className="floating-input"
-                    value={phoneId}
-                    onChange={e => setPhoneId(e.target.value)}
-                    placeholder=" "
-                    style={{ fontFamily: 'monospace' }}
-                  />
-                  <label className="floating-label">ID del Número de Teléfono (Opcional)</label>
+                  <div className="floating-input-group">
+                    <input 
+                      type="text"
+                      className="floating-input"
+                      value={phoneId}
+                      onChange={e => setPhoneId(e.target.value)}
+                      placeholder=" "
+                      style={{ fontFamily: 'monospace' }}
+                    />
+                    <label className="floating-label">ID del Número de Teléfono (Opcional)</label>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
-                <button className="btn-secondary" style={{ flex: 1, padding: '14px 0' }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
-                  Saltar por ahora
-                </button>
-                <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff', padding: '14px 0', border: 'none' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating || !metaToken || !phoneId}>
-                  {isCreating ? 'Guardando...' : 'Conectar y Finalizar'}
+                {!metaToken && (
+                  <button className="btn-secondary" style={{ flex: 1, padding: '14px 0' }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
+                    Saltar por ahora
+                  </button>
+                )}
+                <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff', padding: '14px 0', border: 'none' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating}>
+                  {isCreating ? 'Guardando...' : 'Finalizar Configuración'}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* STEP 1: INITIAL CONNECTION SCREEN */}
+        {/* STEP 1: CONECTAR META */}
         {onboardingStep === 1 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               Conecta tu negocio
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Para ahorrarte tiempo, extraemos el nombre, ubicación, y catálogos directamente de tus redes. 
+              Conecta tus redes para que la IA responda automáticamente en Facebook Messenger, Instagram y WhatsApp.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              <button 
+                onClick={handleConnectFacebook}
+                disabled={isExtracting}
+                className="btn-primary" 
+                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
+              >
+                {isExtracting ? <div className="spinner-small" /> : '🔵'}
+                {isExtracting ? 'Conectando...' : 'Conectar Meta (Obligatorio)'}
+              </button>
+
+              <button 
+                onClick={() => setOnboardingStep(2)}
+                disabled={isExtracting}
+                className="btn-secondary"
+                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: 'none', marginTop: 16 }}
+              >
+                Saltar por ahora (Solo pruebas)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: GOOGLE & WEBSITE */}
+        {onboardingStep === 2 && (
+          <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Datos adicionales
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
+              Podemos ahorrarte tiempo leyendo tu ubicación en Google y el contenido de tu sitio web o menú en PDF.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
@@ -512,16 +558,6 @@ export default function OnboardingPage() {
                 {isExtracting ? 'Conectando...' : 'Conectar Google Business'}
               </button>
               
-              <button 
-                onClick={handleConnectFacebook}
-                disabled={isExtracting}
-                className="btn-primary" 
-                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
-              >
-                {isExtracting ? <div className="spinner-small" /> : '🔵'}
-                {isExtracting ? 'Conectando...' : 'Conectar Meta (WhatsApp)'}
-              </button>
-
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <div style={{ flex: 1 }}>
                   <input
@@ -567,20 +603,30 @@ export default function OnboardingPage() {
                 <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
               </div>
 
-              <button 
-                onClick={() => setOnboardingStep(2)}
-                disabled={isExtracting}
-                className="btn-secondary"
-                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
-              >
-                ✍️ Llenar manualmente
-              </button>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button 
+                  onClick={handleNoWebsite}
+                  disabled={isExtracting}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '16px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+                >
+                  🚫 No tengo sitio web
+                </button>
+                <button 
+                  onClick={() => setOnboardingStep(3)}
+                  disabled={isExtracting}
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '16px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#10b981', color: '#fff', border: 'none' }}
+                >
+                  Continuar al Chat ➡️
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* STEP 2: LEFT PANE (Profile) - Only visible in Step 2 */}
-        {onboardingStep === 2 && (
+        {/* STEP 3: LEFT PANE (Profile) - Only visible in Step 3 */}
+        {onboardingStep === 3 && (
         <div 
           className="glass-panel-premium slide-up" 
           style={{ 
@@ -695,8 +741,8 @@ export default function OnboardingPage() {
         </div>
         )}
 
-        {/* STEP 2: RIGHT PANE (Chat Interface) */}
-        {onboardingStep === 2 && (
+        {/* STEP 3: RIGHT PANE (Chat Interface) */}
+        {onboardingStep === 3 && (
         <div 
           className="glass-panel-premium slide-up" 
           style={{ 
