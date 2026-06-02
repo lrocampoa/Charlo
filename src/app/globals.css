@@ -1,30 +1,31 @@
 :root {
   /* Colors */
-  --bg-primary: #f8fafc;
+  --bg-primary: #FCFCFC;
   --bg-secondary: #f1f5f9;
-  --text-primary: #0f172a;
+  --text-primary: #0A110F;
   --text-secondary: #475569;
-  --accent-color: #3b82f6;
-  --accent-color-hover: #2563eb;
+  --accent-color: #2CA05A;
+  --accent-color-hover: #1e8146;
   --success: #10b981;
   --danger: #ef4444;
-  --warning: #f59e0b;
+  --warning: #F9BC2F;
+  --beak-orange: #F26D21;
   --border-color: #e2e8f0;
 
   /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-bg: rgba(252, 252, 252, 0.85);
+  --glass-border: rgba(10, 17, 15, 0.1);
   --glass-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.05);
 
   /* Typography */
-  --font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-family: var(--font-poppins), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-fira-code), monospace;
   --font-size-base: 16px;
   
   /* Borders and Radii */
-  --border-radius-sm: 8px;
-  --border-radius-md: 16px;
-  --border-radius-lg: 24px;
+  --border-radius-sm: 12px;
+  --border-radius-md: 24px;
+  --border-radius-lg: 32px;
   --border-radius-full: 9999px;
   
   /* Transitions */
@@ -35,16 +36,16 @@
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #0f172a;
+    --bg-primary: #0A110F;
     --bg-secondary: #1e293b;
-    --text-primary: #f8fafc;
+    --text-primary: #FCFCFC;
     --text-secondary: #94a3b8;
-    --accent-color: #60a5fa;
-    --accent-color-hover: #3b82f6;
+    --accent-color: #2CA05A;
+    --accent-color-hover: #1e8146;
     --border-color: #334155;
 
-    --glass-bg: rgba(30, 41, 59, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(10, 17, 15, 0.8);
+    --glass-border: rgba(252, 252, 252, 0.15);
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   }
 }
@@ -89,7 +90,7 @@ button {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
+  border: 2px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: var(--border-radius-md);
   padding: 24px;
@@ -153,7 +154,7 @@ button {
 
 /* Landing Page Utilities */
 .text-gradient {
-  background: linear-gradient(135deg, var(--accent-color) 0%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--accent-color) 0%, var(--warning) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

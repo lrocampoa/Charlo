@@ -4,13 +4,13 @@ export default function Home() {
   return (
     <main style={{ minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       {/* Animated Blobs */}
-      <div className="blob" style={{ top: '-10%', left: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(0,0,0,0) 70%)', animationDelay: '0s' }}></div>
-      <div className="blob" style={{ bottom: '-10%', right: '-10%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, rgba(0,0,0,0) 70%)', animationDelay: '-5s' }}></div>
-      <div className="blob" style={{ top: '40%', left: '50%', width: '30vw', height: '30vw', background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, rgba(0,0,0,0) 70%)', animationDelay: '-2s' }}></div>
+      <div className="blob" style={{ top: '-10%', left: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(44,160,90,0.3) 0%, rgba(0,0,0,0) 70%)', animationDelay: '0s' }}></div>
+      <div className="blob" style={{ bottom: '-10%', right: '-10%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, rgba(249,188,47,0.2) 0%, rgba(0,0,0,0) 70%)', animationDelay: '-5s' }}></div>
+      <div className="blob" style={{ top: '40%', left: '50%', width: '30vw', height: '30vw', background: 'radial-gradient(circle, rgba(242,109,33,0.15) 0%, rgba(0,0,0,0) 70%)', animationDelay: '-2s' }}></div>
 
       {/* Header */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px", position: "fixed", top: 0, width: "100%", zIndex: 100, backdropFilter: "blur(12px)", borderBottom: "1px solid var(--glass-border)" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, background: "linear-gradient(135deg, #fff 0%, #a855f7 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Charlo B2B</h1>
+        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, background: "linear-gradient(135deg, var(--accent-color) 0%, var(--warning) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Charlo B2B</h1>
         <nav style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <Link href="#pricing" style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Precios</Link>
           <Link href="/login" style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Iniciar Sesión</Link>
@@ -21,7 +21,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="hero-section" style={{ paddingTop: '100px' }}>
         <div style={{ maxWidth: 800, margin: "0 auto", position: "relative", zIndex: 10 }}>
-          <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '99px', color: '#60a5fa', fontWeight: 600, fontSize: '0.85rem', marginBottom: '24px' }}>
+          <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: 'rgba(44, 160, 90, 0.1)', border: '1px solid rgba(44, 160, 90, 0.2)', borderRadius: '99px', color: '#2CA05A', fontWeight: 600, fontSize: '0.85rem', marginBottom: '24px' }}>
             🇨🇷 Diseñado exclusivamente para PYMEs en Costa Rica
           </div>
           <h2 style={{ fontSize: "4.5rem", fontWeight: 800, lineHeight: 1.1, marginBottom: 24 }}>
@@ -91,7 +91,7 @@ export default function Home() {
           <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem", marginBottom: 48 }}>Invierte en tecnología que se paga sola desde la primera semana.</p>
 
           <div className="glass-panel feature-card" style={{ maxWidth: 400, margin: "0 auto", padding: "40px 32px", position: "relative", overflow: "hidden" }}>
-            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "4px", background: "linear-gradient(90deg, var(--accent-color), #a855f7)" }}></div>
+            <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "4px", background: "linear-gradient(90deg, var(--accent-color), var(--warning))" }}></div>
             <h4 style={{ fontSize: "1.5rem", fontWeight: 600, marginBottom: 8 }}>Plan PYME</h4>
             <div style={{ display: "flex", justifyContent: "center", alignItems: "baseline", gap: 8, marginBottom: 24 }}>
               <span style={{ fontSize: "3rem", fontWeight: 800, color: "var(--text-primary)" }}>₡45,000</span>
