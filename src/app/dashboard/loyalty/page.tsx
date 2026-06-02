@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useCompany } from '@/context/CompanyContext';
 
 export default function LoyaltyPage() {
-  const { selectedCompanyId, selectedCompany, refreshCompany } = useCompany();
+  const { selectedCompanyId, selectedCompany, refreshCompanies } = useCompany();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -56,7 +56,7 @@ export default function LoyaltyPage() {
       });
       if (res.ok) {
         alert("Configuración guardada exitosamente.");
-        refreshCompany();
+        refreshCompanies();
       } else {
         alert("Error al guardar la configuración.");
       }

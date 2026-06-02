@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { registerPayment, getCustomerProfile, getCompany } from '../firebase/dbUtils';
+import { registerPayment, getCustomerProfile, getCompanyConfig } from '../firebase/dbUtils';
 import { dispatchUberFlash } from '../services/uberFlash';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -49,7 +49,7 @@ export async function handlePaymentImage(
       
       // Dispatch Uber Flash
       try {
-        const company = await getCompany(companyId);
+        const company = await getCompanyConfig(companyId);
         const crmProfile = await getCustomerProfile(companyId, customerId);
         const crmFacts = crmProfile?.extractedFacts || {};
         

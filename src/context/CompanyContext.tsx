@@ -29,6 +29,17 @@ export interface Company {
     maxCapacity?: number;
     operatingHours?: string;
   };
+  loyaltyConfig?: {
+    pointsEnabled?: boolean;
+    pointsRatio?: number;
+    cashbackEnabled?: boolean;
+    cashbackPercentage?: number;
+  };
+  deliveryConfig?: {
+    uberEnabled?: boolean;
+    uberClientId?: string;
+    uberClientSecret?: string;
+  };
 }
 
 interface CompanyContextType {
