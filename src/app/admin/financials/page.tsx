@@ -119,7 +119,7 @@ export default function FinancialsDashboard() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)' }} tickFormatter={(value) => `$${value / 1000}k`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)' }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'MRR']}
+                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'MRR']}
                 />
                 <Area type="monotone" dataKey="mrr" stroke="var(--accent-color)" strokeWidth={3} fillOpacity={1} fill="url(#colorMrr)" />
               </AreaChart>
