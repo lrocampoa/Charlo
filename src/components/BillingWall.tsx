@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { auth } from '@/lib/firebase/config';
 
 interface BillingWallProps {
   companyId: string;
@@ -18,7 +19,16 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
     
     if (tier === 'free') {
       try {
-        const res = await fetch(`/api/companies/${companyId}/set-sandbox`, { method: 'POST' });
+        const user = auth.currentUser;
+        if (!user) throw new Error('Not authenticated');
+        const token = await user.getIdToken();
+        
+        const res = await fetch(`/api/companies/${companyId}/set-sandbox`, { 
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!res.ok) throw new Error('Error activating Sandbox');
         onComplete();
       } catch (err: any) {
@@ -31,13 +41,15 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
 
     // Paid tiers checkout
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Note: In real app, you need to pass Firebase ID token if the API route requires it, 
-          // or we can remove the ID token requirement in the checkout API if we use next-auth cookies.
-          // For now, we will assume the route handles auth correctly if called from client side (it expects Bearer token).
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ companyId, tier })
       });
@@ -58,9 +70,16 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
   const handlePortal = async () => {
     setIsLoading('portal');
     try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      const token = await user.getIdToken();
+
       const res = await fetch('/api/stripe/create-portal-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ companyId })
       });
       if (!res.ok) throw new Error('Portal failed');

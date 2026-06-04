@@ -37,6 +37,7 @@ if (!admin.apps.length) {
 // getDb() in dbUtils will throw at RUNTIME if these are null.
 const adminDb = isInitialized ? admin.firestore() : null;
 const adminAuth = isInitialized ? admin.auth() : null;
+const adminStorage = isInitialized ? admin.storage() : null;
 
 export async function verifyIdToken(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('authorization');

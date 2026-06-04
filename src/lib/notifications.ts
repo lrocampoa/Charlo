@@ -34,3 +34,38 @@ export async function sendAdminAlert(subject: string, errorDetails: string) {
     console.error("❌ Error sending alert via Postmark:", error);
   }
 }
+
+export async function sendOwnerEmailAlert(toEmail: string, subject: string, htmlBody: string) {
+  const serverToken = process.env.POSTMARK_SERVER_TOKEN;
+  const senderEmail = process.env.SENDER_EMAIL || process.env.ADMIN_EMAIL || "alerts@charlo.com";
+
+  if (!serverToken) {
+    console.warn("⚠️ Postmark not configured (missing POSTMARK_SERVER_TOKEN). Owner alert skipped:", subject);
+    return;
+  }
+
+  try {
+    const res = await fetch("https://api.postmarkapp.com/email", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "X-Postmark-Server-Token": serverToken
+      },
+      body: JSON.stringify({
+        From: senderEmail,
+        To: toEmail,
+        Subject: `Charlo: ${subject}`,
+        HtmlBody: htmlBody,
+      })
+    });
+
+    if (!res.ok) {
+      console.error("❌ Failed to send Postmark owner alert. Status:", res.status, "Body:", await res.text());
+    } else {
+      console.log(`📧 Owner alert sent successfully to ${toEmail}`);
+    }
+  } catch (error) {
+    console.error("❌ Error sending owner alert via Postmark:", error);
+  }
+}

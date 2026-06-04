@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, getAdditionalUserInfo } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, getAdditionalUserInfo, sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,7 +40,10 @@ export default function Signup() {
         headers: { Authorization: `Bearer ${token}` } 
       });
 
-      router.push('/dashboard');
+      // Send verification email
+      await sendEmailVerification(userCred.user);
+
+      router.push('/verify-email');
     } catch (err: any) {
       setError(t('signup.errorGeneric'));
       setIsLoading(false);

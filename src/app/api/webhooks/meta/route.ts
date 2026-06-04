@@ -2,8 +2,8 @@ import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
 import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus } from '@/lib/firebase/dbUtils';
-import { adminDb } from '@/lib/firebase/admin';
-import { sendAdminAlert } from '@/lib/notifications';
+import { adminDb, adminAuth } from '@/lib/firebase/admin';
+import { sendAdminAlert, sendOwnerEmailAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
 // When you configure the webhook in Meta Developers, they send a GET request to verify ownership.
@@ -172,6 +172,18 @@ export async function POST(request: Request) {
                }
             };
 
+            const dispatchOwnerEmail = async (subject: string, htmlBody: string) => {
+               if (!company.ownerId || !adminAuth) return;
+               try {
+                 const ownerRecord = await adminAuth.getUser(company.ownerId);
+                 if (ownerRecord.email) {
+                   await sendOwnerEmailAlert(ownerRecord.email, subject, htmlBody);
+                 }
+               } catch (err) {
+                 console.error("Failed to fetch owner email for alert:", err);
+               }
+            };
+
             // 1. Delinquent check
             if (tier !== 'free' && status !== 'active' && status !== 'trialing') {
               console.log(`🚫 Delinquent subscription. Rejecting message from ${senderPhone}`);
@@ -191,6 +203,10 @@ export async function POST(request: Request) {
 
               if (humanEscalationsEnabled && adminDb) {
                  await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por falta de pago. Atiende la conversación en tu Inbox de Charlo.`);
+                 dispatchOwnerEmail(
+                   "⚠️ Asistente Pausado por Falta de Pago", 
+                   `<p>Un cliente (<strong>${senderPhone}</strong>) necesita ayuda, pero tu asistente está pausado por un problema con tu suscripción.</p><p>Por favor ingresa a tu dashboard de Charlo para regularizar el pago.</p>`
+                 );
               }
               continue;
             }
@@ -215,10 +231,15 @@ export async function POST(request: Request) {
               if (usageAlertsEnabled && !company.usage?.hundredPercentWarningSent && adminDb) {
                  await sendOwnerAlert(`🚨 *Alerta Crítica:* Tu asistente de IA ha alcanzado su límite mensual (${limit} mensajes) y ha sido pausado. Mejora tu plan en el dashboard para reanudar el servicio o seguir atendiendo clientes manualmente.`);
                  await adminDb.collection('companies').doc(company.id).update({ 'usage.hundredPercentWarningSent': true });
+                 dispatchOwnerEmail(
+                   "🚨 Límite de Uso Alcanzado (Asistente Pausado)",
+                   `<p>Tu asistente de IA ha alcanzado su límite de <strong>${limit} mensajes mensuales</strong> y ha sido pausado.</p><p>Para seguir atendiendo a tus clientes automáticamente, por favor mejora tu plan en el dashboard.</p>`
+                 );
               }
 
               if (humanEscalationsEnabled && adminDb) {
                  await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por límite de uso. Atiende la conversación en tu Inbox de Charlo.`);
+                 // No need to send a duplicate email here since the 100% warning email above covers it.
               }
               
               continue;
@@ -286,6 +307,10 @@ export async function POST(request: Request) {
             // Send escalation notification if the intent is ESCALATION
             if (routing?.intent === "ESCALATION" && humanEscalationsEnabled && adminDb) {
               await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El cliente ${senderPhone} ha sido escalado. Atiende la conversación en tu Inbox de Charlo.`);
+              dispatchOwnerEmail(
+                "🙋‍♂️ Un cliente necesita asistencia humana",
+                `<p>El asistente de IA no pudo resolver la solicitud del cliente (<strong>${senderPhone}</strong>) y la conversación ha sido escalada.</p><p>Por favor ingresa a tu <a href="https://app.charlo.com/dashboard/inbox">Inbox de Charlo</a> para responderle personalmente.</p>`
+              );
             }
 
             if (response && accessToken) {

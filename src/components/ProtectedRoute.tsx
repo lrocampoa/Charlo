@@ -13,8 +13,12 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const isFirebaseConfigured = !!apiKey && apiKey !== "your_api_key_here";
 
   useEffect(() => {
-    if (!loading && !user && isFirebaseConfigured) {
-       router.push('/login');
+    if (!loading && isFirebaseConfigured) {
+       if (!user) {
+         router.push('/login');
+       } else if (!user.emailVerified) {
+         router.push('/verify-email');
+       }
     }
   }, [user, loading, router, isFirebaseConfigured]);
 

@@ -15,13 +15,34 @@ interface Campaign {
   createdAt: string;
 }
 
+interface MetaTemplate {
+  id: string;
+  name: string;
+  status: string;
+  category: string;
+  language: string;
+}
+
 export default function CampaignsPage() {
   const { user } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompany();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [activeTab, setActiveTab] = useState<'manual' | 'proactive'>('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'proactive' | 'templates'>('manual');
+  
+  const [metaTemplates, setMetaTemplates] = useState<MetaTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [submittingTemplate, setSubmittingTemplate] = useState(false);
+
+  // Template Builder Form State
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [newTemplateCategory, setNewTemplateCategory] = useState('MARKETING');
+  const [newTemplateLang, setNewTemplateLang] = useState('es_MX');
+  const [newTemplateBody, setNewTemplateBody] = useState('');
+  const [newTemplateOptOut, setNewTemplateOptOut] = useState('ALTO 🛑');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   const [templateName, setTemplateName] = useState('');
   const [languageCode, setLanguageCode] = useState('es_MX');
@@ -87,9 +108,29 @@ export default function CampaignsPage() {
       }
     }
     
+    async function fetchTemplates() {
+      if (!user || !selectedCompanyId) return;
+      setLoadingTemplates(true);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/companies/${selectedCompanyId}/templates`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setMetaTemplates(data.templates || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    }
+    
     fetchCampaigns();
     fetchTriggers();
     fetchCustomers();
+    fetchTemplates();
   }, [selectedCompanyId, user]);
 
   const toggleTrigger = async (triggerId: string, isActive: boolean) => {
@@ -181,6 +222,95 @@ export default function CampaignsPage() {
     }
   };
 
+  const handleCreateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedCompanyId) return;
+    
+    if (!newTemplateName.trim() || !newTemplateBody.trim()) {
+      alert("Por favor completa el nombre y el cuerpo del mensaje.");
+      return;
+    }
+
+    setSubmittingTemplate(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/companies/${selectedCompanyId}/templates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newTemplateName.trim(),
+          category: newTemplateCategory,
+          language: newTemplateLang,
+          bodyText: newTemplateBody.trim(),
+          optOutButton: newTemplateOptOut.trim() || undefined
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Template enviado a revisión. Meta puede tardar un par de minutos en aprobarlo.");
+        setNewTemplateName('');
+        setNewTemplateBody('');
+        setAiPrompt('');
+        // Optimistic UI insert
+        setMetaTemplates([{
+          id: data.id,
+          name: newTemplateName.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'),
+          category: newTemplateCategory,
+          language: newTemplateLang,
+          status: 'PENDING'
+        }, ...metaTemplates]);
+      } else {
+        alert(data.error || "Error al crear el template.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error de red.");
+    } finally {
+      setSubmittingTemplate(false);
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    if (!user || !selectedCompanyId) return;
+    if (!aiPrompt.trim()) {
+      alert("Por favor escribe de qué trata el mensaje (ej: 'Promo del día de las madres').");
+      return;
+    }
+
+    setGeneratingAI(true);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/companies/${selectedCompanyId}/templates/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          category: newTemplateCategory,
+          language: newTemplateLang
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.text) {
+        setNewTemplateBody(data.text);
+      } else {
+        alert(data.error || "Error al generar con IA.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error de red.");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   const togglePhoneSelection = (phone: string) => {
     if (selectedPhones.includes(phone)) {
       setSelectedPhones(selectedPhones.filter(p => p !== phone));
@@ -220,6 +350,13 @@ export default function CampaignsPage() {
           style={{ padding: '8px 16px', background: activeTab === 'proactive' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
         >
           Campañas Proactivas (Triggers)
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
+          onClick={() => setActiveTab('templates')}
+          style={{ padding: '8px 16px', background: activeTab === 'templates' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
+        >
+          Gestor de Templates
         </button>
       </div>
 
@@ -378,7 +515,180 @@ export default function CampaignsPage() {
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'templates' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
+          
+          {/* Template Builder Form */}
+          <div className="glass-panel" style={{ position: 'sticky', top: 24 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Crear Nuevo Template</h2>
+            
+            <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Nombre del Template</label>
+                <input
+                  type="text"
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                  placeholder="ej. promo_verano_01 (solo minusculas)"
+                  style={{
+                    padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Categoría</label>
+                  <select
+                    value={newTemplateCategory}
+                    onChange={(e) => setNewTemplateCategory(e.target.value)}
+                    style={{
+                      padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                      background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
+                    }}
+                  >
+                    <option value="MARKETING">Marketing (Promos)</option>
+                    <option value="UTILITY">Utilidad (Alertas)</option>
+                  </select>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Idioma</label>
+                  <select
+                    value={newTemplateLang}
+                    onChange={(e) => setNewTemplateLang(e.target.value)}
+                    style={{
+                      padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                      background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
+                    }}
+                  >
+                    <option value="es_MX">Español (es_MX)</option>
+                    <option value="en_US">Inglés (en_US)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mensaje</label>
+                </div>
+                
+                <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: 12, borderRadius: 8, display: 'flex', gap: 8, flexDirection: 'column' }}>
+                  <label style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>✨ Generar con IA</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="ej. Escribe un mensaje invitando al gran evento de aniversario..."
+                      style={{
+                        flex: 1, padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                        background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateAI}
+                      disabled={generatingAI}
+                      style={{
+                        padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 'var(--border-radius-sm)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500
+                      }}
+                    >
+                      {generatingAI ? 'Generando...' : 'Generar'}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  Usa <code style={{background:'rgba(255,255,255,0.1)', padding:'2px 4px', borderRadius:4}}>{'{{1}}'}</code> para variables.
+                </div>
+                <textarea
+                  value={newTemplateBody}
+                  onChange={(e) => setNewTemplateBody(e.target.value)}
+                  placeholder="¡Hola! Te ofrecemos un descuento..."
+                  rows={4}
+                  style={{
+                    padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', resize: 'vertical'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Botón de Opt-Out (Opcional)</label>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  Recomendado para Marketing.
+                </div>
+                <input
+                  type="text"
+                  value={newTemplateOptOut}
+                  onChange={(e) => setNewTemplateOptOut(e.target.value)}
+                  placeholder="ej. ALTO 🛑"
+                  style={{
+                    padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                    background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
+                  }}
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="btn-primary"
+                disabled={submittingTemplate}
+                style={{ marginTop: 8 }}
+              >
+                {submittingTemplate ? 'Enviando a revisión...' : 'Enviar a Meta'}
+              </button>
+            </form>
+          </div>
+
+          {/* Template List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Tus Templates de Meta</h2>
+            </div>
+            
+            {loadingTemplates ? (
+               <div style={{ color: 'var(--text-secondary)' }}>Cargando templates...</div>
+            ) : metaTemplates.length === 0 ? (
+              <div className="glass-panel" style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
+                No tienes ningún template registrado en Meta.
+              </div>
+            ) : (
+              <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
+                    <tr>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Nombre</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Categoría</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metaTemplates.map((tpl, idx) => (
+                      <tr key={tpl.id || idx} style={{ borderBottom: idx === metaTemplates.length - 1 ? 'none' : '1px solid var(--border-color)' }}>
+                        <td style={{ padding: '16px 24px', fontWeight: 500 }}>{tpl.name} <span style={{color:'var(--text-secondary)', fontSize:'0.8rem'}}>({tpl.language})</span></td>
+                        <td style={{ padding: '16px 24px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                          {tpl.category}
+                        </td>
+                        <td style={{ padding: '16px 24px' }}>
+                          {tpl.status === 'APPROVED' && <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🟢 Aprobado</span>}
+                          {tpl.status === 'PENDING' && <span style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🟡 Pendiente</span>}
+                          {tpl.status === 'REJECTED' && <span style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🔴 Rechazado</span>}
+                          {tpl.status === 'PAUSED' && <span style={{ color: '#9ca3af', background: 'rgba(156,163,175,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>⚪️ Pausado</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : activeTab === 'proactive' ? (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Campañas Proactivas (Automáticas)</h2>
@@ -426,7 +736,7 @@ export default function CampaignsPage() {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
