@@ -4,8 +4,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY is missing. Please set it in .env.local');
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-04-10', // Or the latest stable version
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2026-05-27.dahlia',
   appInfo: {
     name: 'Charlo',
     version: '0.1.0',

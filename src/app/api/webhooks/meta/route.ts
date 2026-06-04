@@ -148,6 +148,29 @@ export async function POST(request: Request) {
             // Track Usage Incrementally
             await trackWhatsAppUsage(company.id);
 
+            // --- SANDBOX MODE CHECK ---
+            if (company.subscription?.tier === 'free') {
+              // Extract just the numbers for comparison in case of formatting differences
+              const cleanSender = senderPhone.replace(/\D/g, '');
+              const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
+              
+              if (!cleanTest || cleanSender !== cleanTest) {
+                console.log(`🚫 Sandbox mode active. Rejecting message from ${senderPhone}`);
+                if (accessToken) {
+                  await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      messaging_product: "whatsapp",
+                      to: senderPhone,
+                      text: { body: "🤖 Este asistente virtual de Charlo está en modo Sandbox (Gratis). Si eres el dueño, ingresa a tu dashboard y mejora tu plan para atender a tus clientes reales." }
+                    })
+                  });
+                }
+                continue;
+              }
+            }
+
             const context = {
               knowledgeBase: company.knowledgeBase || "",
               productsCatalog: company.productsCatalog || "",
@@ -238,6 +261,22 @@ export async function POST(request: Request) {
               console.log(`To ID: ${recipientId}`);
               console.log(`Message: ${messageText}`);
               console.log(`============================\n`);
+
+              // --- SANDBOX MODE CHECK ---
+              if (company.subscription?.tier === 'free') {
+                console.log(`🚫 Sandbox mode active. Rejecting ${platform} message from ${senderId}`);
+                if (accessToken) {
+                  await fetch(`https://graph.facebook.com/v19.0/me/messages`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      recipient: { id: senderId },
+                      message: { text: "🤖 Este asistente virtual de Charlo está en modo Sandbox (Gratis). Si eres el dueño, ingresa a tu dashboard y mejora tu plan para atender a tus clientes reales." }
+                    })
+                  });
+                }
+                continue;
+              }
 
               const context = {
                 knowledgeBase: company.knowledgeBase || "",

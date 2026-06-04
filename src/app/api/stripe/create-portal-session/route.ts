@@ -9,6 +9,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const token = authHeader.split('Bearer ')[1];
+    if (!adminAuth || !adminDb) {
+      return NextResponse.json({ error: "Firebase admin not initialized" }, { status: 500 });
+    }
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 

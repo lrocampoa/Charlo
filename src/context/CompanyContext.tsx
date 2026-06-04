@@ -40,6 +40,17 @@ export interface Company {
     uberClientId?: string;
     uberClientSecret?: string;
   };
+  testPhoneNumber?: string;
+  stripeCustomerId?: string;
+  usage?: {
+    aiMessagesCurrentMonth?: number;
+  };
+  subscription?: {
+    tier: string;
+    status: string;
+    currentPeriodEnd?: number;
+    stripeSubscriptionId?: string;
+  };
 }
 
 interface CompanyContextType {

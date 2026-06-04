@@ -14,6 +14,33 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFbSdkLoaded, setIsFbSdkLoaded] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  const [sandboxNumber, setSandboxNumber] = useState('');
+
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+
+  useEffect(() => {
+    if (selectedCompany?.testPhoneNumber) {
+      setSandboxNumber(selectedCompany.testPhoneNumber);
+    }
+  }, [selectedCompany]);
+
+  const handleSaveSandbox = async () => {
+    if (!selectedCompanyId || !user) return;
+    setIsSaving(true);
+    try {
+      const token = await user.getIdToken();
+      await fetch(`/api/companies/${selectedCompanyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ testPhoneNumber: sandboxNumber })
+      });
+      refreshCompanies();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const getLimitForTier = (tier?: string) => {
     switch(tier) {
@@ -24,10 +51,7 @@ export default function SettingsPage() {
     }
   };
 
-  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
-
   useEffect(() => {
-    // Load Facebook SDK
     if ((window as any).FB) {
       setIsFbSdkLoaded(true);
       return;
@@ -193,6 +217,37 @@ export default function SettingsPage() {
                   }}></div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sandbox Configuration */}
+        {selectedCompany && selectedCompany.subscription?.tier === 'free' && (
+          <div className="glass-panel" style={{ marginTop: 32 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🧪</span> Modo Sandbox
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 16 }}>
+              Estás en el plan gratis. Para probar tu asistente, ingresa tu número de teléfono de WhatsApp personal. El bot SOLO responderá a este número.
+            </p>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
+              <label style={{ flex: 1, display: 'block', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                Tu Número Personal (con código de país, ej. 50688889999)
+                <input 
+                  type="text" 
+                  value={sandboxNumber} 
+                  onChange={e => setSandboxNumber(e.target.value)}
+                  placeholder="Ej. 50688889999"
+                  style={{ width: '100%', padding: '10px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.05)', color: 'var(--text-primary)', marginTop: 8 }}
+                />
+              </label>
+              <button 
+                className="btn-primary" 
+                onClick={handleSaveSandbox} 
+                disabled={isSaving}
+              >
+                {isSaving ? 'Guardando...' : 'Guardar Sandbox'}
+              </button>
             </div>
           </div>
         )}

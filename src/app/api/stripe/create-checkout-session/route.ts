@@ -9,6 +9,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const token = authHeader.split('Bearer ')[1];
+    if (!adminAuth || !adminDb) {
+      return NextResponse.json({ error: "Firebase admin not initialized" }, { status: 500 });
+    }
+
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
@@ -50,7 +54,6 @@ export async function POST(req: Request) {
     }
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
       customer: customerId,
       line_items: [
         {
@@ -66,6 +69,7 @@ export async function POST(req: Request) {
         tier
       },
       subscription_data: {
+        trial_period_days: 14,
         metadata: {
           companyId,
           tier

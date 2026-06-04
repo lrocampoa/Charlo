@@ -27,3 +27,10 @@ To send WhatsApp alerts, the system looks up the business owner's phone number i
 The WhatsApp alert utilizes the standard Meta Cloud API `/messages` endpoint. 
 - **Free-form messaging:** By default, it sends a free-form message. This will ONLY be delivered if the owner has sent a message to the bot within the last 24 hours.
 - **Out-of-window delivery:** If you need these alerts to reach the owner at any time (even if they haven't interacted with the bot recently), you MUST create an approved WhatsApp Utility Template in your Meta Business account and update the `src/lib/whatsapp/service.ts` logic to use `{ type: "template", template: { ... } }` instead of `{ type: "text" }`.
+
+## 5. Uber Flash Setup (Automated Deliveries)
+The backend logic for automatically dispatching an Uber Flash upon payment extraction is implemented in `src/lib/ai/paymentAgent.ts` and `src/lib/services/uberFlash.ts`. However, to activate it:
+1. Create a developer account at the **Uber Direct Console**.
+2. Generate your OAuth 2.0 Credentials (Client ID and Client Secret).
+3. Add `UBER_CLIENT_ID` and `UBER_CLIENT_SECRET` to your `.env.local` file.
+4. Set up a Webhook in the Uber console pointing to `https://your-domain.com/api/uber/webhook` if you want real-time status updates (driver assigned, picked up, dropped off) integrated back into Charlo.

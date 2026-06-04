@@ -34,18 +34,25 @@ export async function handlePaymentImage(
 
     const data = JSON.parse(jsonMatch[0]);
 
-    if (data.esComprobante && data.monto) {
+    if (data.esComprobante && typeof data.monto === 'number' && data.monto > 0 && data.monto < 10000000) {
+      // Sanitize inputs
+      const safeAmount = data.monto;
+      const safeRef = String(data.referencia || 'N/A').slice(0, 100);
+      const safeSender = String(data.nombreRemitente || 'N/A').slice(0, 100);
+      const safePhone = String(data.telefonoDestino || 'N/A').slice(0, 20);
+
       // Register the payment in the DB!
       await registerPayment(companyId, customerId, {
-        amount: data.monto,
-        reference: data.referencia || 'N/A',
-        senderName: data.nombreRemitente || 'N/A',
+        amount: safeAmount,
+        reference: safeRef,
+        senderName: safeSender,
         receiptDate: data.fecha || new Date().toISOString(),
-        destinationPhone: data.telefonoDestino || 'N/A',
-        method: 'SINPE Móvil'
+        destinationPhone: safePhone,
+        method: 'SINPE Móvil',
+        status: 'pending_verification' // AI extracted payments require human verification
       });
       
-      let baseResponse = `¡Excelente! He verificado tu comprobante de SINPE Móvil por ₡${data.monto} a nombre de ${data.nombreRemitente || 'cliente'} (Ref: ${data.referencia}). Tu pago ha sido registrado con éxito.`;
+      let baseResponse = `¡Excelente! He registrado tu comprobante de SINPE Móvil por ₡${safeAmount} a nombre de ${safeSender} (Ref: ${safeRef}). En breve verificaremos el pago.`;
       
       // Dispatch Uber Flash
       try {

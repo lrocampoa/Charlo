@@ -9,11 +9,16 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
 
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET is not configured in environment variables');
+    return NextResponse.json({ error: 'Webhook secret is not configured' }, { status: 500 });
+  }
+
   try {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET || ''
+      process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
@@ -32,10 +37,11 @@ export async function POST(req: Request) {
           const tier = session.metadata?.tier;
           
           if (companyId && tier) {
+            if (!adminDb) throw new Error('adminDb not initialized');
             await adminDb.collection('companies').doc(companyId).update({
               'subscription.tier': tier,
               'subscription.status': subscription.status,
-              'subscription.currentPeriodEnd': subscription.current_period_end * 1000,
+              'subscription.currentPeriodEnd': (subscription as any).current_period_end * 1000,
               stripeSubscriptionId: subscription.id,
               stripeCustomerId: session.customer as string
             });
@@ -51,9 +57,10 @@ export async function POST(req: Request) {
         const tier = subscription.metadata?.tier;
         
         if (companyId) {
+          if (!adminDb) throw new Error('adminDb not initialized');
           const updateData: any = {
             'subscription.status': subscription.status,
-            'subscription.currentPeriodEnd': subscription.current_period_end * 1000
+            'subscription.currentPeriodEnd': (subscription as any).current_period_end * 1000
           };
           if (tier) {
             updateData['subscription.tier'] = tier;
@@ -69,12 +76,13 @@ export async function POST(req: Request) {
         const companyId = subscription.metadata?.companyId;
         
         if (companyId) {
+          if (!adminDb) throw new Error('adminDb not initialized');
           await adminDb.collection('companies').doc(companyId).update({
-            'subscription.tier': 'starter', // Or 'free' if we have one
+            'subscription.tier': 'free', 
             'subscription.status': 'canceled',
             stripeSubscriptionId: null
           });
-          console.log(`Subscription canceled for company ${companyId}. Reverted to starter tier.`);
+          console.log(`Subscription canceled for company ${companyId}. Reverted to free tier.`);
         }
         break;
       }

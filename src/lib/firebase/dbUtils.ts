@@ -356,7 +356,7 @@ export async function registerPayment(companyId: string, customerId: string, pay
     companyId,
     customerId, // Phone number
     ...paymentData,
-    status: 'verified',
+    status: paymentData.status || 'pending_verification',
     createdAt: new Date().toISOString()
   };
   const docRef = await getDb().collection('companies').doc(companyId).collection('payments').add(payment);

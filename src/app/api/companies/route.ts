@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     
     // Auto-Join Existing Business
     if (body.whatsappPhoneNumberId) {
-      const existingWa = await getCompanyByWhatsAppId(body.whatsappPhoneNumberId);
+      const existingWa: any = await getCompanyByWhatsAppId(body.whatsappPhoneNumberId);
       if (existingWa) {
         // If the user is already the owner, just return it
         if (existingWa.ownerId === userId) {
