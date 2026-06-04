@@ -98,9 +98,9 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 1200 }}>
         
         {/* Sandbox Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
           <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
-             <Image src="/sandbox.png" alt="Sandbox" fill style={{ objectFit: 'contain' }} />
+             <Image src="/sandbox-v2.png" alt="Sandbox" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>Sandbox</h3>
           <p style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 24 }}>Gratis</p>
@@ -121,9 +121,9 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Starter Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(0, 191, 255, 0.3)', position: 'relative' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(0, 191, 255, 0.3)', position: 'relative', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
           <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
-            <Image src="/starter.png" alt="Starter" fill style={{ objectFit: 'contain' }} />
+            <Image src="/starter-v2.png" alt="Starter" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#4facfe' }}>Starter</h3>
           <p style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4 }}>$49<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/mes</span></p>
@@ -145,12 +145,12 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Growth Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(16, 185, 129, 0.5)', transform: 'scale(1.05)', zIndex: 2, boxShadow: '0 20px 40px rgba(16,185,129,0.2)' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(16, 185, 129, 0.5)', transform: 'scale(1.05)', zIndex: 2, boxShadow: '0 20px 40px rgba(16,185,129,0.2)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
           <div style={{ position: 'absolute', top: -12, background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)', padding: '4px 12px', borderRadius: 12, fontSize: '0.8rem', fontWeight: 700, color: '#000' }}>
             MÁS POPULAR
           </div>
           <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative', marginTop: 12 }}>
-            <Image src="/growth.png" alt="Growth" fill style={{ objectFit: 'contain' }} />
+            <Image src="/growth-v2.png" alt="Growth" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#10b981' }}>Growth</h3>
           <p style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4 }}>$99<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/mes</span></p>
@@ -172,9 +172,9 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Pro Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(168, 85, 247, 0.3)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
           <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
-            <Image src="/pro.png" alt="Pro" fill style={{ objectFit: 'contain' }} />
+            <Image src="/pro-v2.png" alt="Pro" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#a855f7' }}>Pro</h3>
           <p style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4 }}>$249<span style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>/mes</span></p>
