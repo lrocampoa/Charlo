@@ -13,6 +13,16 @@ export default function SettingsPage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isFbSdkLoaded, setIsFbSdkLoaded] = useState(false);
+  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+
+  const getLimitForTier = (tier?: string) => {
+    switch(tier) {
+      case 'starter': return 2000;
+      case 'growth': return 5000;
+      case 'pro': return 15000;
+      default: return 2000;
+    }
+  };
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
@@ -39,6 +49,40 @@ export default function SettingsPage() {
     script.defer = true;
     document.body.appendChild(script);
   }, []);
+
+  const handleManageBilling = async () => {
+    if (!selectedCompanyId || !user) return;
+    setIsCheckoutLoading(true);
+    try {
+      const token = await user.getIdToken();
+      if (selectedCompany?.stripeCustomerId) {
+        // Open Customer Portal
+        const res = await fetch('/api/stripe/create-portal-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ companyId: selectedCompanyId })
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else alert('Error: ' + data.error);
+      } else {
+        // Open Checkout for Growth Tier
+        const res = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ companyId: selectedCompanyId, tier: 'growth' })
+        });
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else alert('Error: ' + data.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error de red al procesar facturación.');
+    } finally {
+      setIsCheckoutLoading(false);
+    }
+  };
 
   const handleMetaLogin = () => {
     if (!(window as any).FB || !selectedCompanyId || !user) return;
@@ -106,6 +150,52 @@ export default function SettingsPage() {
             </select>
           </label>
         </div>
+
+        {/* Subscription & Usage */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>💳</span> Suscripción y Uso de IA
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 4 }}>Plan Actual</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 600, textTransform: 'capitalize', color: 'var(--accent-color)' }}>
+                    {selectedCompany.subscription?.tier || 'starter'}
+                  </p>
+                </div>
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                  onClick={handleManageBilling}
+                  disabled={isCheckoutLoading}
+                >
+                  {isCheckoutLoading ? 'Cargando...' : selectedCompany.stripeCustomerId ? 'Gestionar Facturación' : 'Mejorar a Growth ($99)'}
+                </button>
+              </div>
+              
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Mensajes de IA usados este mes</span>
+                  <span style={{ fontWeight: 600 }}>
+                    {selectedCompany.usage?.aiMessagesCurrentMonth || 0} / {getLimitForTier(selectedCompany.subscription?.tier)}
+                  </span>
+                </div>
+                
+                {/* Progress bar */}
+                <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: 'var(--accent-color)', 
+                    width: `${Math.min(100, ((selectedCompany.usage?.aiMessagesCurrentMonth || 0) / getLimitForTier(selectedCompany.subscription?.tier)) * 100)}%`,
+                    transition: 'width 0.5s ease-in-out'
+                  }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Canales Conectados */}
         {selectedCompany && (

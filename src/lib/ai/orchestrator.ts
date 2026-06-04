@@ -7,6 +7,15 @@ import { getSessionHistory, saveSessionMessage, getCustomerProfile, getRawSessio
 import { runSummarizerAgent } from './summarizerAgent';
 import { runQAAnalysis } from './qaAgent';
 
+export function getLimitForTier(tier: string) {
+  switch (tier) {
+    case 'starter': return 2000;
+    case 'growth': return 5000;
+    case 'pro': return 15000;
+    default: return 2000;
+  }
+}
+
 export async function processUserMessage(
   companyId: string,
   sessionId: string,
@@ -21,6 +30,8 @@ export async function processUserMessage(
     bookingConfig?: any;
     servicesList?: any[];
     customerName?: string;
+    subscription?: { tier: string, currentPeriodEnd: number };
+    usage?: { aiMessagesCurrentMonth: number };
   },
   imagePart?: { data: string, mimeType: string } | null,
   platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp"
@@ -43,6 +54,19 @@ export async function processUserMessage(
   if (status === 'human_handling') {
     console.log(`🔇 Session ${sessionId} is in 'human_handling' mode. AI will ignore.`);
     return { response: null };
+  }
+
+  // 0.75 Check Usage Limits
+  const tier = context.subscription?.tier || 'starter';
+  const limit = getLimitForTier(tier);
+  const currentUsage = context.usage?.aiMessagesCurrentMonth || 0;
+
+  if (currentUsage >= limit) {
+    console.log(`[Orchestrator] AI limit exceeded for company ${companyId}. Tier: ${tier}, Usage: ${currentUsage}/${limit}.`);
+    const fallbackMessage = "Actualmente nuestro sistema automático está al límite de su capacidad para este mes. Un agente humano se pondrá en contacto con usted en breve.";
+    await updateSessionStatus(companyId, sessionId, "needs_human");
+    await saveSessionMessage(companyId, sessionId, "model", fallbackMessage, platform, sessionId);
+    return { routing: { intent: "ESCALATION" }, response: fallbackMessage };
   }
 
   // 1. Fetch Short-Term Memory (Today's History)

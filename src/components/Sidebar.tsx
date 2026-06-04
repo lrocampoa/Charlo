@@ -49,15 +49,25 @@ export default function Sidebar() {
         )}
 
         {/* Global Company Selector */}
-        <select 
-          value={selectedCompanyId || ''}
-          onChange={(e) => setSelectedCompanyId(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none' }}
-        >
-          {companies.map(company => (
-            <option key={company.id} value={company.id}>{company.name || company.id}</option>
-          ))}
-        </select>
+        {companies.length === 0 ? (
+          <button 
+            onClick={() => window.location.href = '/onboarding'}
+            className="btn-primary" 
+            style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem' }}
+          >
+            {t('sidebar.addBusiness')}
+          </button>
+        ) : (
+          <select 
+            value={selectedCompanyId || ''}
+            onChange={(e) => setSelectedCompanyId(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none' }}
+          >
+            {companies.map(company => (
+              <option key={company.id} value={company.id}>{company.name || company.id}</option>
+            ))}
+          </select>
+        )}
       </div>
       <nav style={{ flex: 1, padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {navItems.map((item) => {

@@ -10,7 +10,8 @@ export const en = {
     simulator: "AI Simulator (Test)",
     settings: "Settings",
     reservations: "Reservations",
-    signOut: "Sign Out"
+    signOut: "Sign Out",
+    addBusiness: "Add Business"
   },
   
   // Dashboard Overview
@@ -47,6 +48,7 @@ export const en = {
     title: "Manage Businesses",
     subtitle: "Create and configure multiple AI agents for different tenants.",
     newBusiness: "+ AI Onboarding",
+    createOneBusiness: "Create one business",
     unnamed: "Unnamed Business",
     id: "ID",
     editConfig: "Edit Config",
@@ -140,5 +142,40 @@ export const en = {
     placeholder: "e.g. My business is a dog grooming salon called Wow Dog...",
     send: "Send",
     configuring: "Configuring business and redirecting to dashboard...",
+  },
+  
+  // Login
+  login: {
+    title: "Welcome Back",
+    email: "Email",
+    password: "Password",
+    signIn: "Sign In",
+    noAccount: "Don't have an account?",
+    signUp: "Sign Up",
+    errorInvalidCredential: "The email or password you entered is incorrect. Please try again.",
+    errorGeneric: "Failed to login. Please try again.",
+    providerError: "Failed to login with provider.",
+    forgotPassword: "Forgot password?",
+    resetPassword: "Reset Password",
+    resetInstructions: "Enter your email address and we'll send you a link to reset your password.",
+    sendResetLink: "Send Link",
+    cancel: "Cancel",
+    resetSuccess: "Link sent! Check your inbox.",
+    signingIn: "Signing in..."
+  },
+
+  // Signup
+  signup: {
+    title: "Create Account",
+    email: "Email",
+    password: "Password",
+    confirmPassword: "Confirm Password",
+    signUp: "Sign Up",
+    signingUp: "Signing up...",
+    alreadyAccount: "Already have an account?",
+    signIn: "Sign In",
+    errorPasswordMatch: "Passwords do not match.",
+    errorGeneric: "Failed to create account. Please try again.",
+    settingUpWorkspace: "Setting up your workspace..."
   }
 };

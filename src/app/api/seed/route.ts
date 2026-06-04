@@ -20,6 +20,8 @@ export async function POST(request: Request) {
       knowledgeBase: "Estamos abiertos de 11 AM a 10 PM. Entregas tardan 45 min. Aceptamos efectivo, tarjetas y SINPE.",
       productsCatalog: "- Pizza Pepperoni: 6000 CRC\n- Pizza Hawaiana: 6500 CRC\n- Palitos de ajo: 2000 CRC",
       persona: "Eres un chef italiano animado y amigable.",
+      subscription: { tier: 'pro', currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000 },
+      usage: { aiMessagesCurrentMonth: 0 },
       createdAt: new Date().toISOString()
     });
 
@@ -85,6 +87,8 @@ export async function POST(request: Request) {
       knowledgeBase: "Consultas de Lunes a Sábado de 8 AM a 6 PM. La limpieza cuesta $50. Calzas desde $40.",
       productsCatalog: "- Limpieza Dental: $50\n- Calza Blanca: $40\n- Blanqueamiento: $150",
       persona: "Eres una recepcionista médica muy profesional y empática.",
+      subscription: { tier: 'growth', currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000 },
+      usage: { aiMessagesCurrentMonth: 0 },
       createdAt: new Date().toISOString()
     });
 
@@ -107,17 +111,7 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString()
     });
 
-    // DEMO BUSINESS 3: TIENDA
-    const tiendaId = `demo_tienda_${Date.now()}`;
-    const tiendaRef = adminDb.collection('companies').doc(tiendaId);
-    batch.set(tiendaRef, {
-      name: "Boutique Elegance",
-      ownerId: userId,
-      knowledgeBase: "Envíos a todo el país por Correos de Costa Rica (2500 CRC extra). Cambios solo en los primeros 15 días.",
-      productsCatalog: "- Blusa Floral: 12000 CRC\n- Pantalón Mezclilla: 18000 CRC\n- Vestido Noche: 25000 CRC",
-      persona: "Eres una asesora de modas con mucho estilo y actitud positiva.",
-      createdAt: new Date().toISOString()
-    });
+    // Removed Boutique (Demo 3) as per requirements
 
     await batch.commit();
 

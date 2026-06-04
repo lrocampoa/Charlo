@@ -25,7 +25,14 @@ export async function createCompany(companyData: any) {
   // Extract services if present so they don't pollute the root doc
   const { extractedServices, ...rootData } = companyData;
   
-  const newCompany = { id, ...rootData, teamMembers: [], createdAt: new Date().toISOString() };
+  const newCompany = { 
+    id, 
+    ...rootData, 
+    teamMembers: [], 
+    subscription: { tier: 'starter', currentPeriodEnd: Date.now() + 30 * 24 * 60 * 60 * 1000 },
+    usage: { aiMessagesCurrentMonth: 0 },
+    createdAt: new Date().toISOString() 
+  };
   await getDb().collection('companies').doc(id).set(newCompany);
   
   // Save extracted services to subcollection if they exist
@@ -78,7 +85,8 @@ export async function trackWhatsAppUsage(companyId: string) {
 export async function trackGeminiUsage(companyId: string, tokens: number) {
   try {
     await getDb().collection('companies').doc(companyId).update({
-      'billing.geminiTokensUsed': FieldValue.increment(tokens)
+      'billing.geminiTokensUsed': FieldValue.increment(tokens),
+      'usage.aiMessagesCurrentMonth': FieldValue.increment(1)
     });
   } catch (err) {
     console.error(`Failed to track Gemini usage for company ${companyId}`, err);

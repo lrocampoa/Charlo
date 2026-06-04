@@ -5,7 +5,7 @@ import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
 
 export default function DashboardOverview() {
-  const { selectedCompanyId, selectedCompany } = useCompany();
+  const { selectedCompanyId, selectedCompany, isSeeding } = useCompany();
   const { t } = useLanguage();
 
   const [metrics, setMetrics] = React.useState<any>(null);
@@ -37,7 +37,12 @@ export default function DashboardOverview() {
         <p style={{ color: 'var(--text-secondary)' }}>{t('overview.subtitle')} <strong>{selectedCompany?.name || '...'}</strong></p>
       </div>
       
-      {!selectedCompanyId ? (
+      {isSeeding ? (
+        <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
+          <div className="spinner-small" style={{ margin: '0 auto 16px', borderTopColor: 'var(--accent-color)' }}></div>
+          <p>Estamos cargando negocios de prueba...</p>
+        </div>
+      ) : !selectedCompanyId ? (
         <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
           {t('overview.noBusiness')}
         </div>

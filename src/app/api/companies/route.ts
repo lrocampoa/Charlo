@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getCompanies, createCompany } from '@/lib/firebase/dbUtils';
-import { verifyIdToken } from '@/lib/firebase/admin';
+import { getCompanies, createCompany, getCompanyByWhatsAppId, getCompanyByFacebookPageId } from '@/lib/firebase/dbUtils';
+import { verifyIdToken, adminDb } from '@/lib/firebase/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function GET(request: Request) {
   try {
@@ -24,6 +25,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const body = await request.json();
+    
+    // Auto-Join Existing Business
+    if (body.whatsappPhoneNumberId) {
+      const existingWa = await getCompanyByWhatsAppId(body.whatsappPhoneNumberId);
+      if (existingWa) {
+        // If the user is already the owner, just return it
+        if (existingWa.ownerId === userId) {
+          return NextResponse.json(existingWa, { status: 200 });
+        }
+        
+        // Otherwise, add them to the teamMembers array
+        if (adminDb) {
+          await adminDb.collection('companies').doc(existingWa.id).update({
+            teamMembers: FieldValue.arrayUnion(userId)
+          });
+          
+          // Return the updated company
+          return NextResponse.json({ ...existingWa, teamMembers: [...(existingWa.teamMembers || []), userId] }, { status: 200 });
+        }
+      }
+    }
     
     const newCompany = await createCompany({
       ...body,

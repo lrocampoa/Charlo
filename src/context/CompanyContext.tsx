@@ -49,6 +49,7 @@ interface CompanyContextType {
   setSelectedCompanyId: (id: string) => void;
   refreshCompanies: () => Promise<void>;
   isLoading: boolean;
+  isSeeding: boolean;
 }
 
 const CompanyContext = createContext<CompanyContextType>({
@@ -58,12 +59,14 @@ const CompanyContext = createContext<CompanyContextType>({
   setSelectedCompanyId: () => {},
   refreshCompanies: async () => {},
   isLoading: true,
+  isSeeding: false,
 });
 
 export const CompanyProvider = ({ children }: { children: React.ReactNode }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSeeding, setIsSeeding] = useState(false);
   const { user } = useAuth();
 
   const refreshCompanies = async () => {
@@ -82,6 +85,8 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
         if (loadedCompanies.length === 0 && user) {
           const hasSeeded = localStorage.getItem('hasSeeded_charlo');
           if (!hasSeeded) {
+            localStorage.setItem('hasSeeded_charlo', 'true');
+            setIsSeeding(true);
             console.log("No companies found on first login. Seeding demo data...");
             await fetch('/api/seed', {
               method: 'POST',
@@ -91,7 +96,6 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
               },
               body: JSON.stringify({})
             });
-            localStorage.setItem('hasSeeded_charlo', 'true');
             // Re-fetch after seeding
             const res2 = await fetch('/api/companies', {
               headers: { 'Authorization': `Bearer ${token}` }
@@ -102,6 +106,7 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
               setSelectedCompanyId(data2.companies[0].id);
             }
             setIsLoading(false);
+            setIsSeeding(false);
             return;
           }
         }
@@ -127,7 +132,7 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId) || null;
 
   return (
-    <CompanyContext.Provider value={{ companies, selectedCompanyId, selectedCompany, setSelectedCompanyId, refreshCompanies, isLoading }}>
+    <CompanyContext.Provider value={{ companies, selectedCompanyId, selectedCompany, setSelectedCompanyId, refreshCompanies, isLoading, isSeeding }}>
       {children}
     </CompanyContext.Provider>
   );

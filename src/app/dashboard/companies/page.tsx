@@ -14,7 +14,6 @@ export default function CompaniesPage() {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const [isSeeding, setIsSeeding] = useState(false);
   
   const [formData, setFormData] = useState<Partial<Company>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -145,26 +144,7 @@ export default function CompaniesPage() {
             <p>{t('companies.noBusinesses')}</p>
             <div style={{ display: 'flex', gap: 16 }}>
               <button className="btn-primary" onClick={() => router.push('/onboarding')}>
-                Create one business
-              </button>
-              <button 
-                className="btn-secondary" 
-                disabled={isSeeding}
-                onClick={async () => {
-                  setIsSeeding(true);
-                  try {
-                    const token = await user?.getIdToken();
-                    await fetch('/api/seed', { 
-                      method: 'POST', 
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    await refreshCompanies();
-                  } finally {
-                    setIsSeeding(false);
-                  }
-                }}
-              >
-                {isSeeding ? "Generando..." : "Generar Datos de Prueba"}
+                {t('companies.createOneBusiness')}
               </button>
             </div>
           </div>

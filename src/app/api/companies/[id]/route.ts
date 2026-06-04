@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateCompany, deleteCompany } from '@/lib/firebase/dbUtils';
+import { updateCompany, deleteCompany, getCompanyByWhatsAppId, getCompanyByFacebookPageId } from '@/lib/firebase/dbUtils';
 import { verifyOwnership } from '@/lib/firebase/admin';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,6 +10,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
     const body = await request.json();
+
+    // Prevent Duplicate WhatsApp/Facebook IDs
+    if (body.whatsappPhoneNumberId) {
+      const existingWa = await getCompanyByWhatsAppId(body.whatsappPhoneNumberId);
+      if (existingWa && existingWa.id !== id) {
+        return NextResponse.json({ error: "This WhatsApp Phone ID is already connected to another business." }, { status: 400 });
+      }
+    }
+
     const updated = await updateCompany(id, body);
     
     if (!updated) {

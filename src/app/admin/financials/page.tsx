@@ -24,6 +24,12 @@ const mockCostData = [
   { month: 'Jun', whatsapp: 3900, gemini: 1400, profit: 23700 },
 ];
 
+const mockUsersNearLimit = [
+  { id: '1', name: 'Clínica Dental Sonrisas', tier: 'starter', usage: 1850, limit: 2000 },
+  { id: '2', name: 'Boutique Elegance', tier: 'starter', usage: 1980, limit: 2000 },
+  { id: '3', name: 'Pizza Luigi', tier: 'growth', usage: 4800, limit: 5000 },
+];
+
 export default function FinancialsDashboard() {
   const [loading, setLoading] = useState(true);
 
@@ -146,6 +152,35 @@ export default function FinancialsDashboard() {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Users Near Limit Table */}
+      <div className="glass-panel" style={{ padding: 24, marginTop: 24 }}>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 16 }}>Oportunidades de Upsell (Usuarios cerca del límite)</h3>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+              <th style={{ padding: '12px 8px' }}>Negocio</th>
+              <th style={{ padding: '12px 8px' }}>Plan Actual</th>
+              <th style={{ padding: '12px 8px' }}>Uso de IA (Mes)</th>
+              <th style={{ padding: '12px 8px' }}>Progreso</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mockUsersNearLimit.map((user) => (
+              <tr key={user.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ padding: '12px 8px', fontWeight: 500 }}>{user.name}</td>
+                <td style={{ padding: '12px 8px', textTransform: 'capitalize', color: 'var(--accent-color)' }}>{user.tier}</td>
+                <td style={{ padding: '12px 8px' }}>{user.usage} / {user.limit}</td>
+                <td style={{ padding: '12px 8px', width: '30%' }}>
+                  <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: user.usage / user.limit > 0.9 ? 'var(--error)' : 'var(--warning)', width: `${(user.usage / user.limit) * 100}%` }}></div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -10,7 +10,8 @@ export const es = {
     simulator: "Simulador de IA",
     settings: "Ajustes",
     reservations: "Reservas",
-    signOut: "Cerrar Sesión"
+    signOut: "Cerrar Sesión",
+    addBusiness: "Agregar Empresa"
   },
   
   // Dashboard Overview
@@ -47,6 +48,7 @@ export const es = {
     title: "Gestionar Empresas",
     subtitle: "Crea y configura múltiples agentes de IA para diferentes negocios.",
     newBusiness: "+ Onboarding de IA",
+    createOneBusiness: "Crear una empresa",
     unnamed: "Empresa sin nombre",
     id: "ID",
     editConfig: "Editar Config.",
@@ -140,5 +142,40 @@ export const es = {
     placeholder: "Ej. Mi negocio es una peluquería canina llamada Wow Dog...",
     send: "Enviar",
     configuring: "Configurando tu negocio y redirigiendo al dashboard...",
+  },
+  
+  // Login
+  login: {
+    title: "Bienvenido de nuevo",
+    email: "Correo Electrónico",
+    password: "Contraseña",
+    signIn: "Iniciar Sesión",
+    noAccount: "¿No tienes una cuenta?",
+    signUp: "Regístrate",
+    errorInvalidCredential: "El correo o contraseña es incorrecto. Por favor, inténtalo de nuevo.",
+    errorGeneric: "No se pudo iniciar sesión. Por favor, inténtalo de nuevo.",
+    providerError: "No se pudo iniciar sesión con este proveedor.",
+    forgotPassword: "¿Olvidaste tu contraseña?",
+    resetPassword: "Restablecer Contraseña",
+    resetInstructions: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+    sendResetLink: "Enviar Enlace",
+    cancel: "Cancelar",
+    resetSuccess: "¡Enlace enviado! Revisa tu bandeja de entrada.",
+    signingIn: "Iniciando sesión..."
+  },
+
+  // Signup
+  signup: {
+    title: "Crear Cuenta",
+    email: "Correo Electrónico",
+    password: "Contraseña",
+    confirmPassword: "Confirmar Contraseña",
+    signUp: "Regístrate",
+    signingUp: "Registrando...",
+    alreadyAccount: "¿Ya tienes una cuenta?",
+    signIn: "Inicia Sesión",
+    errorPasswordMatch: "Las contraseñas no coinciden.",
+    errorGeneric: "No se pudo crear la cuenta. Inténtalo de nuevo.",
+    settingUpWorkspace: "Configurando tu espacio de trabajo..."
   }
 };
