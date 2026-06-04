@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminDb, verifyIdToken } from '@/lib/firebase/admin';
+import { adminDb, verifyIdToken, verifyActiveSubscription } from '@/lib/firebase/admin';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -7,6 +7,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id: companyId } = await params;
+    
+    const isActive = await verifyActiveSubscription(companyId);
+    if (!isActive) return NextResponse.json({ error: "Subscription inactive or past due." }, { status: 402 });
+
     const db = adminDb;
     if (!db) return NextResponse.json({ error: 'DB not initialized' }, { status: 500 });
 

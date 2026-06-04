@@ -1,7 +1,8 @@
 import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
-import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage } from '@/lib/firebase/dbUtils';
+import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus } from '@/lib/firebase/dbUtils';
+import { adminDb } from '@/lib/firebase/admin';
 import { sendAdminAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
@@ -148,9 +149,102 @@ export async function POST(request: Request) {
             // Track Usage Incrementally
             await trackWhatsAppUsage(company.id);
 
+            // --- SUBSCRIPTION & LIMITS CHECK ---
+            const tier = company.subscription?.tier || 'free';
+            const status = company.subscription?.status || 'active';
+            const usageCount = company.usage?.aiMessagesCurrentMonth || 0;
+            
+            let limit = Infinity;
+            if (tier === 'starter') limit = 1000;
+            if (tier === 'growth') limit = 5000;
+
+            const usageAlertsEnabled = company.notificationPreferences?.usageAlerts !== false;
+            const humanEscalationsEnabled = company.notificationPreferences?.humanEscalations !== false;
+            const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
+
+            const sendOwnerAlert = async (text: string) => {
+               if (cleanTest && accessToken && adminDb) {
+                 await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ messaging_product: "whatsapp", to: cleanTest, text: { body: text } })
+                 }).catch(err => console.error(err));
+               }
+            };
+
+            // 1. Delinquent check
+            if (tier !== 'free' && status !== 'active' && status !== 'trialing') {
+              console.log(`🚫 Delinquent subscription. Rejecting message from ${senderPhone}`);
+              
+              const pausedMsg = "Este asistente está pausado temporalmente.";
+              await saveSessionMessage(company.id, senderPhone, "user", messageText, "whatsapp", senderPhone);
+              await updateSessionStatus(company.id, senderPhone, "needs_human");
+              await saveSessionMessage(company.id, senderPhone, "model", pausedMsg, "whatsapp", senderPhone);
+
+              if (accessToken) {
+                await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ messaging_product: "whatsapp", to: senderPhone, text: { body: pausedMsg } })
+                });
+              }
+
+              if (humanEscalationsEnabled && adminDb) {
+                 await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por falta de pago. Atiende la conversación en tu Inbox de Charlo.`);
+              }
+              continue;
+            }
+
+            // 2. Hard Limits check
+            if (usageCount >= limit) {
+              console.log(`🚫 Hard limit reached. Rejecting message from ${senderPhone}`);
+              
+              const pausedMsg = "Este asistente está pausado temporalmente.";
+              await saveSessionMessage(company.id, senderPhone, "user", messageText, "whatsapp", senderPhone);
+              await updateSessionStatus(company.id, senderPhone, "needs_human");
+              await saveSessionMessage(company.id, senderPhone, "model", pausedMsg, "whatsapp", senderPhone);
+
+              if (accessToken) {
+                await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ messaging_product: "whatsapp", to: senderPhone, text: { body: pausedMsg } })
+                });
+              }
+
+              if (usageAlertsEnabled && !company.usage?.hundredPercentWarningSent && adminDb) {
+                 await sendOwnerAlert(`🚨 *Alerta Crítica:* Tu asistente de IA ha alcanzado su límite mensual (${limit} mensajes) y ha sido pausado. Mejora tu plan en el dashboard para reanudar el servicio o seguir atendiendo clientes manualmente.`);
+                 await adminDb.collection('companies').doc(company.id).update({ 'usage.hundredPercentWarningSent': true });
+              }
+
+              if (humanEscalationsEnabled && adminDb) {
+                 await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por límite de uso. Atiende la conversación en tu Inbox de Charlo.`);
+              }
+              
+              continue;
+            }
+
+            // 3. Usage Warning Alerts
+            if (limit !== Infinity && usageAlertsEnabled && adminDb) {
+               let thresholdHit = 0;
+               let flagField = '';
+               
+               if (usageCount >= limit * 0.95 && !company.usage?.ninetyFivePercentWarningSent) {
+                 thresholdHit = 95; flagField = 'usage.ninetyFivePercentWarningSent';
+               } else if (usageCount >= limit * 0.90 && !company.usage?.ninetyPercentWarningSent) {
+                 thresholdHit = 90; flagField = 'usage.ninetyPercentWarningSent';
+               } else if (usageCount >= limit * 0.85 && !company.usage?.eightyFivePercentWarningSent) {
+                 thresholdHit = 85; flagField = 'usage.eightyFivePercentWarningSent';
+               }
+
+               if (thresholdHit > 0) {
+                 await sendOwnerAlert(`⚠️ *Aviso de Charlo:* Tu plan de IA ha consumido el ${thresholdHit}% de los mensajes disponibles de este mes (${usageCount}/${limit}). Por favor mejora tu plan en el dashboard para evitar interrupciones.`);
+                 await adminDb.collection('companies').doc(company.id).update({ [flagField]: true });
+               }
+            }
+
             // --- SANDBOX MODE CHECK ---
-            if (company.subscription?.tier === 'free') {
-              // Extract just the numbers for comparison in case of formatting differences
+            if (tier === 'free') {
               const cleanSender = senderPhone.replace(/\D/g, '');
               const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
               
@@ -180,7 +274,7 @@ export async function POST(request: Request) {
             };
 
             // Call Gemini Orchestrator
-            const { response } = await processUserMessage(
+            const { response, routing } = await processUserMessage(
               company.id, 
               senderPhone, // use their phone number as the session ID
               messageText, 
@@ -189,7 +283,12 @@ export async function POST(request: Request) {
               "whatsapp"
             );
 
-            if (!response) {
+            // Send escalation notification if the intent is ESCALATION
+            if (routing?.intent === "ESCALATION" && humanEscalationsEnabled && adminDb) {
+              await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El cliente ${senderPhone} ha sido escalado. Atiende la conversación en tu Inbox de Charlo.`);
+            }
+
+            if (response && accessToken) {
                console.log("🔇 No response from AI (likely human_handling mode). Skipping Meta API call.");
                continue; // Move to next change
             }

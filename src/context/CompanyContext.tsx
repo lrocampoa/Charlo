@@ -41,6 +41,11 @@ export interface Company {
     uberClientSecret?: string;
   };
   testPhoneNumber?: string;
+  notificationPreferences?: {
+    humanEscalations?: boolean;
+    usageAlerts?: boolean;
+    promotions?: boolean;
+  };
   stripeCustomerId?: string;
   usage?: {
     aiMessagesCurrentMonth?: number;

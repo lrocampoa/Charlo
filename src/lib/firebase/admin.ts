@@ -63,4 +63,25 @@ export async function verifyOwnership(req: Request, companyId: string): Promise<
   }
 }
 
+export async function verifyActiveSubscription(companyId: string): Promise<boolean> {
+  if (!adminDb) return false;
+  try {
+    const doc = await adminDb.collection('companies').doc(companyId).get();
+    if (!doc.exists) return false;
+    const company = doc.data();
+    const status = company?.subscription?.status;
+    const tier = company?.subscription?.tier;
+    
+    // Free Sandbox tier is allowed
+    if (tier === 'free' && status === 'active') return true;
+    
+    // Paid tiers must be active or trialing
+    if (status === 'active' || status === 'trialing') return true;
+    
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 export { adminDb, adminAuth };

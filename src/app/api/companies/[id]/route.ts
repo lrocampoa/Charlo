@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateCompany, deleteCompany, getCompanyByWhatsAppId, getCompanyByFacebookPageId } from '@/lib/firebase/dbUtils';
-import { verifyOwnership } from '@/lib/firebase/admin';
+import { verifyOwnership, verifyActiveSubscription } from '@/lib/firebase/admin';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -8,6 +8,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     
     const isOwner = await verifyOwnership(request, id);
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    const isActive = await verifyActiveSubscription(id);
+    if (!isActive) return NextResponse.json({ error: "Subscription inactive or past due." }, { status: 402 });
 
     const body = await request.json();
 
@@ -38,6 +41,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     
     const isOwner = await verifyOwnership(request, id);
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    const isActive = await verifyActiveSubscription(id);
+    if (!isActive) return NextResponse.json({ error: "Subscription inactive or past due." }, { status: 402 });
 
     await deleteCompany(id);
     return NextResponse.json({ success: true });

@@ -15,6 +15,9 @@ export default function SettingsPage() {
   const [isFbSdkLoaded, setIsFbSdkLoaded] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [sandboxNumber, setSandboxNumber] = useState('');
+  const [humanEscalations, setHumanEscalations] = useState(true);
+  const [usageAlerts, setUsageAlerts] = useState(true);
+  const [promotions, setPromotions] = useState(true);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
@@ -22,7 +25,27 @@ export default function SettingsPage() {
     if (selectedCompany?.testPhoneNumber) {
       setSandboxNumber(selectedCompany.testPhoneNumber);
     }
+    if (selectedCompany?.notificationPreferences) {
+      setHumanEscalations(selectedCompany.notificationPreferences.humanEscalations ?? true);
+      setUsageAlerts(selectedCompany.notificationPreferences.usageAlerts ?? true);
+      setPromotions(selectedCompany.notificationPreferences.promotions ?? true);
+    }
   }, [selectedCompany]);
+
+  const handleSavePreferences = async (prefs: any) => {
+    if (!selectedCompanyId || !user) return;
+    try {
+      const token = await user.getIdToken();
+      await fetch(`/api/companies/${selectedCompanyId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ notificationPreferences: prefs })
+      });
+      refreshCompanies();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleSaveSandbox = async () => {
     if (!selectedCompanyId || !user) return;
@@ -217,6 +240,70 @@ export default function SettingsPage() {
                   }}></div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notificaciones y Alertas */}
+        {selectedCompany && (
+          <div className="glass-panel">
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🔔</span> Preferencias de Alertas
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
+              Controla qué notificaciones recibes en tu WhatsApp (Número de Pruebas configurado abajo).
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={humanEscalations} 
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setHumanEscalations(val);
+                    handleSavePreferences({ humanEscalations: val, usageAlerts, promotions });
+                  }} 
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent-color)' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>Escalamientos a Humanos</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Te notificamos cuando un cliente requiere hablar con un humano.</div>
+                </div>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={usageAlerts} 
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setUsageAlerts(val);
+                    handleSavePreferences({ humanEscalations, usageAlerts: val, promotions });
+                  }} 
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent-color)' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>Alertas de Límites de Uso</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Te avisamos al alcanzar el 85%, 90%, 95% y 100% de tu cuota de mensajes.</div>
+                </div>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={promotions} 
+                  onChange={(e) => {
+                    const val = e.target.checked;
+                    setPromotions(val);
+                    handleSavePreferences({ humanEscalations, usageAlerts, promotions: val });
+                  }} 
+                  style={{ width: 18, height: 18, accentColor: 'var(--accent-color)' }}
+                />
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.95rem' }}>Promociones y Novedades</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Ofertas especiales y actualizaciones de Charlo.</div>
+                </div>
+              </label>
             </div>
           </div>
         )}
