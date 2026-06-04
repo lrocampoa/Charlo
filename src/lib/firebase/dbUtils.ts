@@ -63,6 +63,28 @@ export async function deleteCompany(companyId: string) {
   return { success: true };
 }
 
+// --- BILLING & USAGE TRACKING ---
+export async function trackWhatsAppUsage(companyId: string) {
+  try {
+    await getDb().collection('companies').doc(companyId).update({
+      'billing.whatsappMessagesUsed': FieldValue.increment(1),
+      'billing.lastWhatsAppMessageAt': new Date().toISOString()
+    });
+  } catch (err) {
+    console.error(`Failed to track WhatsApp usage for company ${companyId}`, err);
+  }
+}
+
+export async function trackGeminiUsage(companyId: string, tokens: number) {
+  try {
+    await getDb().collection('companies').doc(companyId).update({
+      'billing.geminiTokensUsed': FieldValue.increment(tokens)
+    });
+  } catch (err) {
+    console.error(`Failed to track Gemini usage for company ${companyId}`, err);
+  }
+}
+
 // --- COMPANIES (TENANTS) ---
 export async function getCompanyConfig(companyId: string): Promise<any> {
   const db = adminDb;

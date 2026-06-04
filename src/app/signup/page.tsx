@@ -5,6 +5,7 @@ import { createUserWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvide
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CharloLogo } from '@/components/CharloLogo';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -42,6 +43,9 @@ export default function Signup() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: 24 }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
+          <CharloLogo width={160} height={48} />
+        </div>
         <h2 style={{ fontSize: '1.75rem', marginBottom: 24, textAlign: 'center' }}>Create Account</h2>
         {error && <p style={{ color: 'var(--danger)', marginBottom: 16, fontSize: '0.9rem', textAlign: 'center' }}>{error}</p>}
         <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

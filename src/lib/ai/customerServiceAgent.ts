@@ -1,9 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CUSTOMER_SERVICE_PROMPT } from './prompts';
+import { trackGeminiUsage } from '../firebase/dbUtils';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function handleCustomerServiceQuery(
+  companyId: string,
   userInput: string, 
   history: any[],
   knowledgeBaseContext: string, 
@@ -41,6 +43,13 @@ export async function handleCustomerServiceQuery(
   try {
     const chat = model.startChat({ history: finalHistory });
     const result = await chat.sendMessage(userInput);
+    
+    // Track Gemini Usage
+    const tokensUsed = result.response.usageMetadata?.totalTokenCount || 0;
+    if (companyId && tokensUsed > 0) {
+      trackGeminiUsage(companyId, tokensUsed).catch(err => console.error(err));
+    }
+
     return result.response.text();
   } catch (error) {
     console.error("Error in Customer Service Agent:", error);

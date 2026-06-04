@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { CharloLogo } from '@/components/CharloLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Home() {
   return (
@@ -10,8 +12,9 @@ export default function Home() {
 
       {/* Header */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px", position: "fixed", top: 0, width: "100%", zIndex: 100, backdropFilter: "blur(12px)", borderBottom: "1px solid var(--glass-border)" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, background: "linear-gradient(135deg, var(--accent-color) 0%, var(--warning) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Charlo B2B</h1>
+        <CharloLogo width={140} height={40} />
         <nav style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <ThemeToggle />
           <Link href="#pricing" style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Precios</Link>
           <Link href="/login" style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.95rem' }}>Iniciar Sesión</Link>
           <Link href="/signup" className="btn-primary" style={{ textDecoration: 'none' }}>Empieza Gratis</Link>

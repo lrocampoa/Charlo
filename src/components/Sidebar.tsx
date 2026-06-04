@@ -2,10 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { CharloLogo } from './CharloLogo';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -36,7 +38,9 @@ export default function Sidebar() {
   return (
     <aside style={{ width: 260, backgroundColor: 'var(--bg-primary)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 16 }}>Charlo B2B</h1>
+        <div style={{ marginBottom: 16 }}>
+          <CharloLogo width={120} height={32} />
+        </div>
         
         {user && (
           <div style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
@@ -84,22 +88,35 @@ export default function Sidebar() {
             ⚙️ {t('sidebar.settings')}
           </Link>
           {isAdmin && (
-            <Link href="/admin" style={{
-                padding: '12px 16px',
-                borderRadius: 'var(--border-radius-sm)',
-                backgroundColor: pathname === '/admin' ? 'var(--bg-secondary)' : 'transparent',
-                color: pathname === '/admin' ? 'var(--accent-color)' : 'var(--text-secondary)',
-                fontWeight: pathname === '/admin' ? 600 : 400,
-                transition: 'all var(--transition-fast)'
-            }}>
-              👑 Admin Dashboard
-            </Link>
+            <>
+              <Link href="/admin" style={{
+                  padding: '12px 16px',
+                  borderRadius: 'var(--border-radius-sm)',
+                  backgroundColor: pathname === '/admin' ? 'var(--bg-secondary)' : 'transparent',
+                  color: pathname === '/admin' ? 'var(--accent-color)' : 'var(--text-secondary)',
+                  fontWeight: pathname === '/admin' ? 600 : 400,
+                  transition: 'all var(--transition-fast)'
+              }}>
+                👑 Admin Dashboard
+              </Link>
+              <Link href="/admin/financials" style={{
+                  padding: '12px 16px',
+                  borderRadius: 'var(--border-radius-sm)',
+                  backgroundColor: pathname === '/admin/financials' ? 'var(--bg-secondary)' : 'transparent',
+                  color: pathname === '/admin/financials' ? 'var(--accent-color)' : 'var(--text-secondary)',
+                  fontWeight: pathname === '/admin/financials' ? 600 : 400,
+                  transition: 'all var(--transition-fast)'
+              }}>
+                💰 Financials
+              </Link>
+            </>
           )}
 
         </div>
       </nav>
-      <div style={{ padding: '24px', borderTop: '1px solid var(--border-color)' }}>
-        <button className="btn-secondary" style={{ width: '100%' }} onClick={logout}>{t('sidebar.signOut')}</button>
+      <div style={{ padding: '24px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '12px' }}>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={logout}>{t('sidebar.signOut')}</button>
+        <ThemeToggle />
       </div>
     </aside>
   );

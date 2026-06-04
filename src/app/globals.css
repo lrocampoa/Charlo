@@ -34,20 +34,18 @@
 }
 
 /* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0A110F;
-    --bg-secondary: #1e293b;
-    --text-primary: #FCFCFC;
-    --text-secondary: #94a3b8;
-    --accent-color: #2CA05A;
-    --accent-color-hover: #1e8146;
-    --border-color: #334155;
+[data-theme='dark'] {
+  --bg-primary: #0A110F;
+  --bg-secondary: #1e293b;
+  --text-primary: #FCFCFC;
+  --text-secondary: #94a3b8;
+  --accent-color: #2CA05A;
+  --accent-color-hover: #1e8146;
+  --border-color: #334155;
 
-    --glass-bg: rgba(10, 17, 15, 0.8);
-    --glass-border: rgba(252, 252, 252, 0.15);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-  }
+  --glass-bg: rgba(10, 17, 15, 0.8);
+  --glass-border: rgba(252, 252, 252, 0.15);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
 }
 
 * {

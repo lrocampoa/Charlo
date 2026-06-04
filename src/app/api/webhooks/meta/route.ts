@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
-import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId } from '@/lib/firebase/dbUtils';
+import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage } from '@/lib/firebase/dbUtils';
 import { sendAdminAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
@@ -144,6 +144,9 @@ export async function POST(request: Request) {
             console.log(`To Phone ID: ${businessPhoneId}`);
             console.log(`Message: ${messageText}`);
             console.log(`============================\n`);
+
+            // Track Usage Incrementally
+            await trackWhatsAppUsage(company.id);
 
             const context = {
               knowledgeBase: company.knowledgeBase || "",

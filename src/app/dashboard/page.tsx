@@ -69,6 +69,35 @@ export default function DashboardOverview() {
             </div>
           </div>
 
+          <div className="glass-panel" style={{ padding: 24, marginBottom: 40 }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 20 }}>Uso del Plan Actual (Pro)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 500 }}>Mensajes de WhatsApp (API)</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>3,450 / 5,000</span>
+                </div>
+                <div style={{ width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: '69%', height: '100%', backgroundColor: 'var(--accent-color)' }} />
+                </div>
+              </div>
+              
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 500 }}>Interacciones de IA (Gemini)</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>8,200 / 10,000</span>
+                </div>
+                <div style={{ width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: '82%', height: '100%', backgroundColor: 'var(--warning)' }} />
+                </div>
+              </div>
+            </div>
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>El ciclo de facturación se reinicia en 12 días</span>
+              <button className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.9rem' }}>Actualizar Plan</button>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 24 }}>
             <div className="glass-panel" style={{ flex: 2, padding: 24 }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 16 }}>{t('overview.recentActivity')}</h3>
