@@ -513,7 +513,7 @@ function OnboardingContent() {
           setExtractedProducts(data.extractedProducts);
           setShowProductReview(true);
         } else {
-          setOnboardingStep(4);
+          setOnboardingStep(5);
         }
       } else {
         alert("Error procesando archivo: " + (data.error || "Desconocido"));
@@ -1528,7 +1528,9 @@ function OnboardingContent() {
               // Update all products to use the selected base currency if none was provided
               setExtractedProducts(prev => prev.map(p => ({...p, currency: p.currency || baseCurrency})));
               setShowProductReview(false);
-              setOnboardingStep(4);
+              if (onboardingStep === 4) {
+                setOnboardingStep(5);
+              }
             }} style={{ marginTop: '8px' }}>
               Confirmar y Continuar
             </button>
