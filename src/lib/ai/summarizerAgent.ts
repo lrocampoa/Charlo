@@ -21,7 +21,7 @@ export async function runSummarizerAgent(companyId: string, customerId: string) 
     const existingFacts = existingProfile?.extractedFacts || {};
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-flash-latest',
       systemInstruction: `${SUMMARIZER_AGENT_PROMPT}\n\nEXISTING FACTS (DO NOT DUPLICATE THESE):\n${JSON.stringify(existingFacts, null, 2)}`
     });
 

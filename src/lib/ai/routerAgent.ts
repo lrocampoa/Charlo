@@ -6,7 +6,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 export async function routeUserIntent(userInput: string) {
   // Use a fast, cost-effective model like Flash for intent routing
   const model = genAI.getGenerativeModel({ 
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-latest',
     systemInstruction: ROUTER_AGENT_PROMPT 
   });
 

@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     // Parse Document/Image with Gemini 1.5 Flash natively!
     const base64Data = buffer.toString('base64');
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const result = await model.generateContent([
       "Extract all readable text, menus, pricing, facts, and rules from this document/image. Structure it logically and format it as clean markdown that is useful for a customer service AI. Do not invent any information.",
       { inlineData: { data: base64Data, mimeType } }

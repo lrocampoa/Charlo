@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       
       if (accData.error) throw new Error(accData.error.message);
       if (!accData.accounts || accData.accounts.length === 0) {
-        throw new Error("No se encontraron cuentas de negocio en Google.");
+        throw new Error("No cuentas. Data: " + JSON.stringify(accData));
       }
 
       // 2. Get Locations for the first account

@@ -67,7 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // Clean up with Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `You are an AI data extractor. Extract and structure all relevant business facts, rules, menus, SOPs, and knowledge from the following raw text scraped from a URL. Output ONLY clean markdown text that would be useful for a customer service AI. Do not invent any information.\n\nRAW TEXT:\n${rawText.slice(0, 30000)}`; // limit size
     
     const result = await model.generateContent(prompt);

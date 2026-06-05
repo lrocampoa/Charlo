@@ -512,9 +512,11 @@ function OnboardingContent() {
         }
       } else {
         if (provider === 'google') {
+          console.error("Google Extraction Error:", data.error);
+          alert("Error de Google: " + data.error);
           setShowGoogleError(true);
         } else {
-          alert("No pudimos extraer información útil de esta cuenta. Por favor, continúa manual.");
+          alert("No pudimos extraer información útil de esta cuenta. Por favor, continúa manual. Error: " + (data.error || ""));
         }
       }
     } catch (e) {

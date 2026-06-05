@@ -16,7 +16,7 @@ export async function runQAAnalysis(companyId: string, sessionId: string) {
     const transcript = rawHistory.history.map((msg: any) => `${msg.role.toUpperCase()}: ${msg.parts[0].text}`).join('\n');
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash',
+      model: 'gemini-flash-latest',
       systemInstruction: QA_AGENT_PROMPT,
       generationConfig: { responseMimeType: "application/json" }
     });
