@@ -1,12 +1,151 @@
 import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
-import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus } from '@/lib/firebase/dbUtils';
+import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus, checkAndSetPausedAutoResponder } from '@/lib/firebase/dbUtils';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 import { sendAdminAlert, sendOwnerEmailAlert } from '@/lib/notifications';
 
 // Meta Verification Endpoint (GET)
 // When you configure the webhook in Meta Developers, they send a GET request to verify ownership.
+
+async function enforceLimitsAndPause(
+  company: any,
+  senderId: string,
+  businessId: string, // WhatsApp phone ID or Page/IG ID
+  platform: "whatsapp" | "messenger" | "instagram",
+  messageText: string,
+  accessToken: string
+): Promise<boolean> {
+  const tier = company.subscription?.tier || 'free';
+  const status = company.subscription?.status || 'active';
+  const usageCount = company.usage?.aiMessagesCurrentMonth || 0;
+  
+  let limit = Infinity;
+  if (tier === 'starter') limit = 1000;
+  if (tier === 'growth') limit = 5000;
+  if (status === 'trialing') limit = 200; // Trial Limit (20% of Starter)
+
+  const usageAlertsEnabled = company.notificationPreferences?.usageAlerts !== false;
+  const humanEscalationsEnabled = company.notificationPreferences?.humanEscalations !== false;
+  const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
+
+  const sendMetaMessage = async (recipientId: string, text: string) => {
+    if (!accessToken) return;
+    const url = platform === 'whatsapp' 
+      ? `https://graph.facebook.com/v19.0/${businessId}/messages`
+      : `https://graph.facebook.com/v19.0/me/messages`;
+    
+    const body = platform === 'whatsapp'
+      ? { messaging_product: "whatsapp", to: recipientId, text: { body: text } }
+      : { recipient: { id: recipientId }, message: { text } };
+
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).catch(err => console.error(err));
+  };
+
+  const sendOwnerAlert = async (text: string) => {
+    if (cleanTest && accessToken && adminDb) {
+      // Try to get WHATSAPP phone ID if this is a messenger/IG webhook, otherwise use businessId
+      const waId = company.whatsappPhoneNumberId || (platform === 'whatsapp' ? businessId : null);
+      if (waId) {
+        const waUrl = `https://graph.facebook.com/v19.0/${waId}/messages`;
+        await fetch(waUrl, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messaging_product: "whatsapp", to: cleanTest, text: { body: text } })
+        }).catch(err => console.error(err));
+      }
+    }
+  };
+
+  const dispatchOwnerEmail = async (subject: string, htmlBody: string) => {
+    if (!company.ownerId || !adminAuth) return;
+    try {
+      const ownerRecord = await adminAuth.getUser(company.ownerId);
+      if (ownerRecord.email) {
+        await sendOwnerEmailAlert(ownerRecord.email, subject, htmlBody);
+      }
+    } catch (err) {
+      console.error("Failed to fetch owner email for alert:", err);
+    }
+  };
+
+  // 1. Sandbox mode check
+  if (tier === 'free') {
+    const cleanSender = senderId.replace(/\D/g, '');
+    if (!cleanTest || cleanSender !== cleanTest) {
+      console.log(`🚫 Sandbox mode active. Rejecting ${platform} message from ${senderId}`);
+      await sendMetaMessage(senderId, "🤖 Este asistente virtual de Charlo está en modo Sandbox (Gratis). Si eres el dueño, ingresa a tu dashboard y mejora tu plan para atender a tus clientes reales.");
+      return true; // Rejected
+    }
+  }
+
+  // 2. Delinquent check
+  if (tier !== 'free' && status !== 'active' && status !== 'trialing') {
+    console.log(`🚫 Delinquent subscription. Rejecting message from ${senderId}`);
+    const pausedMsg = "Este asistente está pausado temporalmente.";
+    await saveSessionMessage(company.id, senderId, "user", messageText, platform, senderId);
+    await updateSessionStatus(company.id, senderId, "needs_human");
+    await saveSessionMessage(company.id, senderId, "model", pausedMsg, platform, senderId);
+    await sendMetaMessage(senderId, pausedMsg);
+
+    if (humanEscalationsEnabled && adminDb) {
+       await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por falta de pago. Atiende la conversación en tu Inbox de Charlo.`);
+       dispatchOwnerEmail(
+         "⚠️ Asistente Pausado por Falta de Pago", 
+         `<p>Un cliente (<strong>${senderId}</strong>) necesita ayuda, pero tu asistente está pausado por un problema con tu suscripción.</p><p>Por favor ingresa a tu dashboard de Charlo para regularizar el pago.</p>`
+       );
+    }
+    return true; // Rejected
+  }
+
+  // 3. Hard Limits check
+  if (usageCount >= limit) {
+    console.log(`🚫 Hard limit reached. Rejecting message from ${senderId}`);
+    const pausedMsg = "Este asistente está pausado temporalmente por haber alcanzado su límite de uso.";
+    await saveSessionMessage(company.id, senderId, "user", messageText, platform, senderId);
+    await updateSessionStatus(company.id, senderId, "needs_human");
+    await saveSessionMessage(company.id, senderId, "model", pausedMsg, platform, senderId);
+    await sendMetaMessage(senderId, pausedMsg);
+
+    if (usageAlertsEnabled && !company.usage?.hundredPercentWarningSent && adminDb) {
+       await sendOwnerAlert(`🚨 *Alerta Crítica:* Tu asistente de IA ha alcanzado su límite (${limit} mensajes) y ha sido pausado. Mejora tu plan en el dashboard para reanudar el servicio o seguir atendiendo clientes manualmente.`);
+       await adminDb.collection('companies').doc(company.id).update({ 'usage.hundredPercentWarningSent': true });
+       dispatchOwnerEmail(
+         "🚨 Límite de Uso Alcanzado (Asistente Pausado)",
+         `<p>Tu asistente de IA ha alcanzado su límite de <strong>${limit} mensajes</strong> y ha sido pausado.</p><p>Para seguir atendiendo a tus clientes automáticamente, por favor mejora tu plan en el dashboard.</p>`
+       );
+    }
+
+    if (humanEscalationsEnabled && adminDb) {
+       await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por límite de uso. Atiende la conversación en tu Inbox de Charlo.`);
+    }
+    return true; // Rejected
+  }
+
+  // 4. Usage Warning Alerts (soft check)
+  if (limit !== Infinity && usageAlertsEnabled && adminDb) {
+     let thresholdHit = 0;
+     let flagField = '';
+     if (usageCount >= limit * 0.95 && !company.usage?.ninetyFivePercentWarningSent) {
+       thresholdHit = 95; flagField = 'usage.ninetyFivePercentWarningSent';
+     } else if (usageCount >= limit * 0.90 && !company.usage?.ninetyPercentWarningSent) {
+       thresholdHit = 90; flagField = 'usage.ninetyPercentWarningSent';
+     } else if (usageCount >= limit * 0.85 && !company.usage?.eightyFivePercentWarningSent) {
+       thresholdHit = 85; flagField = 'usage.eightyFivePercentWarningSent';
+     }
+     if (thresholdHit > 0) {
+       await sendOwnerAlert(`⚠️ *Aviso de Charlo:* Tu plan de IA ha consumido el ${thresholdHit}% de los mensajes disponibles de este ciclo (${usageCount}/${limit}). Por favor mejora tu plan en el dashboard para evitar interrupciones.`);
+       await adminDb.collection('companies').doc(company.id).update({ [flagField]: true });
+     }
+  }
+
+  return false; // Not rejected, proceed
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get("hub.mode");
@@ -103,6 +242,30 @@ export async function POST(request: Request) {
 
             const accessToken = company.metaAccessToken || process.env.WHATSAPP_TOKEN;
 
+            // --- PAUSED BUSINESS LOGIC ---
+            if (company.isPaused) {
+              const shouldSend = await checkAndSetPausedAutoResponder(company.id, senderPhone);
+              if (shouldSend) {
+                // Send auto-responder
+                await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    messaging_product: "whatsapp",
+                    recipient_type: "individual",
+                    to: senderPhone,
+                    type: "text",
+                    text: { body: "Hola! Gracias por escribirnos. El asistente está inactivo temporalmente. En un momento te contactaremos." }
+                  })
+                }).catch(err => console.error("Error sending pause responder WA:", err));
+              }
+              // Return early to skip AI processing
+              return NextResponse.json({ status: "ignored", reason: "business_paused" }, { status: 200 });
+            }
+
             // --- IMAGE PROCESSING ---
             let imagePart = null;
             if (message.type === 'image' && message.image?.id) {
@@ -149,16 +312,28 @@ export async function POST(request: Request) {
             // Track Usage Incrementally
             await trackWhatsAppUsage(company.id);
 
-            // --- SUBSCRIPTION & LIMITS CHECK ---
-            const tier = company.subscription?.tier || 'free';
-            const status = company.subscription?.status || 'active';
-            const usageCount = company.usage?.aiMessagesCurrentMonth || 0;
-            
-            let limit = Infinity;
-            if (tier === 'starter') limit = 1000;
-            if (tier === 'growth') limit = 5000;
+            const isRejected = await enforceLimitsAndPause(company, senderPhone, businessPhoneId, "whatsapp", messageText, accessToken);
+            if (isRejected) continue;
 
-            const usageAlertsEnabled = company.notificationPreferences?.usageAlerts !== false;
+            const context = {
+              knowledgeBase: company.knowledgeBase || "",
+              productsCatalog: company.productsCatalog || "",
+              calendlyLink: company.calendlyLink || "",
+              persona: company.persona || "Eres un asistente virtual amable y profesional.",
+              customerName: profileName
+            };
+
+            // Call Gemini Orchestrator
+            const { response, routing } = await processUserMessage(
+              company.id, 
+              senderPhone, // use their phone number as the session ID
+              messageText, 
+              context,
+              imagePart,
+              "whatsapp"
+            );
+
+            // Send escalation notification if the intent is ESCALATION
             const humanEscalationsEnabled = company.notificationPreferences?.humanEscalations !== false;
             const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
 
@@ -184,127 +359,6 @@ export async function POST(request: Request) {
                }
             };
 
-            // 1. Delinquent check
-            if (tier !== 'free' && status !== 'active' && status !== 'trialing') {
-              console.log(`🚫 Delinquent subscription. Rejecting message from ${senderPhone}`);
-              
-              const pausedMsg = "Este asistente está pausado temporalmente.";
-              await saveSessionMessage(company.id, senderPhone, "user", messageText, "whatsapp", senderPhone);
-              await updateSessionStatus(company.id, senderPhone, "needs_human");
-              await saveSessionMessage(company.id, senderPhone, "model", pausedMsg, "whatsapp", senderPhone);
-
-              if (accessToken) {
-                await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ messaging_product: "whatsapp", to: senderPhone, text: { body: pausedMsg } })
-                });
-              }
-
-              if (humanEscalationsEnabled && adminDb) {
-                 await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por falta de pago. Atiende la conversación en tu Inbox de Charlo.`);
-                 dispatchOwnerEmail(
-                   "⚠️ Asistente Pausado por Falta de Pago", 
-                   `<p>Un cliente (<strong>${senderPhone}</strong>) necesita ayuda, pero tu asistente está pausado por un problema con tu suscripción.</p><p>Por favor ingresa a tu dashboard de Charlo para regularizar el pago.</p>`
-                 );
-              }
-              continue;
-            }
-
-            // 2. Hard Limits check
-            if (usageCount >= limit) {
-              console.log(`🚫 Hard limit reached. Rejecting message from ${senderPhone}`);
-              
-              const pausedMsg = "Este asistente está pausado temporalmente.";
-              await saveSessionMessage(company.id, senderPhone, "user", messageText, "whatsapp", senderPhone);
-              await updateSessionStatus(company.id, senderPhone, "needs_human");
-              await saveSessionMessage(company.id, senderPhone, "model", pausedMsg, "whatsapp", senderPhone);
-
-              if (accessToken) {
-                await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
-                  method: 'POST',
-                  headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ messaging_product: "whatsapp", to: senderPhone, text: { body: pausedMsg } })
-                });
-              }
-
-              if (usageAlertsEnabled && !company.usage?.hundredPercentWarningSent && adminDb) {
-                 await sendOwnerAlert(`🚨 *Alerta Crítica:* Tu asistente de IA ha alcanzado su límite mensual (${limit} mensajes) y ha sido pausado. Mejora tu plan en el dashboard para reanudar el servicio o seguir atendiendo clientes manualmente.`);
-                 await adminDb.collection('companies').doc(company.id).update({ 'usage.hundredPercentWarningSent': true });
-                 dispatchOwnerEmail(
-                   "🚨 Límite de Uso Alcanzado (Asistente Pausado)",
-                   `<p>Tu asistente de IA ha alcanzado su límite de <strong>${limit} mensajes mensuales</strong> y ha sido pausado.</p><p>Para seguir atendiendo a tus clientes automáticamente, por favor mejora tu plan en el dashboard.</p>`
-                 );
-              }
-
-              if (humanEscalationsEnabled && adminDb) {
-                 await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El asistente automático está pausado por límite de uso. Atiende la conversación en tu Inbox de Charlo.`);
-                 // No need to send a duplicate email here since the 100% warning email above covers it.
-              }
-              
-              continue;
-            }
-
-            // 3. Usage Warning Alerts
-            if (limit !== Infinity && usageAlertsEnabled && adminDb) {
-               let thresholdHit = 0;
-               let flagField = '';
-               
-               if (usageCount >= limit * 0.95 && !company.usage?.ninetyFivePercentWarningSent) {
-                 thresholdHit = 95; flagField = 'usage.ninetyFivePercentWarningSent';
-               } else if (usageCount >= limit * 0.90 && !company.usage?.ninetyPercentWarningSent) {
-                 thresholdHit = 90; flagField = 'usage.ninetyPercentWarningSent';
-               } else if (usageCount >= limit * 0.85 && !company.usage?.eightyFivePercentWarningSent) {
-                 thresholdHit = 85; flagField = 'usage.eightyFivePercentWarningSent';
-               }
-
-               if (thresholdHit > 0) {
-                 await sendOwnerAlert(`⚠️ *Aviso de Charlo:* Tu plan de IA ha consumido el ${thresholdHit}% de los mensajes disponibles de este mes (${usageCount}/${limit}). Por favor mejora tu plan en el dashboard para evitar interrupciones.`);
-                 await adminDb.collection('companies').doc(company.id).update({ [flagField]: true });
-               }
-            }
-
-            // --- SANDBOX MODE CHECK ---
-            if (tier === 'free') {
-              const cleanSender = senderPhone.replace(/\D/g, '');
-              const cleanTest = (company.testPhoneNumber || '').replace(/\D/g, '');
-              
-              if (!cleanTest || cleanSender !== cleanTest) {
-                console.log(`🚫 Sandbox mode active. Rejecting message from ${senderPhone}`);
-                if (accessToken) {
-                  await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      messaging_product: "whatsapp",
-                      to: senderPhone,
-                      text: { body: "🤖 Este asistente virtual de Charlo está en modo Sandbox (Gratis). Si eres el dueño, ingresa a tu dashboard y mejora tu plan para atender a tus clientes reales." }
-                    })
-                  });
-                }
-                continue;
-              }
-            }
-
-            const context = {
-              knowledgeBase: company.knowledgeBase || "",
-              productsCatalog: company.productsCatalog || "",
-              calendlyLink: company.calendlyLink || "",
-              persona: company.persona || "Eres un asistente virtual amable y profesional.",
-              customerName: profileName
-            };
-
-            // Call Gemini Orchestrator
-            const { response, routing } = await processUserMessage(
-              company.id, 
-              senderPhone, // use their phone number as the session ID
-              messageText, 
-              context,
-              imagePart,
-              "whatsapp"
-            );
-
-            // Send escalation notification if the intent is ESCALATION
             if (routing?.intent === "ESCALATION" && humanEscalationsEnabled && adminDb) {
               await sendOwnerAlert(`🙋‍♂️ *Un cliente necesita asistencia humana:* El cliente ${senderPhone} ha sido escalado. Atiende la conversación en tu Inbox de Charlo.`);
               dispatchOwnerEmail(
@@ -379,6 +433,24 @@ export async function POST(request: Request) {
 
               const accessToken = company.metaAccessToken || process.env.WHATSAPP_TOKEN;
 
+              // --- PAUSED BUSINESS LOGIC ---
+              if (company.isPaused) {
+                const shouldSend = await checkAndSetPausedAutoResponder(company.id, senderId);
+                if (shouldSend && accessToken) {
+                  // Send auto-responder
+                  await fetch(`https://graph.facebook.com/v19.0/me/messages`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      recipient: { id: senderId },
+                      message: { text: "Hola! Gracias por escribirnos. El asistente está inactivo temporalmente. En un momento te contactaremos." }
+                    })
+                  }).catch(err => console.error(`Error sending pause responder ${platform}:`, err));
+                }
+                // Continue to skip AI processing for this message
+                continue;
+              }
+
               console.log(`\n============================`);
               console.log(`💬 NEW ${platform.toUpperCase()} MESSAGE`);
               console.log(`From: ${senderId}`);
@@ -386,21 +458,8 @@ export async function POST(request: Request) {
               console.log(`Message: ${messageText}`);
               console.log(`============================\n`);
 
-              // --- SANDBOX MODE CHECK ---
-              if (company.subscription?.tier === 'free') {
-                console.log(`🚫 Sandbox mode active. Rejecting ${platform} message from ${senderId}`);
-                if (accessToken) {
-                  await fetch(`https://graph.facebook.com/v19.0/me/messages`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      recipient: { id: senderId },
-                      message: { text: "🤖 Este asistente virtual de Charlo está en modo Sandbox (Gratis). Si eres el dueño, ingresa a tu dashboard y mejora tu plan para atender a tus clientes reales." }
-                    })
-                  });
-                }
-                continue;
-              }
+              const isRejected = await enforceLimitsAndPause(company, senderId, recipientId, platform as "messenger" | "instagram", messageText, accessToken);
+              if (isRejected) continue;
 
               const context = {
                 knowledgeBase: company.knowledgeBase || "",

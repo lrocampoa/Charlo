@@ -19,6 +19,7 @@ export interface Company {
   metaAccessToken?: string; // For Meta Graph API calls
   wabaId?: string; // WhatsApp Business Account ID
   ownerId?: string;
+  isPaused?: boolean;
   needsWebsiteUpsell?: boolean;
   advancedSOPs?: string;
   geminiCacheId?: string;
@@ -60,6 +61,7 @@ export interface Company {
 
 interface CompanyContextType {
   companies: Company[];
+  globalUser: any | null;
   selectedCompanyId: string | null;
   selectedCompany: Company | null;
   setSelectedCompanyId: (id: string) => void;
@@ -70,6 +72,7 @@ interface CompanyContextType {
 
 const CompanyContext = createContext<CompanyContextType>({
   companies: [],
+  globalUser: null,
   selectedCompanyId: null,
   selectedCompany: null,
   setSelectedCompanyId: () => {},
@@ -80,6 +83,7 @@ const CompanyContext = createContext<CompanyContextType>({
 
 export const CompanyProvider = ({ children }: { children: React.ReactNode }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [globalUser, setGlobalUser] = useState<any | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -96,6 +100,7 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
       if (res.ok) {
         const data = await res.json();
         const loadedCompanies = data.companies || [];
+        setGlobalUser(data.user || null);
         
         // --- AUTO SEEDER LOGIC ---
         if (loadedCompanies.length === 0 && user) {
@@ -117,6 +122,7 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
               headers: { 'Authorization': `Bearer ${token}` }
             });
             const data2 = await res2.json();
+            setGlobalUser(data2.user || null);
             setCompanies(data2.companies || []);
             if (data2.companies?.length > 0) {
               setSelectedCompanyId(data2.companies[0].id);
@@ -148,7 +154,16 @@ export const CompanyProvider = ({ children }: { children: React.ReactNode }) => 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId) || null;
 
   return (
-    <CompanyContext.Provider value={{ companies, selectedCompanyId, selectedCompany, setSelectedCompanyId, refreshCompanies, isLoading, isSeeding }}>
+    <CompanyContext.Provider value={{ 
+      companies, 
+      globalUser,
+      selectedCompanyId, 
+      selectedCompany: selectedCompany || null,
+      setSelectedCompanyId,
+      refreshCompanies,
+      isLoading,
+      isSeeding
+    }}>
       {children}
     </CompanyContext.Provider>
   );

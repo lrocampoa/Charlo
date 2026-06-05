@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateCompany } from '@/lib/firebase/dbUtils';
-import { verifyOwnership } from '@/lib/firebase/admin';
+import { adminDb, verifyOwnership } from '@/lib/firebase/admin';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,17 +9,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const isOwner = await verifyOwnership(request, id);
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
-    // Set subscription to free/sandbox
-    const updated = await updateCompany(id, { 
+    // Fetch ownerId
+    const companyDoc = await adminDb!.collection('companies').doc(id).get();
+    const ownerId = companyDoc.data()?.ownerId;
+
+    if (!ownerId) {
+       return NextResponse.json({ error: "Company has no owner" }, { status: 400 });
+    }
+
+    // Set subscription to free/sandbox on USER
+    await adminDb!.collection('users').doc(ownerId).update({ 
       'subscription.tier': 'free',
       'subscription.status': 'active'
     });
     
-    if (!updated) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
-    }
-    
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error setting sandbox tier:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

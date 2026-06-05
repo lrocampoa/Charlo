@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { verifyIdToken } from '@/lib/firebase/admin';
+import crypto from 'crypto';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     }
     // Handle standard websites
     else {
-      let fetchUrl = url;
+      let fetchUrl = url.trim().replace(/,/g, '.');
       if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
       
       const response = await fetch(fetchUrl, {
@@ -58,25 +59,57 @@ export async function POST(request: Request) {
     }
 
     // Clean up with Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const prompt = `You are an AI data extractor. Extract and structure all relevant business facts, rules, menus, SOPs, pricing, and knowledge from the following raw text scraped from a URL. Output ONLY clean markdown text that would be useful for a customer service AI. Try to deduce the business name as well and put it at the very top as '# Business Name: [Name]'. Do not invent any information.\n\nRAW TEXT:\n${rawText.slice(0, 30000)}`;
+    const schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        businessName: { type: SchemaType.STRING },
+        knowledgeBase: { type: SchemaType.STRING, description: "All rules, SOPs, facts, excluding products. Format as clean markdown." },
+        products: {
+          type: SchemaType.ARRAY,
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              name: { type: SchemaType.STRING },
+              description: { type: SchemaType.STRING },
+              price: { type: SchemaType.NUMBER },
+              currency: { type: SchemaType.STRING, description: "e.g., CRC, USD. Try to deduce from text." }
+            },
+            required: ["name"]
+          }
+        }
+      },
+      required: ["businessName", "knowledgeBase", "products"]
+    };
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema as any,
+      }
+    });
+    
+    const prompt = `You are an AI data extractor. Extract and structure all relevant business facts, rules, menus, SOPs, pricing, and knowledge from the following raw text scraped from a URL. Separate the actual products/services from general business info.\n\nRAW TEXT:\n${rawText.slice(0, 30000)}`;
     
     const result = await model.generateContent(prompt);
-    const cleanedText = result.response.text();
-
-    // Extract business name from the first line if possible
-    let businessName = "Mi Negocio";
-    const firstLineMatch = cleanedText.match(/# Business Name:\s*(.*)/i);
-    if (firstLineMatch && firstLineMatch[1]) {
-      businessName = firstLineMatch[1].trim();
+    let data;
+    try {
+      data = JSON.parse(result.response.text());
+    } catch (e) {
+      return NextResponse.json({ error: 'Failed to parse AI output' }, { status: 500 });
     }
+
+    const hash = crypto.createHash('sha256').update(rawText).digest('hex');
 
     return NextResponse.json({ 
       success: true, 
       profileUpdate: {
-        name: businessName,
-        knowledgeBase: `Extraído del sitio web ${url}:\n\n${cleanedText}`
-      }
+        name: data.businessName || "Mi Negocio",
+        knowledgeBase: `Extraído del sitio web ${url}:\n\n${data.knowledgeBase}`
+      },
+      extractedProducts: data.products || [],
+      hash: hash,
+      docType: docType
     });
   } catch (error: any) {
     console.error("Scrape Error:", error);

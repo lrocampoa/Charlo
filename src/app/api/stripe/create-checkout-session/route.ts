@@ -16,19 +16,16 @@ export async function POST(req: Request) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    const { companyId, tier } = await req.json();
-    if (!companyId || !tier) {
-      return NextResponse.json({ error: 'Missing companyId or tier' }, { status: 400 });
+    const { tier } = await req.json();
+    if (!tier) {
+      return NextResponse.json({ error: 'Missing tier' }, { status: 400 });
     }
 
-    const companyDoc = await adminDb.collection('companies').doc(companyId).get();
-    if (!companyDoc.exists) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: 'User not found. Please log out and back in.' }, { status: 404 });
     }
-    const company = companyDoc.data();
-    if (company?.ownerId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const userData = userDoc.data();
 
     let priceId = '';
     if (tier === 'starter') priceId = process.env.STRIPE_PRICE_ID_STARTER || '';
@@ -39,18 +36,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Price ID not configured for tier: ${tier}` }, { status: 500 });
     }
 
-    let customerId = company?.stripeCustomerId;
+    let customerId = userData?.stripeCustomerId;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: decodedToken.email,
         metadata: {
-          companyId,
           userId
         }
       });
       customerId = customer.id;
-      await adminDb.collection('companies').doc(companyId).update({ stripeCustomerId: customerId });
+      // Save customer ID to user doc
+      await adminDb.collection('users').doc(userId).update({
+        stripeCustomerId: customerId
+      });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -65,13 +64,13 @@ export async function POST(req: Request) {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?checkout=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?checkout=canceled`,
       metadata: {
-        companyId,
+        userId,
         tier
       },
       subscription_data: {
         trial_period_days: 14,
         metadata: {
-          companyId,
+          userId,
           tier
         }
       }

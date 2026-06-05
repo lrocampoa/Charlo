@@ -8,7 +8,7 @@ export async function createCompanyCache(companyId: string, advancedSOPs: string
   
   // Create a cache with the Gemini Flash model
   const cacheResult = await cacheManager.create({
-    model: 'models/gemini-1.5-flash-001',
+    model: 'models/gemini-3.5-flash',
     displayName: `SOPs for ${companyId}`,
     systemInstruction: `Eres un asistente virtual de IA para esta empresa.\n\nPersona Configured: ${persona}\n\nPERMANENT INSTRUCTIONS & SOPs:\n${advancedSOPs}`,
     contents: [

@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 import { AuthProvider } from "@/context/AuthContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import SupportWidget from "@/components/SupportWidget";
 
 export default function RootLayout({
   children,
@@ -28,12 +29,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${poppins.variable} ${firaCode.variable}`}>
-      <body>
+    <html lang="en" className={`${poppins.variable} ${firaCode.variable}`} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem={false}>
           <AuthProvider>
             <LanguageProvider>
               {children}
+              <SupportWidget />
             </LanguageProvider>
           </AuthProvider>
         </ThemeProvider>

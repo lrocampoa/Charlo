@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
@@ -24,9 +24,11 @@ type Message = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refreshCompanies, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
   const { user } = useAuth();
+  const [dbDraftId, setDbDraftId] = useState<string | null>(null);
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -37,6 +39,7 @@ export default function OnboardingPage() {
   // New states for UX Flow
   const [onboardingStep, setOnboardingStep] = useState(1); // 1 = Connect Accounts, 2 = Chat
   const [extractedProvider, setExtractedProvider] = useState<string | null>(null);
+  const [showGoogleError, setShowGoogleError] = useState(false);
 
   // Profile States
   const [hasStarted, setHasStarted] = useState(false);
@@ -55,9 +58,180 @@ export default function OnboardingPage() {
   const [phoneId, setPhoneId] = useState("");
   const [facebookPageId, setFacebookPageId] = useState<string | null>(null);
   const [instagramAccountId, setInstagramAccountId] = useState<string | null>(null);
+  const [hasPaymentMethod, setHasPaymentMethod] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [scannedUrls, setScannedUrls] = useState<Array<{ url: string, contentHash: string, docType: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Asset Selection States
+  const [availablePhones, setAvailablePhones] = useState<any[]>([]);
+  const [availablePages, setAvailablePages] = useState<any[]>([]);
+  const [showAssetSelection, setShowAssetSelection] = useState(false);
+  const [selectedPhoneId, setSelectedPhoneId] = useState("");
+  const [selectedPageId, setSelectedPageId] = useState("");
+  const [tempMetaData, setTempMetaData] = useState<any>(null);
+
+  // Products Review States
+  const [extractedProducts, setExtractedProducts] = useState<any[]>([]);
+  const [baseCurrency, setBaseCurrency] = useState('CRC');
+  const [syncToMeta, setSyncToMeta] = useState(true);
+  const [showProductReview, setShowProductReview] = useState(false);
+
+  // Draft Save / Load Logic
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const initDraft = async () => {
+      const urlDraftId = searchParams.get('draftId');
+      if (urlDraftId && user) {
+        try {
+          const authToken = await user.getIdToken();
+          const res = await fetch(`/api/onboarding/draft?id=${urlDraftId}`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.draftData) {
+              const parsed = data.draftData;
+              if (parsed.onboardingStep) setOnboardingStep(parsed.onboardingStep);
+              if (parsed.profile) setProfile(parsed.profile);
+              if (parsed.messages) setMessages(parsed.messages);
+              if (parsed.extractedProvider) setExtractedProvider(parsed.extractedProvider);
+              if (parsed.metaToken) setMetaToken(parsed.metaToken);
+              if (parsed.phoneId) setPhoneId(parsed.phoneId);
+              if (parsed.facebookPageId) setFacebookPageId(parsed.facebookPageId);
+              if (parsed.instagramAccountId) setInstagramAccountId(parsed.instagramAccountId);
+              if (parsed.hasPaymentMethod !== undefined) setHasPaymentMethod(parsed.hasPaymentMethod);
+              if (parsed.extractedProducts) setExtractedProducts(parsed.extractedProducts);
+              if (parsed.hasStarted) setHasStarted(parsed.hasStarted);
+              if (parsed.scannedUrls) setScannedUrls(parsed.scannedUrls);
+            }
+            setDbDraftId(urlDraftId);
+            setIsHydrated(true);
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to fetch DB draft", e);
+        }
+      }
+
+      // Fallback to local storage
+      const draft = localStorage.getItem('charlo_onboarding_draft');
+      if (draft) {
+        try {
+          const parsed = JSON.parse(draft);
+          if (parsed.onboardingStep) setOnboardingStep(parsed.onboardingStep);
+          if (parsed.profile) setProfile(parsed.profile);
+          if (parsed.messages) setMessages(parsed.messages);
+          if (parsed.extractedProvider) setExtractedProvider(parsed.extractedProvider);
+          if (parsed.metaToken) setMetaToken(parsed.metaToken);
+          if (parsed.phoneId) setPhoneId(parsed.phoneId);
+          if (parsed.facebookPageId) setFacebookPageId(parsed.facebookPageId);
+          if (parsed.instagramAccountId) setInstagramAccountId(parsed.instagramAccountId);
+          if (parsed.hasPaymentMethod !== undefined) setHasPaymentMethod(parsed.hasPaymentMethod);
+          if (parsed.extractedProducts) setExtractedProducts(parsed.extractedProducts);
+          if (parsed.hasStarted) setHasStarted(parsed.hasStarted);
+          if (parsed.scannedUrls) setScannedUrls(parsed.scannedUrls);
+          if (parsed.dbDraftId) setDbDraftId(parsed.dbDraftId);
+        } catch (e) {
+          console.error("Failed to load draft", e);
+        }
+      }
+      setIsHydrated(true);
+    };
+
+    if (user) {
+      initDraft();
+    } else {
+      // Allow it to hydrate local storage even without user
+      initDraft();
+    }
+  }, [user, searchParams]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const draft = {
+      onboardingStep,
+      profile,
+      messages,
+      extractedProvider,
+      metaToken,
+      phoneId,
+      facebookPageId,
+      instagramAccountId,
+      hasPaymentMethod,
+      extractedProducts,
+      hasStarted,
+      scannedUrls,
+      dbDraftId
+    };
+    localStorage.setItem('charlo_onboarding_draft', JSON.stringify(draft));
+
+    // Save to DB Draft with a debounce
+    if (user && hasStarted) {
+      const saveToDb = async () => {
+        try {
+          const authToken = await user.getIdToken();
+          const res = await fetch('/api/onboarding/draft', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ draftId: dbDraftId, ...draft })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.draftId && data.draftId !== dbDraftId) {
+              setDbDraftId(data.draftId);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to save DB draft", e);
+        }
+      };
+
+      const timeoutId = setTimeout(saveToDb, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    isHydrated, onboardingStep, profile, messages, extractedProvider, 
+    metaToken, phoneId, facebookPageId, instagramAccountId, 
+    hasPaymentMethod, extractedProducts, hasStarted, scannedUrls, dbDraftId, user
+  ]);
+
+  const handleConfirmAssetSelection = () => {
+    const data = tempMetaData;
+    const chosenPhone = availablePhones.find(p => p.id === selectedPhoneId);
+    const chosenPage = availablePages.find(p => p.id === selectedPageId);
+
+    setMetaToken(data.accessToken);
+    if (chosenPhone) {
+      setPhoneId(chosenPhone.id);
+      setHasPaymentMethod(chosenPhone.hasPaymentMethod);
+    }
+    if (chosenPage) setFacebookPageId(chosenPage.id);
+    if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
+    
+    let finalProfile = { ...profile };
+    if (chosenPage) {
+      if (chosenPage.name) finalProfile.name = chosenPage.name;
+      let kb = `ID de WhatsApp Business: ${chosenPhone?.wabaId || "Desconocido"}\n`;
+      if (chosenPage.phone) kb += `Teléfono FB: ${chosenPage.phone}\n`;
+      if (chosenPage.website) kb += `Sitio Web: ${chosenPage.website}\n`;
+      if (chosenPage.about) kb += `\nSobre nosotros:\n${chosenPage.about}`;
+      finalProfile.knowledgeBase = kb;
+    } else if (chosenPhone) {
+       finalProfile.name = chosenPhone.verified_name || "Mi Negocio de WhatsApp";
+       finalProfile.knowledgeBase = `ID de WhatsApp Business: ${chosenPhone.wabaId}\n`;
+    }
+
+    setProfile(finalProfile);
+    setExtractedProvider('Meta');
+    setShowAssetSelection(false);
+    setOnboardingStep(2);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -74,6 +248,7 @@ export default function OnboardingPage() {
       
       if (token) {
         await extractDataFromProvider('google', token);
+        setOnboardingStep(3);
       }
     } catch (e: any) {
       console.error("Google Connect Error:", e);
@@ -87,7 +262,7 @@ export default function OnboardingPage() {
 
   const handleNoWebsite = () => {
     setProfile(prev => ({ ...prev, needsWebsiteUpsell: true }));
-    setOnboardingStep(3);
+    setOnboardingStep(4);
   };
 
   const handleConnectFacebook = async () => {
@@ -111,6 +286,9 @@ export default function OnboardingPage() {
               extractedWabaId = data.data?.waba_id || null;
               extractedPhoneId = data.data?.phone_number_id || null;
               console.log("IDs atrapados en frontend -> WABA:", extractedWabaId, "Phone:", extractedPhoneId);
+            } else if (data.event === 'CANCEL' || data.event === 'ERROR') {
+              console.log("Meta Onboarding Cancelled or Errored");
+              setIsExtracting(false);
             }
           }
         } catch (e) {
@@ -142,23 +320,60 @@ export default function OnboardingPage() {
               const data = await res.json();
               
               if (res.ok && data.success) {
-                console.log("META DEBUG INFO:", data.debugLogs); // Output everything for debugging
-                setMetaToken(data.accessToken);
-                if (data.phoneId) setPhoneId(data.phoneId);
-                if (data.facebookPageId) setFacebookPageId(data.facebookPageId);
-                if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
+                console.log("META DEBUG INFO:", data.debugLogs); 
                 
-                setProfile(prev => ({ ...prev, ...data.profileUpdate }));
-                setExtractedProvider('Meta');
+                if ((data.availablePhones && data.availablePhones.length > 1) || 
+                    (data.availablePages && data.availablePages.length > 1)) {
+                  
+                  setAvailablePhones(data.availablePhones || []);
+                  setAvailablePages(data.availablePages || []);
+                  setSelectedPhoneId(data.availablePhones?.[0]?.id || "");
+                  setSelectedPageId(data.availablePages?.[0]?.id || "");
+                  setTempMetaData(data);
+                  setShowAssetSelection(true);
+                  setIsExtracting(false);
+                  return; 
+                  
+                } else {
+                  const singlePhone = data.availablePhones?.[0];
+                  const singlePage = data.availablePages?.[0];
+
+                  setMetaToken(data.accessToken);
+                  if (singlePhone) {
+                    setPhoneId(singlePhone.id);
+                    setHasPaymentMethod(singlePhone.hasPaymentMethod);
+                  }
+                  if (singlePage) setFacebookPageId(singlePage.id);
+                  if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
+                  
+                  let finalProfile = { ...profile };
+                  if (singlePage) {
+                    if (singlePage.name) finalProfile.name = singlePage.name;
+                    let kb = `ID de WhatsApp Business: ${singlePhone?.wabaId || "Desconocido"}\n`;
+                    if (singlePage.phone) kb += `Teléfono FB: ${singlePage.phone}\n`;
+                    if (singlePage.website) kb += `Sitio Web: ${singlePage.website}\n`;
+                    if (singlePage.about) kb += `\nSobre nosotros:\n${singlePage.about}`;
+                    finalProfile.knowledgeBase = kb;
+                  } else if (singlePhone) {
+                     finalProfile.name = singlePhone.verified_name || "Mi Negocio de WhatsApp";
+                     finalProfile.knowledgeBase = `ID de WhatsApp Business: ${singlePhone.wabaId}\n`;
+                  }
+
+                  setProfile(finalProfile);
+                  setExtractedProvider('Meta');
+                  setIsExtracting(false);
+                  setOnboardingStep(2);
+                }
               } else {
                 alert("No pudimos extraer la información. Continúa manual. Error: " + (data.error || 'Unknown'));
+                setIsExtracting(false);
+                setOnboardingStep(2);
               }
             } catch (e) {
               console.error("Backend exchange error:", e);
               alert("Error al comunicarse con el servidor.");
             } finally {
-              setIsExtracting(false);
-              setOnboardingStep(2);
+              // We only proceed if not showing the asset selection
             }
           } else {
             console.error("Facebook Connect Error: No code received", response);
@@ -183,9 +398,13 @@ export default function OnboardingPage() {
 
   const extractDataFromProvider = async (provider: 'google' | 'facebook', token: string) => {
     try {
+      const authToken = await user?.getIdToken();
       const res = await fetch('/api/onboarding/extract', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
         body: JSON.stringify({ provider, token })
       });
       const data = await res.json();
@@ -200,7 +419,11 @@ export default function OnboardingPage() {
           setPhoneId(data.extractedPhoneId);
         }
       } else {
-        alert("No pudimos extraer información útil de esta cuenta. Por favor, continúa manual.");
+        if (provider === 'google') {
+          setShowGoogleError(true);
+        } else {
+          alert("No pudimos extraer información útil de esta cuenta. Por favor, continúa manual.");
+        }
       }
     } catch (e) {
       console.error("Extraction error:", e);
@@ -209,17 +432,46 @@ export default function OnboardingPage() {
 
   const handleScrapeUrl = async () => {
     if (!websiteUrl) return;
+    
+    if (scannedUrls.length >= 5) {
+      alert("Has alcanzado el límite de 5 páginas. Continúa al siguiente paso.");
+      return;
+    }
+
+    let fetchUrl = websiteUrl.trim().replace(/,/g, '.');
+    if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
+    
+    if (scannedUrls.some(s => s.url === fetchUrl)) {
+      alert("Esta página ya ha sido escaneada.");
+      return;
+    }
+
     setIsExtracting(true);
     try {
+      const authToken = await user?.getIdToken();
       const res = await fetch('/api/onboarding/scrape-url', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: websiteUrl })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ url: fetchUrl })
       });
       const data = await res.json();
       if (res.ok && data.profileUpdate) {
-        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
-        setExtractedProvider('Website');
+        setProfile(prev => ({ 
+          ...prev, 
+          name: data.profileUpdate.name && data.profileUpdate.name !== "Mi Negocio" ? data.profileUpdate.name : prev.name,
+          knowledgeBase: prev.knowledgeBase ? `${prev.knowledgeBase}\n\n${data.profileUpdate.knowledgeBase}` : data.profileUpdate.knowledgeBase
+        }));
+        
+        setScannedUrls(prev => [...prev, { url: fetchUrl, contentHash: data.hash, docType: data.docType || 'website' }]);
+        setWebsiteUrl('');
+
+        if (data.extractedProducts && data.extractedProducts.length > 0) {
+          setExtractedProducts(prev => [...prev, ...data.extractedProducts]);
+          setShowProductReview(true);
+        }
       } else {
         alert("Error extrayendo sitio web: " + (data.error || "Desconocido"));
       }
@@ -236,17 +488,27 @@ export default function OnboardingPage() {
     if (!file) return;
     setIsExtracting(true);
     try {
+      const authToken = await user?.getIdToken();
       const formData = new FormData();
       formData.append('file', file);
       
       const res = await fetch('/api/onboarding/upload-file', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        },
         body: formData
       });
       const data = await res.json();
       if (res.ok && data.profileUpdate) {
         setProfile(prev => ({ ...prev, ...data.profileUpdate }));
         setExtractedProvider('Documento');
+        if (data.extractedProducts && data.extractedProducts.length > 0) {
+          setExtractedProducts(data.extractedProducts);
+          setShowProductReview(true);
+        } else {
+          setOnboardingStep(4);
+        }
       } else {
         alert("Error procesando archivo: " + (data.error || "Desconocido"));
       }
@@ -259,12 +521,12 @@ export default function OnboardingPage() {
   };
 
   useEffect(() => {
-    if (user && messages.length === 0 && onboardingStep === 3) {
+    if (user && messages.length === 0 && onboardingStep === 4) {
       const name = user.displayName?.split(' ')[0]; // We only use displayName as a confident name
       
       let greeting = "";
       if (extractedProvider) {
-        greeting = `¡Hola ${name || ''}! Vi que conectaste tu cuenta de ${extractedProvider}. He llenado tu perfil con toda la información que pude encontrar.\n\nRevisemos lo que tenemos. ¿Qué más te gustaría agregar o corregir?`;
+        greeting = `¡Hola ${name || ''}! Vi que conectaste información de tu negocio. He llenado tu perfil con toda la información que pude encontrar.\n\nRevisemos lo que tenemos. ¿Qué más te gustaría agregar o corregir?`;
       } else {
         greeting = name 
           ? `¡Hola ${name}! Soy Charlo, tu especialista de onboarding. 🚀\n¿Cómo se llama tu negocio?`
@@ -392,12 +654,32 @@ export default function OnboardingPage() {
           facebookPageId: skipMeta ? undefined : facebookPageId,
           instagramAccountId: skipMeta ? undefined : instagramAccountId,
           extractedServices: finalBusinessArgs?.extractedServices || [],
+          extractedProducts: extractedProducts,
+          syncToMeta: syncToMeta,
           needsWebsiteUpsell: profile.needsWebsiteUpsell,
+          hasPaymentMethod: skipMeta ? true : hasPaymentMethod,
+          initialDataSources: scannedUrls,
+          draftId: dbDraftId
         })
       });
       
       if (createRes.ok) {
+        localStorage.removeItem('charlo_onboarding_draft');
         const newCompany = await createRes.json();
+        
+        // Trigger Meta Sync if requested
+        if (syncToMeta && extractedProducts.length > 0 && !skipMeta) {
+          const authToken = await user?.getIdToken();
+          fetch(`/api/companies/${newCompany.id}/sync-meta-catalog`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ extractedProducts })
+          }).catch(err => console.error("Background meta sync failed", err));
+        }
+
         await refreshCompanies();
         setSelectedCompanyId(newCompany.id);
         router.push('/dashboard/companies');
@@ -410,6 +692,8 @@ export default function OnboardingPage() {
     }
   };
 
+  if (!isHydrated) return null; // Avoid flicker before draft loads
+
   return (
     <div style={{ 
       display: 'flex', 
@@ -419,21 +703,63 @@ export default function OnboardingPage() {
       padding: '40px 24px',
       alignItems: 'center',
     }}>
-      
+      {/* BACK BUTTON */}
+      <button 
+        onClick={() => router.push('/dashboard/companies')}
+        style={{
+          position: 'absolute',
+          top: '40px',
+          left: '40px',
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-secondary)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '8px',
+          borderRadius: '50%',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+          e.currentTarget.style.color = 'var(--text-primary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
+        title="Volver al Dashboard"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+
       {/* STEPPER */}
       <div className="stepper-container slide-up">
-        <div className={`step ${onboardingStep >= 1 ? 'active' : ''}`}>
+        <div className={`step ${onboardingStep >= 1 ? 'active' : ''}`} onClick={() => setOnboardingStep(1)} style={{ cursor: 'pointer' }}>
           <div className="step-number">1</div>
           <span>Conectar Meta</span>
         </div>
         <div className={`step-line ${onboardingStep >= 2 ? 'active' : ''}`} />
-        <div className={`step ${onboardingStep >= 2 ? 'active' : ''}`}>
+        <div className={`step ${onboardingStep >= 2 ? 'active' : ''}`} onClick={() => setOnboardingStep(2)} style={{ cursor: 'pointer' }}>
           <div className="step-number">2</div>
-          <span>Negocio & Web</span>
+          <span>Google Business</span>
         </div>
         <div className={`step-line ${onboardingStep >= 3 ? 'active' : ''}`} />
-        <div className={`step ${onboardingStep >= 3 ? 'active' : ''}`}>
+        <div className={`step ${onboardingStep >= 3 ? 'active' : ''}`} onClick={() => setOnboardingStep(3)} style={{ cursor: 'pointer' }}>
           <div className="step-number">3</div>
+          <span>Escanear Web</span>
+        </div>
+        <div className={`step-line ${onboardingStep >= 4 ? 'active' : ''}`} />
+        <div className={`step ${onboardingStep >= 4 ? 'active' : ''}`} onClick={() => setOnboardingStep(4)} style={{ cursor: 'pointer' }}>
+          <div className="step-number">4</div>
+          <span>Subir Menú</span>
+        </div>
+        <div className={`step-line ${onboardingStep >= 5 ? 'active' : ''}`} />
+        <div className={`step ${onboardingStep >= 5 ? 'active' : ''}`} onClick={() => setOnboardingStep(5)} style={{ cursor: 'pointer' }}>
+          <div className="step-number">5</div>
           <span>Entrenar IA</span>
         </div>
       </div>
@@ -458,8 +784,16 @@ export default function OnboardingPage() {
               </div>
 
               {metaToken ? (
-                <div style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center', color: '#10b981' }}>
-                  ✅ Cuenta de Meta y WhatsApp configurada exitosamente.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center', color: '#10b981' }}>
+                    ✅ Cuenta de Meta y WhatsApp configurada exitosamente.
+                  </div>
+                  {!hasPaymentMethod && (
+                    <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', color: '#f59e0b', fontSize: '0.95rem', lineHeight: 1.5, textAlign: 'left' }}>
+                      <strong>⚠️ Acción Requerida:</strong> Hemos detectado que tu cuenta no tiene un método de pago. Para que la IA pueda responder a tus clientes, Meta requiere una tarjeta de crédito.<br/><br/>
+                      <a href="https://business.facebook.com/settings/payment-methods" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', fontWeight: 600 }}>Haz clic aquí</a> para agregar un método de pago en tu Business Manager y luego vincúlalo a tu cuenta de WhatsApp.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -515,21 +849,27 @@ export default function OnboardingPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              {metaToken && (
+                <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ Conectado a Meta</div>
+                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>Negocio: {profile.name}</div>}
+                </div>
+              )}
               <button 
                 onClick={handleConnectFacebook}
                 disabled={isExtracting}
                 className="btn-primary" 
                 style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
               >
-                {isExtracting ? <div className="spinner-small" /> : '🔵'}
-                {isExtracting ? 'Conectando...' : 'Conectar Meta (Obligatorio)'}
+                {isExtracting ? <div className="spinner-small" /> : <img src="https://www.facebook.com/favicon.ico" alt="Meta" style={{ width: 24, height: 24 }} />}
+                {isExtracting ? 'Conectando...' : metaToken ? 'Reconectar Meta' : 'Conectar Meta (Obligatorio)'}
               </button>
 
               <button 
                 onClick={() => setOnboardingStep(2)}
                 disabled={isExtracting}
                 className="btn-secondary"
-                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'rgba(255,255,255,0.6)', border: 'none', marginTop: 16 }}
+                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
               >
                 Saltar por ahora (Solo pruebas)
               </button>
@@ -537,96 +877,155 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 2: GOOGLE & WEBSITE */}
+        {/* STEP 2: GOOGLE BUSINESS */}
         {onboardingStep === 2 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Datos adicionales
+              Conectar Google Business
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Podemos ahorrarte tiempo leyendo tu ubicación en Google y el contenido de tu sitio web o menú en PDF.
+              Para empezar a entrenar tu IA, podemos conectarnos a tu Perfil de Negocio de Google. Esto nos permitirá extraer tu ubicación, horarios y datos de contacto automáticamente.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              {extractedProvider === 'Google' && (
+                <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ Conectado a Google Business</div>
+                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>Negocio: {profile.name}</div>}
+                </div>
+              )}
               <button 
                 onClick={handleConnectGoogle} 
                 disabled={isExtracting}
                 className="btn-primary" 
-                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#ffffff', color: '#000', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
+                style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
               >
-                {isExtracting ? <div className="spinner-small" /> : '🌐'}
-                {isExtracting ? 'Conectando...' : 'Conectar Google Business'}
+                {isExtracting ? <div className="spinner-small" /> : <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 24, height: 24 }} />}
+                {isExtracting ? 'Conectando...' : extractedProvider === 'Google' ? 'Reconectar Google' : 'Conectar Google Business'}
               </button>
               
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="text"
-                    value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
-                    placeholder="www.tu-sitio.com"
-                    style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: '#fff', outline: 'none' }}
-                  />
-                  <button 
-                    onClick={handleScrapeUrl}
-                    disabled={isExtracting || !websiteUrl}
-                    className="btn-primary" 
-                    style={{ width: '100%', padding: '12px', marginTop: 8, fontSize: '1rem', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '12px' }}
-                  >
-                    🌐 Escanear Sitio Web
-                  </button>
-                </div>
-                
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <input 
-                    type="file" 
-                    accept="application/pdf,image/*" 
-                    ref={fileInputRef} 
-                    style={{ display: 'none' }} 
-                    onChange={handleFileUpload}
-                  />
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isExtracting}
-                    className="btn-secondary" 
-                    style={{ flex: 1, padding: '16px', fontSize: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px dashed rgba(255,255,255,0.3)', borderRadius: '12px' }}
-                  >
-                    <span style={{ fontSize: '1.5rem' }}>📸</span>
-                    Subir Menú / PDF
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '16px 0' }}>
-                <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>O</span>
-                <div style={{ flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
-              </div>
-
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button 
-                  onClick={handleNoWebsite}
-                  disabled={isExtracting}
-                  className="btn-secondary"
-                  style={{ flex: 1, padding: '16px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
-                >
-                  🚫 No tengo sitio web
-                </button>
-                <button 
-                  onClick={() => setOnboardingStep(3)}
-                  disabled={isExtracting}
-                  className="btn-primary"
-                  style={{ flex: 1, padding: '16px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, backgroundColor: '#10b981', color: '#fff', border: 'none' }}
-                >
-                  Continuar al Chat ➡️
-                </button>
-              </div>
+              <button 
+                onClick={() => setOnboardingStep(3)}
+                disabled={isExtracting}
+                className="btn-secondary"
+                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
+              >
+                Omitir este paso
+              </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3: LEFT PANE (Profile) - Only visible in Step 3 */}
+        {/* STEP 3: WEBSITE */}
         {onboardingStep === 3 && (
+          <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Escanear Sitio Web
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
+              Ingresa el enlace de tu sitio web para que tu IA aprenda automáticamente sobre tus servicios, productos y reglas de negocio.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              {scannedUrls.length > 0 && (
+                <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'left' }}>
+                  <div style={{ color: '#10b981', fontWeight: 600, marginBottom: 8 }}>✅ Páginas Escaneadas ({scannedUrls.length}/5):</div>
+                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    {scannedUrls.map((s, idx) => (
+                      <li key={idx} style={{ marginBottom: 4, wordBreak: 'break-all' }}>{s.url}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <input
+                type="text"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                placeholder="https://www.tu-sitio.com/pagina"
+                style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
+                disabled={scannedUrls.length >= 5}
+              />
+              <button 
+                onClick={handleScrapeUrl}
+                disabled={isExtracting || !websiteUrl || scannedUrls.length >= 5}
+                className="btn-primary" 
+                style={{ width: '100%', padding: '16px', fontSize: '1.05rem', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '12px' }}
+              >
+                {isExtracting ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                    <div className="spinner-small" /> Escaneando...
+                  </div>
+                ) : scannedUrls.length >= 5 ? 'Límite Alcanzado' : '🌐 Escanear Sitio Web'}
+              </button>
+
+              <button 
+                onClick={() => setOnboardingStep(4)}
+                disabled={isExtracting}
+                className="btn-secondary"
+                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
+              >
+                {scannedUrls.length > 0 ? 'Continuar al siguiente paso ➡️' : 'No tengo sitio web'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4: DOCUMENT/MENU UPLOAD */}
+        {onboardingStep === 4 && (
+          <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Subir Menú o Catálogo
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
+              Sube tu menú, catálogo o manual en formato PDF o Imagen para que la IA sepa qué productos vendes.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+              {extractedProvider === 'Documento' && (
+                <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ Documento Procesado</div>
+                </div>
+              )}
+              
+              <input 
+                type="file" 
+                accept="application/pdf,image/*" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                onChange={handleFileUpload}
+              />
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtracting}
+                className="btn-primary" 
+                style={{ width: '100%', padding: '24px', fontSize: '1.05rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '2px dashed var(--border-color)', borderRadius: '12px' }}
+              >
+                {isExtracting ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+                    <div className="spinner-small" /> Procesando...
+                  </div>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '2rem' }}>📸</span>
+                    Subir Menú / PDF
+                  </>
+                )}
+              </button>
+
+              <button 
+                onClick={() => setOnboardingStep(5)}
+                disabled={isExtracting}
+                className="btn-secondary"
+                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
+              >
+                No tengo menú / Omitir
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 5: LEFT PANE (Profile) - Only visible in Step 5 */}
+        {onboardingStep === 5 && (
         <div 
           className="glass-panel-premium slide-up" 
           style={{ 
@@ -639,18 +1038,18 @@ export default function OnboardingPage() {
             padding: hasStarted ? 32 : 0, 
             overflow: 'hidden',
             transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            border: hasStarted ? '1px solid rgba(255,255,255,0.1)' : 'none',
+            border: hasStarted ? '1px solid var(--border-color)' : 'none',
           }}
         >
           <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#fff' }}>📄 Perfil en Construcción</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>📄 Perfil en Construcción</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Charlo actualiza esto mientras conversan.</p>
           </div>
 
           <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
             
             {/* Canales Conectados */}
-            <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 12 }}>
+            <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Canales Conectados
               </label>
@@ -741,8 +1140,8 @@ export default function OnboardingPage() {
         </div>
         )}
 
-        {/* STEP 3: RIGHT PANE (Chat Interface) */}
-        {onboardingStep === 3 && (
+        {/* STEP 5: RIGHT PANE (Chat Simulator) */}
+        {onboardingStep === 5 && (
         <div 
           className="glass-panel-premium slide-up" 
           style={{ 
@@ -756,7 +1155,7 @@ export default function OnboardingPage() {
           }}
         >
           {/* Header */}
-          <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
+          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               Asistente de Configuración
             </h1>
@@ -766,15 +1165,15 @@ export default function OnboardingPage() {
           </div>
 
           {/* Chat Area */}
-          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: 'rgba(0,0,0,0.1)' }}>
+          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: 'var(--bg-primary)' }}>
             {messages.map((msg) => (
               <div key={msg.id} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 <div style={{
                   padding: '14px 18px',
                   borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                  background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-color), #8b5cf6)' : 'rgba(255,255,255,0.05)',
-                  color: '#fff',
-                  border: msg.role === 'model' ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                  background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-color), #8b5cf6)' : 'var(--bg-secondary)',
+                  color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                  border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none',
                   boxShadow: msg.role === 'user' ? '0 8px 24px rgba(139, 92, 246, 0.25)' : '0 4px 12px rgba(0,0,0,0.1)',
                   backdropFilter: msg.role === 'model' ? 'blur(10px)' : 'none'
                 }}>
@@ -788,8 +1187,8 @@ export default function OnboardingPage() {
                         key={idx} 
                         style={{ 
                           fontSize: '0.85rem', padding: '10px 18px', borderRadius: 'var(--border-radius-full)', 
-                          backgroundColor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', 
-                          color: '#fff', cursor: 'pointer', transition: 'background 0.2s' 
+                          backgroundColor: 'var(--border-color)', border: '1px solid rgba(255,255,255,0.2)', 
+                          color: msg.role === 'user' ? '#fff' : 'var(--text-primary)', cursor: 'pointer', transition: 'background 0.2s' 
                         }}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
@@ -821,7 +1220,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* Input Area */}
-          <div style={{ padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+          <div style={{ padding: '20px 32px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
             <form onSubmit={(e) => { e.preventDefault(); handleSend(input); }} style={{ display: 'flex', gap: 12 }}>
               <input
                 type="text"
@@ -833,9 +1232,9 @@ export default function OnboardingPage() {
                   flex: 1,
                   padding: '16px 24px',
                   borderRadius: 'var(--border-radius-full)',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                  color: '#fff',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
                   outline: 'none',
                   fontSize: '0.95rem',
                   transition: 'border-color 0.3s, box-shadow 0.3s'
@@ -874,11 +1273,11 @@ export default function OnboardingPage() {
       <style>{`
         /* Glassmorphism */
         .glass-panel-premium {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--bg-secondary);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+          border: 1px solid var(--border-color);
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
           border-radius: 24px;
         }
 
@@ -890,10 +1289,10 @@ export default function OnboardingPage() {
         .floating-input {
           width: 100%;
           padding: 20px 16px 8px;
-          background: rgba(0, 0, 0, 0.2) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          background: var(--bg-secondary) !important;
+          border: 1px solid var(--border-color) !important;
           border-radius: 12px !important;
-          color: #fff !important;
+          color: var(--text-primary) !important;
           font-size: 0.95rem;
           transition: border-color 0.3s, box-shadow 0.3s;
           outline: none;
@@ -945,19 +1344,19 @@ export default function OnboardingPage() {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: rgba(255,255,255,0.4);
+          color: var(--text-secondary);
           font-size: 0.9rem;
           font-weight: 500;
           transition: color 0.4s;
         }
         .step.active {
-          color: #fff;
+          color: var(--text-primary);
         }
         .step-number {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background: rgba(255,255,255,0.1);
+          background: var(--bg-secondary);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -972,7 +1371,7 @@ export default function OnboardingPage() {
         .step-line {
           width: 48px;
           height: 2px;
-          background: rgba(255,255,255,0.1);
+          background: var(--border-color);
           transition: background 0.4s;
         }
         .step-line.active {
@@ -986,8 +1385,8 @@ export default function OnboardingPage() {
         .spinner-small {
           width: 16px;
           height: 16px;
-          border: 2px solid rgba(255,255,255,0.3);
-          border-top-color: #fff;
+          border: 2px solid var(--border-color);
+          border-top-color: var(--text-primary);
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
@@ -1007,6 +1406,147 @@ export default function OnboardingPage() {
           to { transform: scale(1); opacity: 1; }
         }
       `}</style>
+      {showAssetSelection && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div className="panel-glass" style={{ width: '90%', maxWidth: '500px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Selecciona tus cuentas</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>
+              Has otorgado permisos a múltiples cuentas. Por favor selecciona cuáles quieres vincular a este negocio.
+            </p>
+
+            {availablePhones.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Número de WhatsApp</label>
+                <select 
+                  className="input-field" 
+                  value={selectedPhoneId} 
+                  onChange={(e) => setSelectedPhoneId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--border-radius)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                >
+                  {availablePhones.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.verified_name || p.display_phone_number} ({p.display_phone_number})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {availablePages.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Página de Facebook</label>
+                <select 
+                  className="input-field" 
+                  value={selectedPageId} 
+                  onChange={(e) => setSelectedPageId(e.target.value)}
+                  style={{ width: '100%', padding: '12px', borderRadius: 'var(--border-radius)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+                >
+                  {availablePages.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <button className="btn-primary" onClick={handleConfirmAssetSelection} style={{ marginTop: '8px' }}>
+              Confirmar Selección
+            </button>
+          </div>
+        </div>
+      )}
+      {showProductReview && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div className="panel-glass" style={{ width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Productos Encontrados</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>
+              Hemos extraído {extractedProducts.length} productos/servicios. Confirma la moneda base para tus precios.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>Moneda Principal</label>
+              <select 
+                className="input-field" 
+                value={baseCurrency} 
+                onChange={(e) => setBaseCurrency(e.target.value)}
+                style={{ width: '100%', padding: '12px', borderRadius: 'var(--border-radius)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}
+              >
+                <option value="CRC">Colones Costarricenses (CRC)</option>
+                <option value="USD">Dólares (USD)</option>
+                <option value="MXN">Pesos Mexicanos (MXN)</option>
+                <option value="EUR">Euros (EUR)</option>
+              </select>
+            </div>
+
+            <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '12px' }}>Vista Previa</h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {extractedProducts.slice(0, 3).map((p, i) => (
+                  <li key={i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                    <span>{p.name}</span>
+                    <strong>{p.price ? `${p.price} ${p.currency || baseCurrency}` : 'Consultar'}</strong>
+                  </li>
+                ))}
+                {extractedProducts.length > 3 && (
+                  <li style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', marginTop: '8px' }}>
+                    y {extractedProducts.length - 3} productos más...
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginTop: '8px', padding: '16px', backgroundColor: 'rgba(var(--primary-color-rgb), 0.1)', borderRadius: '8px', border: '1px solid var(--primary-color)' }}>
+              <input 
+                type="checkbox" 
+                id="syncMetaToggle"
+                checked={syncToMeta}
+                onChange={(e) => setSyncToMeta(e.target.checked)}
+                style={{ marginTop: '4px', width: '18px', height: '18px', accentColor: 'var(--primary-color)' }}
+              />
+              <label htmlFor="syncMetaToggle" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', lineHeight: '1.4' }}>
+                <strong>Sincronizar catálogo con Meta</strong><br/>
+                <span style={{ color: 'var(--text-secondary)' }}>Opcional (Requiere Plan Starter o superior). Crearemos un catálogo automáticamente en Facebook, Instagram y WhatsApp con estos productos.</span>
+              </label>
+            </div>
+
+            <button className="btn-primary" onClick={() => {
+              // Update all products to use the selected base currency if none was provided
+              setExtractedProducts(prev => prev.map(p => ({...p, currency: p.currency || baseCurrency})));
+              setShowProductReview(false);
+              setOnboardingStep(4);
+            }} style={{ marginTop: '8px' }}>
+              Confirmar y Continuar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showGoogleError && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(4px)' }}>
+          <div className="panel-glass" style={{ width: '90%', maxWidth: '400px', padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Cuenta no encontrada</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0 }}>
+              No pudimos extraer información de Google Business. Es probable que no tengas un Perfil de Negocio creado o asociado a esta cuenta.
+            </p>
+            <a 
+              href="https://business.google.com/locations" 
+              target="_blank" 
+              rel="noreferrer" 
+              style={{ color: 'var(--primary-color)', textDecoration: 'underline', fontSize: '0.9rem' }}
+            >
+              Revisa tus perfiles de Google Business aquí
+            </a>
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                setShowGoogleError(false);
+                setOnboardingStep(3);
+              }} 
+              style={{ marginTop: '16px' }}
+            >
+              OK, continuar manual
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -10,6 +10,18 @@ export default function DashboardOverview() {
 
   const [metrics, setMetrics] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(false);
+  const [showTestModal, setShowTestModal] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!isSeeding && !localStorage.getItem('charlo_seen_test_modal')) {
+      setShowTestModal(true);
+    }
+  }, [isSeeding]);
+
+  const closeTestModal = () => {
+    localStorage.setItem('charlo_seen_test_modal', 'true');
+    setShowTestModal(false);
+  };
 
   React.useEffect(() => {
     async function fetchAnalytics() {
@@ -138,6 +150,20 @@ export default function DashboardOverview() {
             </div>
           </div>
         </>
+      )}
+
+      {showTestModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
+          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32, textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>¡Bienvenido a Charlo!</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '1.05rem', lineHeight: 1.5 }}>
+              Hemos creado 2 negocios de prueba para que veas cómo se ve la aplicación con data. Para crear tu negocio dirígete a <strong>&apos;Gestionar empresas&apos;</strong>.
+            </p>
+            <button className="btn-primary" onClick={closeTestModal} style={{ padding: '10px 24px', fontSize: '1rem' }}>
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

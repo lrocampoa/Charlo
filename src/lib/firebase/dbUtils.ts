@@ -22,8 +22,8 @@ export async function getCompanies(userId: string) {
 export async function createCompany(companyData: any) {
   const id = `company_${Date.now()}`;
   
-  // Extract services if present so they don't pollute the root doc
-  const { extractedServices, ...rootData } = companyData;
+  // Extract products and services if present so they don't pollute the root doc
+  const { extractedServices, extractedProducts, syncToMeta, ...rootData } = companyData;
   
   const newCompany = { 
     id, 
@@ -53,6 +53,24 @@ export async function createCompany(companyData: any) {
     await batch.commit();
   }
   
+  // Save extracted products to subcollection if they exist
+  if (extractedProducts && Array.isArray(extractedProducts)) {
+    const batch = getDb().batch();
+    extractedProducts.forEach((product: any) => {
+      const productRef = getDb().collection('companies').doc(id).collection('products').doc();
+      batch.set(productRef, {
+        id: productRef.id,
+        name: product.name,
+        description: product.description || '',
+        price: product.price || 0,
+        currency: product.currency || 'CRC',
+        source: 'ai',
+        createdAt: new Date().toISOString()
+      });
+    });
+    await batch.commit();
+  }
+  
   return newCompany;
 }
 
@@ -73,10 +91,21 @@ export async function deleteCompany(companyId: string) {
 // --- BILLING & USAGE TRACKING ---
 export async function trackWhatsAppUsage(companyId: string) {
   try {
-    await getDb().collection('companies').doc(companyId).update({
+    const db = getDb();
+    const companyRef = db.collection('companies').doc(companyId);
+    
+    await companyRef.update({
       'billing.whatsappMessagesUsed': FieldValue.increment(1),
       'billing.lastWhatsAppMessageAt': new Date().toISOString()
     });
+
+    const doc = await companyRef.get();
+    const ownerId = doc.data()?.ownerId;
+    if (ownerId) {
+      await db.collection('users').doc(ownerId).update({
+        'billing.whatsappMessagesUsed': FieldValue.increment(1)
+      });
+    }
   } catch (err) {
     console.error(`Failed to track WhatsApp usage for company ${companyId}`, err);
   }
@@ -84,10 +113,22 @@ export async function trackWhatsAppUsage(companyId: string) {
 
 export async function trackGeminiUsage(companyId: string, tokens: number) {
   try {
-    await getDb().collection('companies').doc(companyId).update({
+    const db = getDb();
+    const companyRef = db.collection('companies').doc(companyId);
+
+    await companyRef.update({
       'billing.geminiTokensUsed': FieldValue.increment(tokens),
       'usage.aiMessagesCurrentMonth': FieldValue.increment(1)
     });
+
+    const doc = await companyRef.get();
+    const ownerId = doc.data()?.ownerId;
+    if (ownerId) {
+      await db.collection('users').doc(ownerId).update({
+        'billing.geminiTokensUsed': FieldValue.increment(tokens),
+        'usage.aiMessagesCurrentMonth': FieldValue.increment(1)
+      });
+    }
   } catch (err) {
     console.error(`Failed to track Gemini usage for company ${companyId}`, err);
   }
@@ -107,7 +148,11 @@ export async function getCompanyConfig(companyId: string): Promise<any> {
   const servicesSnapshot = await db.collection('companies').doc(companyId).collection('services').get();
   const servicesList = servicesSnapshot.docs.map(sDoc => ({ id: sDoc.id, ...sDoc.data() }));
 
-  return { ...data, servicesList };
+  // Fetch Products List
+  const productsSnapshot = await db.collection('companies').doc(companyId).collection('products').get();
+  const productsList = productsSnapshot.docs.map(pDoc => ({ id: pDoc.id, ...pDoc.data() }));
+
+  return { ...data, servicesList, productsList };
 }
 
 export async function getCompanyByWhatsAppId(phoneId: string) {
@@ -383,7 +428,7 @@ export async function getDataSources(companyId: string) {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-export async function saveDataSource(companyId: string, data: { name: string; type: string; extractedText: string }) {
+export async function saveDataSource(companyId: string, data: { name: string; type: string; extractedText: string; contentHash?: string }) {
   const docRef = await getDb().collection('companies').doc(companyId).collection('data_sources').add({
     ...data,
     createdAt: new Date().toISOString()
@@ -435,5 +480,65 @@ export async function acceptInvite(inviteId: string, userId: string) {
   // For a general team link, keeping it active is often desired unless revoked.
   
   return { companyId, success: true };
+}
+
+// --- USERS CRUD ---
+export async function getUser(userId: string) {
+  const doc = await getDb().collection('users').doc(userId).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() };
+}
+
+export async function createUser(userId: string, email: string) {
+  const newUser = {
+    email,
+    subscription: { tier: 'free', status: 'active', currentPeriodEnd: null },
+    stripeCustomerId: null,
+    usage: { aiMessagesCurrentMonth: 0 },
+    billing: { geminiTokensUsed: 0, whatsappMessagesUsed: 0 },
+    createdAt: new Date().toISOString()
+  };
+  await getDb().collection('users').doc(userId).set(newUser, { merge: true });
+  return { id: userId, ...newUser };
+}
+
+// --- PAUSED BUSINESSES LOGIC ---
+export async function updateCompanyPauseStatus(companyId: string, isPaused: boolean) {
+  await getDb().collection('companies').doc(companyId).update({
+    isPaused
+  });
+  return { success: true };
+}
+
+/**
+ * Checks if we sent a paused auto-responder to this customer in the last 24 hours.
+ * If not, records the timestamp and returns true (meaning: send it).
+ * If yes, returns false (meaning: do not send it).
+ */
+export async function checkAndSetPausedAutoResponder(companyId: string, customerPhoneId: string): Promise<boolean> {
+  const db = getDb();
+  const docRef = db.collection('companies').doc(companyId).collection('paused_responders').doc(customerPhoneId);
+  
+  const doc = await docRef.get();
+  const now = new Date();
+  
+  if (doc.exists) {
+    const data = doc.data();
+    if (data?.lastSentAt) {
+      const lastSent = new Date(data.lastSentAt);
+      const hoursSinceLast = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursSinceLast < 24) {
+        return false; // Still in cooldown
+      }
+    }
+  }
+  
+  // Safe to send, update the timestamp
+  await docRef.set({
+    lastSentAt: now.toISOString()
+  }, { merge: true });
+  
+  return true;
 }
 

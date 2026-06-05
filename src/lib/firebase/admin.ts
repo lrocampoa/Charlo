@@ -70,8 +70,20 @@ export async function verifyActiveSubscription(companyId: string): Promise<boole
     const doc = await adminDb.collection('companies').doc(companyId).get();
     if (!doc.exists) return false;
     const company = doc.data();
-    const status = company?.subscription?.status;
-    const tier = company?.subscription?.tier;
+    
+    // Fallback to company subscription if user is missing for some reason
+    let tier = company?.subscription?.tier;
+    let status = company?.subscription?.status;
+
+    const ownerId = company?.ownerId;
+    if (ownerId) {
+      const userDoc = await adminDb.collection('users').doc(ownerId).get();
+      if (userDoc.exists) {
+        const user = userDoc.data();
+        tier = user?.subscription?.tier || tier;
+        status = user?.subscription?.status || status;
+      }
+    }
     
     // Free Sandbox tier is allowed
     if (tier === 'free' && status === 'active') return true;

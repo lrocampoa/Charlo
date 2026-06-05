@@ -60,11 +60,21 @@ export default function Sidebar() {
         ) : (
           <select 
             value={selectedCompanyId || ''}
-            onChange={(e) => setSelectedCompanyId(e.target.value)}
+            onChange={(e) => {
+              const id = e.target.value;
+              const comp = companies.find(c => c.id === id);
+              if (comp?.status === 'draft') {
+                window.location.href = `/onboarding?draftId=${id}`;
+              } else {
+                setSelectedCompanyId(id);
+              }
+            }}
             style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', outline: 'none' }}
           >
             {companies.map(company => (
-              <option key={company.id} value={company.id}>{company.name || company.id}</option>
+              <option key={company.id} value={company.id}>
+                {company.name || company.id} {company.status === 'draft' ? '(Borrador)' : company.isPaused ? '(Pausado)' : ''}
+              </option>
             ))}
           </select>
         )}

@@ -3,6 +3,7 @@ import { adminDb, verifyIdToken } from '@/lib/firebase/admin';
 import { saveDataSource } from '@/lib/firebase/dbUtils';
 import * as cheerio from 'cheerio';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import crypto from 'crypto';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -66,7 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // Clean up with Gemini
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
     const prompt = `You are an AI data extractor. Extract and structure all relevant business facts, rules, menus, SOPs, and knowledge from the following raw text scraped from a URL. Output ONLY clean markdown text that would be useful for a customer service AI. Do not invent any information.\n\nRAW TEXT:\n${rawText.slice(0, 30000)}`; // limit size
     
     const result = await model.generateContent(prompt);
@@ -79,10 +80,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       name = parsedUrl.hostname + parsedUrl.pathname;
     } catch (e) {}
 
+    const hash = crypto.createHash('sha256').update(rawText).digest('hex');
+
     const dataSource = await saveDataSource(companyId, {
       name: name,
       type: docType,
-      extractedText: cleanedText
+      extractedText: cleanedText,
+      contentHash: hash
     });
 
     return NextResponse.json({ success: true, source: dataSource });

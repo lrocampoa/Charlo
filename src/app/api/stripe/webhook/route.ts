@@ -3,6 +3,26 @@ import { stripe } from '@/lib/stripe';
 import { adminDb } from '@/lib/firebase/admin';
 import Stripe from 'stripe';
 
+async function enforceBusinessLimitsAndPause(userId: string, tier: string) {
+  if (!adminDb) return;
+  const maxBusinesses = { 'free': 1, 'starter': 2, 'growth': 5, 'pro': 10 }[tier as 'free'|'starter'|'growth'|'pro'] || 1;
+  const snapshot = await adminDb.collection('companies').where('ownerId', '==', userId).orderBy('createdAt', 'asc').get();
+  
+  let activeCount = 0;
+  for (const doc of snapshot.docs) {
+    const c = doc.data();
+    if (activeCount < maxBusinesses) {
+      if (!c.isPaused) {
+        activeCount++;
+      }
+    } else {
+      if (!c.isPaused) {
+        await adminDb.collection('companies').doc(doc.id).update({ isPaused: true });
+      }
+    }
+  }
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get('stripe-signature') as string;
@@ -33,19 +53,19 @@ export async function POST(req: Request) {
         // Retrieve subscription details
         if (session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          const companyId = session.metadata?.companyId;
+          const userId = session.metadata?.userId;
           const tier = session.metadata?.tier;
           
-          if (companyId && tier) {
+          if (userId && tier) {
             if (!adminDb) throw new Error('adminDb not initialized');
-            await adminDb.collection('companies').doc(companyId).update({
+            await adminDb.collection('users').doc(userId).update({
               'subscription.tier': tier,
               'subscription.status': subscription.status,
               'subscription.currentPeriodEnd': (subscription as any).current_period_end * 1000,
               stripeSubscriptionId: subscription.id,
               stripeCustomerId: session.customer as string
             });
-            console.log(`Successfully upgraded company ${companyId} to tier ${tier}`);
+            console.log(`Successfully upgraded user ${userId} to tier ${tier}`);
           }
         }
         break;
@@ -53,10 +73,10 @@ export async function POST(req: Request) {
       
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        const companyId = subscription.metadata?.companyId;
+        const userId = subscription.metadata?.userId;
         const tier = subscription.metadata?.tier;
         
-        if (companyId) {
+        if (userId) {
           if (!adminDb) throw new Error('adminDb not initialized');
           const updateData: any = {
             'subscription.status': subscription.status,
@@ -64,25 +84,27 @@ export async function POST(req: Request) {
           };
           if (tier) {
             updateData['subscription.tier'] = tier;
+            await enforceBusinessLimitsAndPause(userId, tier);
           }
-          await adminDb.collection('companies').doc(companyId).update(updateData);
-          console.log(`Updated subscription for company ${companyId}. Status: ${subscription.status}`);
+          await adminDb.collection('users').doc(userId).update(updateData);
+          console.log(`Updated subscription for user ${userId}. Status: ${subscription.status}`);
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        const companyId = subscription.metadata?.companyId;
+        const userId = subscription.metadata?.userId;
         
-        if (companyId) {
+        if (userId) {
           if (!adminDb) throw new Error('adminDb not initialized');
-          await adminDb.collection('companies').doc(companyId).update({
+          await adminDb.collection('users').doc(userId).update({
             'subscription.tier': 'free', 
             'subscription.status': 'canceled',
             stripeSubscriptionId: null
           });
-          console.log(`Subscription canceled for company ${companyId}. Reverted to free tier.`);
+          await enforceBusinessLimitsAndPause(userId, 'free');
+          console.log(`Subscription canceled for user ${userId}. Reverted to free tier.`);
         }
         break;
       }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { verifyIdToken } from '@/lib/firebase/admin';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -30,29 +30,56 @@ export async function POST(request: Request) {
 
     // Parse Document/Image with Gemini 1.5 Flash natively!
     const base64Data = buffer.toString('base64');
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const schema = {
+      type: SchemaType.OBJECT,
+      properties: {
+        businessName: { type: SchemaType.STRING },
+        knowledgeBase: { type: SchemaType.STRING, description: "All rules, SOPs, facts, excluding products. Format as clean markdown." },
+        products: {
+          type: SchemaType.ARRAY,
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              name: { type: SchemaType.STRING },
+              description: { type: SchemaType.STRING },
+              price: { type: SchemaType.NUMBER },
+              currency: { type: SchemaType.STRING, description: "e.g., CRC, USD. Try to deduce from text." }
+            },
+            required: ["name"]
+          }
+        }
+      },
+      required: ["businessName", "knowledgeBase", "products"]
+    };
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: schema as any,
+      }
+    });
+
     const result = await model.generateContent([
-      "Extract all readable text, menus, pricing, facts, and rules from this document/image. Structure it logically and format it as clean markdown that is useful for a customer service AI. Try to deduce the business name as well and put it at the very top as '# Business Name: [Name]'. Do not invent any information.",
+      "Extract all readable text, menus, pricing, facts, and rules from this document/image. Separate actual products/services from general business info. Do not invent information.",
       { inlineData: { data: base64Data, mimeType } }
     ]);
-    extractedText = result.response.text();
-
-    if (!extractedText || extractedText.trim().length === 0) {
-      return NextResponse.json({ error: 'Could not extract text from the file.' }, { status: 400 });
-    }
-
-    let businessName = "Mi Negocio";
-    const firstLineMatch = extractedText.match(/# Business Name:\s*(.*)/i);
-    if (firstLineMatch && firstLineMatch[1]) {
-      businessName = firstLineMatch[1].trim();
+    
+    let data;
+    try {
+      data = JSON.parse(result.response.text());
+    } catch (e) {
+      return NextResponse.json({ error: 'Failed to parse AI output' }, { status: 500 });
     }
 
     return NextResponse.json({ 
       success: true, 
       profileUpdate: {
-        name: businessName,
-        knowledgeBase: `Extraído de archivo ${file.name}:\n\n${extractedText}`
-      }
+        name: data.businessName || "Mi Negocio",
+        knowledgeBase: `Extraído de archivo ${file.name}:\n\n${data.knowledgeBase}`
+      },
+      extractedProducts: data.products || []
     });
   } catch (error: any) {
     console.error("Upload Error:", error);

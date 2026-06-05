@@ -15,23 +15,15 @@ export async function POST(req: Request) {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userId = decodedToken.uid;
 
-    const { companyId } = await req.json();
-    if (!companyId) {
-      return NextResponse.json({ error: 'Missing companyId' }, { status: 400 });
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    const userData = userDoc.data();
 
-    const companyDoc = await adminDb.collection('companies').doc(companyId).get();
-    if (!companyDoc.exists) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
-    }
-    const company = companyDoc.data();
-    if (company?.ownerId !== userId) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const customerId = company?.stripeCustomerId;
+    const customerId = userData?.stripeCustomerId;
     if (!customerId) {
-      return NextResponse.json({ error: 'No Stripe customer found for this company.' }, { status: 400 });
+      return NextResponse.json({ error: 'No Stripe customer found for this user.' }, { status: 400 });
     }
 
     const session = await stripe.billingPortal.sessions.create({

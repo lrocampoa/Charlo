@@ -32,6 +32,7 @@ export async function processUserMessage(
     customerName?: string;
     subscription?: { tier: string, currentPeriodEnd: number };
     usage?: { aiMessagesCurrentMonth: number };
+    productsList?: any[];
   },
   imagePart?: { data: string, mimeType: string } | null,
   platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp"
@@ -118,7 +119,7 @@ export async function processUserMessage(
       response = await handleCustomerServiceQuery(companyId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
     case "SALES":
-      response = await handleSalesQuery(message, history, context.productsCatalog, crmFacts);
+      response = await handleSalesQuery(message, history, context.productsCatalog, crmFacts, context.productsList);
       break;
     case "BOOKING":
       response = await handleBookingQuery(

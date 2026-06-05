@@ -51,7 +51,7 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ companyId, tier })
+        body: JSON.stringify({ tier })
       });
 
       if (!res.ok) {

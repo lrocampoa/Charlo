@@ -7,11 +7,25 @@ export async function handleSalesQuery(
   userInput: string, 
   history: any[],
   productsCatalog: string,
-  crmFacts: any = {}
+  crmFacts: any = {},
+  productsList: any[] = []
 ) {
+  // Format the structured products database into a readable list for the AI
+  let structuredProductsStr = "";
+  if (productsList && productsList.length > 0) {
+    structuredProductsStr = productsList.map(p => 
+      `- **${p.name}**: ${p.price > 0 ? `${p.price} ${p.currency || ''}` : 'Precio a consultar'}\n  ${p.description || ''}`
+    ).join('\n\n');
+  }
+
+  const combinedCatalog = [
+    productsCatalog,
+    structuredProductsStr ? `\n\n### Catálogo de Productos Estructurados:\n${structuredProductsStr}` : ''
+  ].filter(Boolean).join('\n');
+
   const model = genAI.getGenerativeModel({ 
     model: 'gemini-3.5-flash',
-    systemInstruction: `${SALES_PROMPT}\n\nProducts Available:\n${productsCatalog}\n\nPERMANENT CRM FACTS ABOUT THIS USER:\n${JSON.stringify(crmFacts, null, 2)}`
+    systemInstruction: `${SALES_PROMPT}\n\nProducts Available:\n${combinedCatalog}\n\nPERMANENT CRM FACTS ABOUT THIS USER:\n${JSON.stringify(crmFacts, null, 2)}`
   });
 
   try {

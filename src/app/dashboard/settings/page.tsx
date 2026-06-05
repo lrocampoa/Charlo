@@ -8,7 +8,7 @@ import { TeamManagement } from '@/components/TeamManagement';
 
 export default function SettingsPage() {
   const { t, language, setLanguage } = useLanguage();
-  const { selectedCompanyId, companies, refreshCompanies } = useCompany();
+  const { selectedCompanyId, companies, globalUser, refreshCompanies } = useCompany();
   const { user } = useAuth();
   
   const [isSaving, setIsSaving] = useState(false);
@@ -102,12 +102,12 @@ export default function SettingsPage() {
     setIsCheckoutLoading(true);
     try {
       const token = await user.getIdToken();
-      if (selectedCompany?.stripeCustomerId) {
+      if (globalUser?.stripeCustomerId) {
         // Open Customer Portal
         const res = await fetch('/api/stripe/create-portal-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ companyId: selectedCompanyId })
+          body: JSON.stringify({}) // No longer needs companyId
         });
         const data = await res.json();
         if (data.url) window.location.href = data.url;
@@ -117,7 +117,7 @@ export default function SettingsPage() {
         const res = await fetch('/api/stripe/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ companyId: selectedCompanyId, tier: 'growth' })
+          body: JSON.stringify({ tier: 'growth' }) // No longer needs companyId
         });
         const data = await res.json();
         if (data.url) window.location.href = data.url;
@@ -207,9 +207,9 @@ export default function SettingsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 4 }}>Plan Actual</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 4 }}>Plan Actual (Cuenta Global)</p>
                   <p style={{ fontSize: '1.1rem', fontWeight: 600, textTransform: 'capitalize', color: 'var(--accent-color)' }}>
-                    {selectedCompany.subscription?.tier || 'starter'}
+                    {globalUser?.subscription?.tier || 'free'}
                   </p>
                 </div>
                 <button 
@@ -218,15 +218,15 @@ export default function SettingsPage() {
                   onClick={handleManageBilling}
                   disabled={isCheckoutLoading}
                 >
-                  {isCheckoutLoading ? 'Cargando...' : selectedCompany.stripeCustomerId ? 'Gestionar Facturación' : 'Mejorar a Growth ($99)'}
+                  {isCheckoutLoading ? 'Cargando...' : globalUser?.stripeCustomerId ? 'Gestionar Facturación' : 'Mejorar a Growth ($99)'}
                 </button>
               </div>
               
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.9rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Mensajes de IA usados este mes</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Mensajes de IA globales usados este mes</span>
                   <span style={{ fontWeight: 600 }}>
-                    {selectedCompany.usage?.aiMessagesCurrentMonth || 0} / {getLimitForTier(selectedCompany.subscription?.tier)}
+                    {globalUser?.usage?.aiMessagesCurrentMonth || 0} / {getLimitForTier(globalUser?.subscription?.tier)}
                   </span>
                 </div>
                 
@@ -235,12 +235,60 @@ export default function SettingsPage() {
                   <div style={{ 
                     height: '100%', 
                     background: 'var(--accent-color)', 
-                    width: `${Math.min(100, ((selectedCompany.usage?.aiMessagesCurrentMonth || 0) / getLimitForTier(selectedCompany.subscription?.tier)) * 100)}%`,
+                    width: `${Math.min(100, ((globalUser?.usage?.aiMessagesCurrentMonth || 0) / getLimitForTier(globalUser?.subscription?.tier)) * 100)}%`,
                     transition: 'width 0.5s ease-in-out'
                   }}></div>
                 </div>
               </div>
             </div>
+
+            <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: selectedCompany.isPaused ? '#ef4444' : '#10b981' }}>
+                    {selectedCompany.isPaused ? 'Asistente Pausado' : 'Asistente Activo'}
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4, maxWidth: '80%' }}>
+                    {selectedCompany.isPaused 
+                      ? 'Tus clientes recibirán una respuesta automática indicando que el asistente está inactivo.'
+                      : 'El asistente está procesando y respondiendo a los mensajes de tus clientes normalmente.'}
+                  </p>
+                </div>
+                <button 
+                  onClick={async () => {
+                    try {
+                      const token = await user?.getIdToken();
+                      const res = await fetch(`/api/companies/${selectedCompany.id}/pause`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ isPaused: !selectedCompany.isPaused })
+                      });
+                      if (!res.ok) {
+                         const data = await res.json();
+                         alert(data.error || 'Error cambiando estado');
+                      } else {
+                         refreshCompanies();
+                      }
+                    } catch(e) {
+                       alert('Error de red al intentar cambiar el estado.');
+                    }
+                  }}
+                  style={{
+                    background: selectedCompany.isPaused ? '#10b981' : 'rgba(239, 68, 68, 0.2)',
+                    color: selectedCompany.isPaused ? 'white' : '#ef4444',
+                    border: selectedCompany.isPaused ? 'none' : '1px solid rgba(239, 68, 68, 0.5)',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--border-radius-sm)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minWidth: 160
+                  }}
+                >
+                  {selectedCompany.isPaused ? 'Activar Asistente' : 'Pausar Asistente'}
+                </button>
+              </div>
+            </div>
+
           </div>
         )}
 

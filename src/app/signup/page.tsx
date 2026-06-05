@@ -96,8 +96,8 @@ export default function Signup() {
           >EN</button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <CharloLogo width={160} height={48} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <CharloLogo width={80} height={80} showText={false} />
         </div>
         <h2 style={{ fontSize: '1.75rem', marginBottom: 24, textAlign: 'center' }}>{t('signup.title')}</h2>
         {error && <p style={{ color: 'var(--danger)', marginBottom: 16, fontSize: '0.9rem', textAlign: 'center' }}>{error}</p>}

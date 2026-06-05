@@ -1,4 +1,6 @@
-import { NextResponse } from 'next/server';
+import sys
+
+new_content = """import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
@@ -203,3 +205,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+"""
+
+with open("src/app/api/onboarding/embedded-signup/route.ts", "w") as f:
+    f.write(new_content)

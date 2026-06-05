@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     if (provider === 'google') {
       // 1. Get Accounts
-      const accRes = await fetch('https://mybusinessbusinessinformation.googleapis.com/v1/accounts', {
+      const accRes = await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const accData = await accRes.json();
