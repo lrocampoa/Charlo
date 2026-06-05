@@ -42,9 +42,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const isOwner = await verifyOwnership(request, id);
     if (!isOwner) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
-    const isActive = await verifyActiveSubscription(id);
-    if (!isActive) return NextResponse.json({ error: "Subscription inactive or past due." }, { status: 402 });
-
     await deleteCompany(id);
     return NextResponse.json({ success: true });
   } catch (error) {

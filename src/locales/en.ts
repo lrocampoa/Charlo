@@ -177,5 +177,16 @@ export const en = {
     errorPasswordMatch: "Passwords do not match.",
     errorGeneric: "Failed to create account. Please try again.",
     settingUpWorkspace: "Setting up your workspace..."
+  },
+
+  // Support Widget
+  supportWidget: {
+    title: "Charlo Support",
+    subtitle: "We typically reply instantly",
+    initialGreeting: "Hi there! 👋 I'm the Charlo Support Agent. How can I help you today?",
+    inputPlaceholder: "Ask me anything...",
+    errorConnecting: "Oops! Something went wrong connecting to the support server. Please try again.",
+    fallbackReply: "Sorry, I couldn't process that request.",
+    typing: "Charlo is typing..."
   }
 };

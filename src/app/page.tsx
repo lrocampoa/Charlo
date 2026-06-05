@@ -28,15 +28,15 @@ export default function Home() {
             🇨🇷 Diseñado exclusivamente para PYMEs en Costa Rica
           </div>
           <h2 style={{ fontSize: "4.5rem", fontWeight: 800, lineHeight: 1.1, marginBottom: 24 }}>
-            Atendé a tus clientes <br/>
-            <span className="text-gradient">24/7 por WhatsApp.</span>
+            Buscabas un chatbot.<br/>
+            Lo que necesitas es un <span className="text-gradient">Empleado Digital.</span>
           </h2>
           <p style={{ color: "var(--text-secondary)", fontSize: "1.25rem", marginBottom: 40, maxWidth: 650, margin: "0 auto 40px", lineHeight: 1.6 }}>
-            El primer asistente de Inteligencia Artificial que responde consultas, agenda citas, y <strong>verifica comprobantes de SINPE Móvil automáticamente.</strong>
+            Los chatbots tradicionales frustran a tus clientes. Charlo es la IA que atiende tu WhatsApp, entiende cómo hablamos en Costa Rica, y cierra ventas por ti mientras tú descansas.
           </p>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", alignItems: "center" }}>
-            <Link href="/signup" className="btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem' }}>Crear mi Bot</Link>
-            <Link href="#demo" className="btn-secondary" style={{ padding: '14px 32px', fontSize: '1.1rem', background: 'rgba(255,255,255,0.05)' }}>Ver Demo</Link>
+            <Link href="/signup" className="btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem' }}>Prueba Charlo Gratis</Link>
+            <Link href="#demo" className="btn-secondary" style={{ padding: '14px 32px', fontSize: '1.1rem', background: 'rgba(255,255,255,0.05)' }}>Ver cómo funciona</Link>
           </div>
         </div>
       </section>
@@ -45,41 +45,41 @@ export default function Home() {
       <section style={{ padding: "80px 24px", position: "relative", zIndex: 10 }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 64 }}>
-            <h3 style={{ fontSize: "2.5rem", fontWeight: 700, marginBottom: 16 }}>Todo lo que ocupás para vender más</h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Charlo se encarga del trabajo pesado para que vos te enfoqués en crecer.</p>
+            <h3 style={{ fontSize: "2.5rem", fontWeight: 700, marginBottom: 16 }}>No contrates un software. Contrata al mejor vendedor.</h3>
+            <p style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Diseñado específicamente para las PYMEs de Costa Rica.</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24 }}>
             
             <div className="glass-panel feature-card">
+              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>🚀</div>
+              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>Cero Programación</h4>
+              <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                Olvídate de los complejos "árboles de decisión". Sube tu información (catálogo, menú, FAQs), y Charlo en minutos está listo para vender.
+              </p>
+            </div>
+
+            <div className="glass-panel feature-card">
+              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>📲</div>
+              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>Nativo en WhatsApp</h4>
+              <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                Atiende a tus clientes en el canal que más utilizan, manteniendo conversaciones fluidas y naturales (entiende audios y el contexto).
+              </p>
+            </div>
+
+            <div className="glass-panel feature-card">
               <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>💳</div>
-              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>SINPE Móvil Automático</h4>
+              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>El Rey del SINPE Móvil</h4>
               <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                Tu cliente envía la foto del comprobante y Charlo lee el monto y la referencia usando Gemini Vision IA. Adiós a las capturas falsas.
+                Charlo sabe que en Costa Rica el pago se confirma con comprobante. Verifica el monto y fecha por ti usando IA para evitar estafas.
               </p>
             </div>
 
             <div className="glass-panel feature-card">
-              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>🧠</div>
-              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>Aprende de tu Negocio</h4>
+              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>🤖</div>
+              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>De Responder a Resolver</h4>
               <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                Sube tu menú, PDFs o manuales. Charlo memoriza hasta 2 millones de palabras para responder exactamente como tú lo harías.
-              </p>
-            </div>
-
-            <div className="glass-panel feature-card">
-              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>📢</div>
-              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>Campañas y Retargeting</h4>
-              <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                Envía promociones masivas a todos los clientes que te han escrito en el pasado, cumpliendo 100% con las reglas de Meta.
-              </p>
-            </div>
-
-            <div className="glass-panel feature-card">
-              <div style={{ fontSize: "2.5rem", marginBottom: 16 }}>📊</div>
-              <h4 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: 12 }}>Dashboard Analítico</h4>
-              <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                Revisa cuántas conversaciones atendió el bot, cuántos comprobantes de SINPE ingresaron y cuántas horas de trabajo te ahorró.
+                Un chatbot tradicional manda un link. Charlo recomienda productos, calcula el envío, y cierra la venta directamente en el chat.
               </p>
             </div>
 

@@ -15,7 +15,8 @@ export default function Sidebar() {
   const { companies, selectedCompanyId, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
 
-  const isAdmin = user?.email?.endsWith('@charlo.ai') || user?.email === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const extraAdmins = ['lrocampoa@gmail.com'];
+  const isAdmin = user?.email?.endsWith('@charlo.ai') || user?.email === 'Charlo@pallets.cr' || (user?.email && extraAdmins.includes(user.email));
 
 
   const navItems = [
@@ -38,8 +39,13 @@ export default function Sidebar() {
   return (
     <aside style={{ width: 260, backgroundColor: 'var(--bg-primary)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '24px', borderBottom: '1px solid var(--border-color)' }}>
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <CharloLogo width={120} height={32} />
+          {isAdmin && (
+            <div style={{ background: 'var(--primary-color)', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: 12, letterSpacing: '0.05em' }}>
+              ADMIN
+            </div>
+          )}
         </div>
         
         {user && (
@@ -51,7 +57,7 @@ export default function Sidebar() {
         {/* Global Company Selector */}
         {companies.length === 0 ? (
           <button 
-            onClick={() => window.location.href = '/onboarding'}
+            onClick={() => window.location.href = '/onboarding?new=true'}
             className="btn-primary" 
             style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem' }}
           >
@@ -80,6 +86,19 @@ export default function Sidebar() {
         )}
       </div>
       <nav style={{ flex: 1, padding: '24px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {isAdmin && (
+           <Link href="/admin" style={{
+              padding: '12px 16px',
+              borderRadius: 'var(--border-radius-sm)',
+              backgroundColor: pathname === '/admin' ? 'var(--bg-secondary)' : 'transparent',
+              color: pathname === '/admin' ? 'var(--accent-color)' : '#eab308',
+              fontWeight: pathname === '/admin' ? 600 : 500,
+              transition: 'all var(--transition-fast)',
+              border: '1px solid rgba(234, 179, 8, 0.3)'
+            }}>
+              👑 Panel Global Admin
+            </Link>
+        )}
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           return (

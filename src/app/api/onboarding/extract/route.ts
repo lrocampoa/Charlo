@@ -52,7 +52,13 @@ export async function POST(req: Request) {
 
       profileUpdate = {
         name: title,
-        knowledgeBase: `Extraído de Google Business:\nUbicación: ${address}\nTeléfono: ${phone}\nSitio Web: ${website}\n\n${hoursStr}`,
+        topics: [
+          {
+            id: 'conocimiento',
+            title: 'Base de Conocimiento General',
+            content: `Extraído de Google Business:\nUbicación: ${address}\nTeléfono: ${phone}\nSitio Web: ${website}\n\n${hoursStr}`
+          }
+        ]
       };
     } 
     else if (provider === 'facebook') {
@@ -101,7 +107,13 @@ export async function POST(req: Request) {
 
       profileUpdate = {
         name: name,
-        knowledgeBase: `Extraído de Facebook:\nSobre nosotros: ${about}\nTeléfono: ${phone}\nSitio Web: ${website}\nID de WhatsApp Business: ${waba || "No conectado a WhatsApp API"}`,
+        topics: [
+          {
+            id: 'conocimiento',
+            title: 'Base de Conocimiento General',
+            content: `Extraído de Facebook:\nSobre nosotros: ${about}\nTeléfono: ${phone}\nSitio Web: ${website}\nID de WhatsApp Business: ${waba || "No conectado a WhatsApp API"}`
+          }
+        ]
       };
 
       return NextResponse.json({ success: true, profileUpdate, extractedPhoneId: actualPhoneId });

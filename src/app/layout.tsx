@@ -14,8 +14,8 @@ const firaCode = Fira_Code({
 });
 
 export const metadata: Metadata = {
-  title: "Charlo AI - Shared Services",
-  description: "B2B AI Assistants Platform",
+  title: "Charlo | El mejor chatbot con Inteligencia Artificial para PYMEs en Costa Rica",
+  description: "¿Cansado de perder ventas por WhatsApp? Charlo no es un chatbot tradicional, es un Empleado Digital impulsado por IA que atiende clientes, cierra ventas y agiliza pagos por SINPE 24/7.",
 };
 
 import { AuthProvider } from "@/context/AuthContext";

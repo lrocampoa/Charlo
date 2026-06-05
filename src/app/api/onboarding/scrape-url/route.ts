@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     };
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         responseSchema: schema as any,
@@ -105,7 +105,13 @@ export async function POST(request: Request) {
       success: true, 
       profileUpdate: {
         name: data.businessName || "Mi Negocio",
-        knowledgeBase: `Extraído del sitio web ${url}:\n\n${data.knowledgeBase}`
+        topics: [
+          {
+            id: 'conocimiento',
+            title: 'Base de Conocimiento General',
+            content: `Información extraída del sitio web ${url}:\n\n${data.knowledgeBase}`
+          }
+        ]
       },
       extractedProducts: data.products || [],
       hash: hash,

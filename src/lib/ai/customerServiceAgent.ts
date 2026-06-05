@@ -29,13 +29,13 @@ export async function handleCustomerServiceQuery(
       console.error("Cache expired or not found. Falling back to un-cached model.", e);
       // Fallback
       model = genAI.getGenerativeModel({ 
-        model: 'gemini-3.5-flash',
+        model: 'gemini-1.5-flash',
         systemInstruction: `${CUSTOMER_SERVICE_PROMPT}\n\nPersona Configured: ${persona}\n\nKnowledge Base:\n${knowledgeBaseContext}\n\nPERMANENT CRM FACTS ABOUT THIS USER:\n${JSON.stringify(crmFacts, null, 2)}`
       });
     }
   } else {
     model = genAI.getGenerativeModel({ 
-      model: 'gemini-3.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: `${CUSTOMER_SERVICE_PROMPT}\n\nPersona Configured: ${persona}\n\nKnowledge Base:\n${knowledgeBaseContext}\n\nPERMANENT CRM FACTS ABOUT THIS USER:\n${JSON.stringify(crmFacts, null, 2)}`
     });
   }

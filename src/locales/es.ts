@@ -177,5 +177,16 @@ export const es = {
     errorPasswordMatch: "Las contraseñas no coinciden.",
     errorGeneric: "No se pudo crear la cuenta. Inténtalo de nuevo.",
     settingUpWorkspace: "Configurando tu espacio de trabajo..."
+  },
+
+  // Support Widget
+  supportWidget: {
+    title: "Soporte Charlo",
+    subtitle: "Normalmente respondemos al instante",
+    initialGreeting: "¡Hola! 👋 Soy el Agente de Soporte de Charlo. ¿En qué te puedo ayudar hoy?",
+    inputPlaceholder: "Pregunta lo que sea...",
+    errorConnecting: "¡Ups! Algo falló al conectar con el servidor. Por favor, intenta de nuevo.",
+    fallbackReply: "Lo siento, no pude procesar tu solicitud.",
+    typing: "Charlo está escribiendo..."
   }
 };

@@ -11,7 +11,7 @@ export async function handlePaymentImage(
 ) {
   try {
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-3.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: "Eres un analista financiero experto. Analiza la imagen. Si es un comprobante de transferencia bancaria o SINPE Móvil, extrae los siguientes datos exactos. Responde estrictamente en formato JSON válido: { \"esComprobante\": true, \"monto\": 15000, \"referencia\": \"123456789\", \"nombreRemitente\": \"Juan Perez\", \"fecha\": \"2024-05-15 14:30\", \"telefonoDestino\": \"88888888\" }. Si algún dato no aparece, ponlo como null. Si NO es un comprobante de pago, responde { \"esComprobante\": false }."
     });
 

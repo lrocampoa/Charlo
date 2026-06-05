@@ -55,9 +55,19 @@ const onboardingTools: FunctionDeclaration[] = [
       type: SchemaType.OBJECT,
       properties: {
         name: { type: SchemaType.STRING },
-        persona: { type: SchemaType.STRING },
-        productsCatalog: { type: SchemaType.STRING },
-        knowledgeBase: { type: SchemaType.STRING },
+        topics: {
+          type: SchemaType.ARRAY,
+          description: 'The finalized list of knowledge topics/documents.',
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              id: { type: SchemaType.STRING },
+              title: { type: SchemaType.STRING },
+              content: { type: SchemaType.STRING }
+            },
+            required: ['id', 'title', 'content']
+          }
+        },
         extractedServices: {
           type: SchemaType.ARRAY,
           description: "If this is a service-based business, extract their bookable services into this structured list so we can automatically populate their Booking Engine.",
@@ -84,9 +94,19 @@ const onboardingTools: FunctionDeclaration[] = [
       type: SchemaType.OBJECT,
       properties: {
         name: { type: SchemaType.STRING, description: 'The official name of the business.' },
-        persona: { type: SchemaType.STRING, description: 'Instructions for how the AI should talk. e.g. "You are an energetic Italian chef..."' },
-        productsCatalog: { type: SchemaType.STRING, description: 'A markdown list of the products or services they offer, and estimated prices.' },
-        knowledgeBase: { type: SchemaType.STRING, description: 'Important facts: opening hours, return policies, payment methods, dietary options, location, etc.' },
+        topics: {
+          type: SchemaType.ARRAY,
+          description: 'A list of documents or topics that make up the knowledge base.',
+          items: {
+            type: SchemaType.OBJECT,
+            properties: {
+              id: { type: SchemaType.STRING, description: 'A unique short id (e.g., "identidad", "catalogo", "conocimiento", "politicas")' },
+              title: { type: SchemaType.STRING, description: 'The display title of the document (e.g., "Identidad y Tono", "Catálogo de Productos")' },
+              content: { type: SchemaType.STRING, description: 'The markdown content for this topic.' }
+            },
+            required: ['id', 'title', 'content']
+          }
+        }
       },
       required: [],
     },
@@ -147,7 +167,7 @@ export async function POST(request: Request) {
     }
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-3.5-flash',
+      model: 'gemini-1.5-flash',
       systemInstruction: getSystemInstruction(userContext),
       tools: [
         { functionDeclarations: onboardingTools }

@@ -43,13 +43,22 @@ function OnboardingContent() {
   const [extractedProvider, setExtractedProvider] = useState<string | null>(null);
   const [showGoogleError, setShowGoogleError] = useState(false);
 
+  const DEFAULT_TOPICS: Topic[] = [
+    { id: 'identidad', title: 'Identidad y Tono', content: 'Eres un asistente virtual amable y servicial.' },
+    { id: 'conocimiento', title: 'Base de Conocimiento General', content: '' },
+    { id: 'catalogo', title: 'Catálogo de Productos', content: '' },
+    { id: 'politicas', title: 'Reglas de Negocio / Políticas', content: '' }
+  ];
+
   // Profile States
   const [hasStarted, setHasStarted] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(true);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
+  
   const [profile, setProfile] = useState({
     name: '',
-    knowledgeBase: '',
-    productsCatalog: '',
-    persona: 'Eres un asistente virtual amable y servicial.',
+    topics: DEFAULT_TOPICS,
     needsWebsiteUpsell: false
   });
 
@@ -83,8 +92,49 @@ function OnboardingContent() {
   // Draft Save / Load Logic
   const [isHydrated, setIsHydrated] = useState(false);
 
+  const mergeTopics = (prevTopics: Topic[], newTopics: Topic[]) => {
+    const merged = [...prevTopics];
+    newTopics.forEach(nt => {
+      const idx = merged.findIndex(t => t.id === nt.id);
+      if (idx !== -1) {
+        // Append text if it's the 'conocimiento' or 'catalogo' topic, else replace
+        if ((nt.id === 'conocimiento' || nt.id === 'catalogo') && merged[idx].content) {
+          if (merged[idx].content.includes('Describe aquí tus principales productos')) {
+             merged[idx] = nt; // Overwrite default
+          } else {
+             merged[idx] = { ...merged[idx], content: merged[idx].content + '\n\n' + nt.content };
+          }
+        } else {
+          merged[idx] = nt;
+        }
+      } else {
+        merged.push(nt);
+      }
+    });
+    return merged;
+  };
+
+  const applyProfileUpdate = (update: any) => {
+    setProfile(prev => {
+      const p = { ...prev };
+      if (update.name) p.name = update.name;
+      if (update.topics && Array.isArray(update.topics)) {
+        p.topics = mergeTopics(p.topics, update.topics);
+      }
+      return p;
+    });
+  };
+
   useEffect(() => {
     const initDraft = async () => {
+      const isNew = searchParams.get('new') === 'true';
+      if (isNew) {
+        localStorage.removeItem('charlo_onboarding_draft');
+        window.history.replaceState({}, '', '/onboarding'); // Remove query param from URL so refresh doesn't clear it again
+        setIsHydrated(true);
+        return;
+      }
+
       const urlDraftId = searchParams.get('draftId');
       if (urlDraftId && user) {
         try {
@@ -97,7 +147,27 @@ function OnboardingContent() {
             if (data.draftData) {
               const parsed = data.draftData;
               if (parsed.onboardingStep) setOnboardingStep(parsed.onboardingStep);
-              if (parsed.profile) setProfile(parsed.profile);
+              if (parsed.profile) {
+                if (!parsed.profile.topics) {
+                  // Migrate legacy
+                  const topics = [...DEFAULT_TOPICS];
+                  if (parsed.profile.persona) {
+                    const idx = topics.findIndex(t => t.id === 'identidad');
+                    if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.persona };
+                  }
+                  if (parsed.profile.knowledgeBase) {
+                    const idx = topics.findIndex(t => t.id === 'conocimiento');
+                    if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.knowledgeBase };
+                  }
+                  if (parsed.profile.productsCatalog) {
+                    const idx = topics.findIndex(t => t.id === 'catalogo');
+                    if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.productsCatalog };
+                  }
+                  setProfile({ ...parsed.profile, topics });
+                } else {
+                  setProfile(parsed.profile);
+                }
+              }
               if (parsed.messages) setMessages(parsed.messages);
               if (parsed.extractedProvider) setExtractedProvider(parsed.extractedProvider);
               if (parsed.metaToken) setMetaToken(parsed.metaToken);
@@ -124,7 +194,27 @@ function OnboardingContent() {
         try {
           const parsed = JSON.parse(draft);
           if (parsed.onboardingStep) setOnboardingStep(parsed.onboardingStep);
-          if (parsed.profile) setProfile(parsed.profile);
+          if (parsed.profile) {
+            if (!parsed.profile.topics) {
+              // Migrate legacy
+              const topics = [...DEFAULT_TOPICS];
+              if (parsed.profile.persona) {
+                const idx = topics.findIndex(t => t.id === 'identidad');
+                if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.persona };
+              }
+              if (parsed.profile.knowledgeBase) {
+                const idx = topics.findIndex(t => t.id === 'conocimiento');
+                if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.knowledgeBase };
+              }
+              if (parsed.profile.productsCatalog) {
+                const idx = topics.findIndex(t => t.id === 'catalogo');
+                if (idx !== -1) topics[idx] = { ...topics[idx], content: parsed.profile.productsCatalog };
+              }
+              setProfile({ ...parsed.profile, topics });
+            } else {
+              setProfile(parsed.profile);
+            }
+          }
           if (parsed.messages) setMessages(parsed.messages);
           if (parsed.extractedProvider) setExtractedProvider(parsed.extractedProvider);
           if (parsed.metaToken) setMetaToken(parsed.metaToken);
@@ -216,20 +306,20 @@ function OnboardingContent() {
     if (chosenPage) setFacebookPageId(chosenPage.id);
     if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
     
-    let finalProfile = { ...profile };
+    let update: any = {};
     if (chosenPage) {
-      if (chosenPage.name) finalProfile.name = chosenPage.name;
+      if (chosenPage.name) update.name = chosenPage.name;
       let kb = `ID de WhatsApp Business: ${chosenPhone?.wabaId || "Desconocido"}\n`;
       if (chosenPage.phone) kb += `Teléfono FB: ${chosenPage.phone}\n`;
       if (chosenPage.website) kb += `Sitio Web: ${chosenPage.website}\n`;
       if (chosenPage.about) kb += `\nSobre nosotros:\n${chosenPage.about}`;
-      finalProfile.knowledgeBase = kb;
+      update.topics = [{ id: 'conocimiento', title: 'Base de Conocimiento General', content: kb }];
     } else if (chosenPhone) {
-       finalProfile.name = chosenPhone.verified_name || "Mi Negocio de WhatsApp";
-       finalProfile.knowledgeBase = `ID de WhatsApp Business: ${chosenPhone.wabaId}\n`;
+       update.name = chosenPhone.verified_name || "Mi Negocio de WhatsApp";
+       update.topics = [{ id: 'conocimiento', title: 'Base de Conocimiento General', content: `ID de WhatsApp Business: ${chosenPhone.wabaId}\n` }];
     }
 
-    setProfile(finalProfile);
+    applyProfileUpdate(update);
     setExtractedProvider('Meta');
     setShowAssetSelection(false);
     setOnboardingStep(2);
@@ -348,20 +438,20 @@ function OnboardingContent() {
                   if (singlePage) setFacebookPageId(singlePage.id);
                   if (data.instagramAccountId) setInstagramAccountId(data.instagramAccountId);
                   
-                  let finalProfile = { ...profile };
+                  let update: any = {};
                   if (singlePage) {
-                    if (singlePage.name) finalProfile.name = singlePage.name;
+                    if (singlePage.name) update.name = singlePage.name;
                     let kb = `ID de WhatsApp Business: ${singlePhone?.wabaId || "Desconocido"}\n`;
                     if (singlePage.phone) kb += `Teléfono FB: ${singlePage.phone}\n`;
                     if (singlePage.website) kb += `Sitio Web: ${singlePage.website}\n`;
                     if (singlePage.about) kb += `\nSobre nosotros:\n${singlePage.about}`;
-                    finalProfile.knowledgeBase = kb;
+                    update.topics = [{ id: 'conocimiento', title: 'Base de Conocimiento General', content: kb }];
                   } else if (singlePhone) {
-                     finalProfile.name = singlePhone.verified_name || "Mi Negocio de WhatsApp";
-                     finalProfile.knowledgeBase = `ID de WhatsApp Business: ${singlePhone.wabaId}\n`;
+                     update.name = singlePhone.verified_name || "Mi Negocio de WhatsApp";
+                     update.topics = [{ id: 'conocimiento', title: 'Base de Conocimiento General', content: `ID de WhatsApp Business: ${singlePhone.wabaId}\n` }];
                   }
-
-                  setProfile(finalProfile);
+                  
+                  applyProfileUpdate(update);
                   setExtractedProvider('Meta');
                   setIsExtracting(false);
                   setOnboardingStep(2);
@@ -413,7 +503,7 @@ function OnboardingContent() {
       
       if (res.ok && data.profileUpdate) {
         // Automatically merge the extracted data into the UI profile
-        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        applyProfileUpdate(data.profileUpdate);
         setExtractedProvider(provider === 'google' ? 'Google' : 'Meta');
         
         // Auto-fill the Phone Number ID if the API managed to find it
@@ -461,11 +551,7 @@ function OnboardingContent() {
       });
       const data = await res.json();
       if (res.ok && data.profileUpdate) {
-        setProfile(prev => ({ 
-          ...prev, 
-          name: data.profileUpdate.name && data.profileUpdate.name !== "Mi Negocio" ? data.profileUpdate.name : prev.name,
-          knowledgeBase: prev.knowledgeBase ? `${prev.knowledgeBase}\n\n${data.profileUpdate.knowledgeBase}` : data.profileUpdate.knowledgeBase
-        }));
+        applyProfileUpdate(data.profileUpdate);
         
         setScannedUrls(prev => [...prev, { url: fetchUrl, contentHash: data.hash, docType: data.docType || 'website' }]);
         setWebsiteUrl('');
@@ -507,10 +593,10 @@ function OnboardingContent() {
       });
       const data = await res.json();
       if (res.ok && data.profileUpdate) {
-        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        applyProfileUpdate(data.profileUpdate);
         setExtractedProvider('Documento');
         if (data.extractedProducts && data.extractedProducts.length > 0) {
-          setExtractedProducts(data.extractedProducts);
+          setExtractedProducts(prev => [...prev, ...data.extractedProducts]);
           setShowProductReview(true);
         } else {
           setOnboardingStep(5);
@@ -607,7 +693,7 @@ function OnboardingContent() {
       }
 
       if (data.profileUpdate) {
-        setProfile(prev => ({ ...prev, ...data.profileUpdate }));
+        applyProfileUpdate(data.profileUpdate);
       }
 
       if (data.toolCall && data.toolCall.name === 'ask_multiple_choice') {
@@ -651,9 +737,9 @@ function OnboardingContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: finalBusinessArgs?.name || profile.name,
-          persona: finalBusinessArgs?.persona || profile.persona,
-          productsCatalog: finalBusinessArgs?.productsCatalog || profile.productsCatalog,
-          knowledgeBase: finalBusinessArgs?.knowledgeBase || profile.knowledgeBase,
+          persona: (finalBusinessArgs?.topics || profile.topics).find((t: Topic) => t.id === 'identidad')?.content || '',
+          productsCatalog: (finalBusinessArgs?.topics || profile.topics).find((t: Topic) => t.id === 'catalogo')?.content || '',
+          knowledgeBase: (finalBusinessArgs?.topics || profile.topics).filter((t: Topic) => t.id !== 'identidad' && t.id !== 'catalogo').map((t: Topic) => `### ${t.title}\n${t.content}`).join('\n\n'),
           calendlyLink: '',
           metaAccessToken: skipMeta ? undefined : metaToken,
           whatsappPhoneNumberId: skipMeta ? undefined : phoneId,
@@ -776,7 +862,8 @@ function OnboardingContent() {
         alignItems: 'center',
         gap: 24,
         width: '100%',
-        maxWidth: 1000,
+        maxWidth: '100%',
+        padding: '0 48px',
         flex: 1
       }}>
       
@@ -1042,129 +1129,15 @@ function OnboardingContent() {
           </div>
         )}
 
-        {/* STEP 5: LEFT PANE (Profile) - Only visible in Step 5 */}
+        {/* STEP 5: Chat Simulator */}
         {onboardingStep === 5 && (
         <div 
           className="glass-panel-premium slide-up" 
           style={{ 
-            width: hasStarted ? '380px' : '0px', 
-            opacity: hasStarted ? 1 : 0,
-            visibility: hasStarted ? 'visible' : 'hidden',
-            height: '75vh', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            padding: hasStarted ? 32 : 0, 
-            overflow: 'hidden',
-            transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-            border: hasStarted ? '1px solid var(--border-color)' : 'none',
-          }}
-        >
-          <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>📄 Perfil en Construcción</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Charlo actualiza esto mientras conversan.</p>
-          </div>
-
-          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
-            
-            {/* Canales Conectados */}
-            <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Canales Conectados
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {phoneId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> WhatsApp
-                    <button onClick={() => setPhoneId('')} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
-                  </div>
-                )}
-                {facebookPageId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Messenger
-                    <button onClick={() => setFacebookPageId(null)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
-                  </div>
-                )}
-                {instagramAccountId && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.3)', color: '#ec4899', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Instagram
-                    <button onClick={() => setInstagramAccountId(null)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
-                  </div>
-                )}
-                {extractedProvider === 'Google' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.3)', color: '#ea4335', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Google
-                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#ea4335', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
-                  </div>
-                )}
-                {(extractedProvider === 'Website' || extractedProvider === 'Documento') && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#8b5cf6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> {extractedProvider}
-                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
-                  </div>
-                )}
-                {!phoneId && !facebookPageId && !instagramAccountId && !extractedProvider && (
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', padding: '4px 0' }}>Ningún canal vinculado</span>
-                )}
-              </div>
-            </div>
-
-            <div className="floating-input-group">
-              <input 
-                type="text" 
-                className="floating-input"
-                placeholder=" "
-                value={profile.name} 
-                onChange={e => setProfile({...profile, name: e.target.value})}
-              />
-              <label className="floating-label">Nombre del Negocio</label>
-            </div>
-
-            <div className="floating-input-group">
-              <textarea 
-                className="floating-input custom-scrollbar"
-                placeholder=" "
-                rows={4}
-                value={profile.knowledgeBase} 
-                onChange={e => setProfile({...profile, knowledgeBase: e.target.value})}
-                style={{ resize: 'none' }}
-              />
-              <label className="floating-label">Base de Conocimiento</label>
-            </div>
-
-            <div className="floating-input-group">
-              <textarea 
-                className="floating-input custom-scrollbar"
-                placeholder=" "
-                rows={3}
-                value={profile.productsCatalog} 
-                onChange={e => setProfile({...profile, productsCatalog: e.target.value})}
-                style={{ resize: 'none' }}
-              />
-              <label className="floating-label">Catálogo de Productos</label>
-            </div>
-
-            <div className="floating-input-group">
-              <textarea 
-                className="floating-input custom-scrollbar"
-                placeholder=" "
-                rows={2}
-                value={profile.persona} 
-                onChange={e => setProfile({...profile, persona: e.target.value})}
-                style={{ resize: 'none' }}
-              />
-              <label className="floating-label">Personalidad del Agente</label>
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* STEP 5: RIGHT PANE (Chat Simulator) */}
-        {onboardingStep === 5 && (
-        <div 
-          className="glass-panel-premium slide-up" 
-          style={{ 
+            flex: 1,
             width: '100%', 
-            maxWidth: 600, 
+            maxWidth: '100%', 
+            transition: 'max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
             height: '75vh', 
             display: 'flex', 
             flexDirection: 'column', 
@@ -1173,68 +1146,80 @@ function OnboardingContent() {
           }}
         >
           {/* Header */}
-          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Asistente de Configuración
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
-              Responde mis preguntas para entrenar a tu IA.
-            </p>
+          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)', backdropFilter: 'blur(10px)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '1.4rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                Asistente de Configuración
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
+                Responde mis preguntas para entrenar a tu IA.
+              </p>
+            </div>
+            {hasStarted && (
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
+              >
+                {isProfileOpen ? '▶ Ocultar Perfil' : '◀ Ver Perfil'}
+              </button>
+            )}
           </div>
 
           {/* Chat Area */}
-          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 32, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: 'var(--bg-primary)' }}>
-            {messages.map((msg) => (
-              <div key={msg.id} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <div style={{
-                  padding: '14px 18px',
-                  borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                  background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-color), #8b5cf6)' : 'var(--bg-secondary)',
-                  color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
-                  border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none',
-                  boxShadow: msg.role === 'user' ? '0 8px 24px rgba(139, 92, 246, 0.25)' : '0 4px 12px rgba(0,0,0,0.1)',
-                  backdropFilter: msg.role === 'model' ? 'blur(10px)' : 'none'
-                }}>
-                  <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.95rem' }}>{msg.parts[0].text}</p>
-                </div>
-                
-                {msg.options && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                    {msg.options.map((opt, idx) => (
-                      <button 
-                        key={idx} 
-                        style={{ 
-                          fontSize: '0.85rem', padding: '10px 18px', borderRadius: 'var(--border-radius-full)', 
-                          backgroundColor: 'var(--border-color)', border: '1px solid rgba(255,255,255,0.2)', 
-                          color: msg.role === 'user' ? '#fff' : 'var(--text-primary)', cursor: 'pointer', transition: 'background 0.2s' 
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
-                        onClick={() => handleSend(opt)}
-                      >
-                        {opt}
-                      </button>
-                    ))}
+          <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '32px 0', backgroundColor: 'var(--bg-primary)' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24, padding: '0 32px' }}>
+              {messages.map((msg) => (
+                <div key={msg.id} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                  <div style={{
+                    padding: '14px 18px',
+                    borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                    background: msg.role === 'user' ? 'linear-gradient(135deg, var(--accent-color), #8b5cf6)' : 'var(--bg-secondary)',
+                    color: msg.role === 'user' ? '#fff' : 'var(--text-primary)',
+                    border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none',
+                    boxShadow: msg.role === 'user' ? '0 8px 24px rgba(139, 92, 246, 0.25)' : '0 4px 12px rgba(0,0,0,0.1)',
+                    backdropFilter: msg.role === 'model' ? 'blur(10px)' : 'none'
+                  }}>
+                    <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.95rem' }}>{msg.parts[0].text}</p>
                   </div>
-                )}
-              </div>
-            ))}
-            {isLoading && !isCreating && (
-              <div style={{ alignSelf: 'flex-start', padding: '14px 20px', borderRadius: '20px 20px 20px 4px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
-                <div className="typing-indicator" style={{ display: 'flex', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
-                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
-                  <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
+                  
+                  {msg.options && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                      {msg.options.map((opt, idx) => (
+                        <button 
+                          key={idx} 
+                          style={{ 
+                            fontSize: '0.85rem', padding: '10px 18px', borderRadius: 'var(--border-radius-full)', 
+                            backgroundColor: 'var(--border-color)', border: '1px solid rgba(255,255,255,0.2)', 
+                            color: msg.role === 'user' ? '#fff' : 'var(--text-primary)', cursor: 'pointer', transition: 'background 0.2s' 
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'}
+                          onClick={() => handleSend(opt)}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-            {isCreating && (
-              <div style={{ alignSelf: 'center', padding: '14px 24px', borderRadius: 24, backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, backdropFilter: 'blur(10px)' }}>
-                <div className="spinner-small" style={{ borderTopColor: '#10b981' }}></div>
-                {t('onboarding.configuring')}
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              ))}
+              {isLoading && !isCreating && (
+                <div style={{ alignSelf: 'flex-start', padding: '14px 20px', borderRadius: '20px 20px 20px 4px', backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                  <div className="typing-indicator" style={{ display: 'flex', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both' }}></span>
+                    <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.2s' }}></span>
+                    <span style={{ width: 6, height: 6, backgroundColor: 'var(--accent-color)', borderRadius: '50%', animation: 'bounce 1.4s infinite ease-in-out both', animationDelay: '0.4s' }}></span>
+                  </div>
+                </div>
+              )}
+              {isCreating && (
+                <div style={{ alignSelf: 'center', padding: '14px 24px', borderRadius: 24, backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, backdropFilter: 'blur(10px)' }}>
+                  <div className="spinner-small" style={{ borderTopColor: '#10b981' }}></div>
+                  {t('onboarding.configuring')}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Input Area */}
@@ -1287,7 +1272,211 @@ function OnboardingContent() {
         </div>
         )}
 
+        {/* STEP 5: Profile Area */}
+        {onboardingStep === 5 && (
+        <div 
+          className="glass-panel-premium slide-up" 
+          style={{ 
+            flex: (hasStarted && isProfileOpen) ? '0 0 35%' : 'none',
+            minWidth: (hasStarted && isProfileOpen) ? '350px' : '0px',
+            maxWidth: (hasStarted && isProfileOpen) ? '500px' : '0px',
+            width: (hasStarted && isProfileOpen) ? 'auto' : '0px',
+            opacity: (hasStarted && isProfileOpen) ? 1 : 0,
+            visibility: (hasStarted && isProfileOpen) ? 'visible' : 'hidden',
+            height: '75vh', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: (hasStarted && isProfileOpen) ? 32 : 0, 
+            overflow: 'hidden',
+            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            border: (hasStarted && isProfileOpen) ? '1px solid var(--border-color)' : 'none',
+          }}
+        >
+          <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>📄 Perfil en Construcción</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Charlo actualiza esto mientras conversan.</p>
+          </div>
+
+          <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
+            
+            {/* Canales Conectados */}
+            <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Canales Conectados
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {phoneId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> WhatsApp
+                    <button onClick={() => setPhoneId('')} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {facebookPageId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Messenger
+                    <button onClick={() => setFacebookPageId(null)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {instagramAccountId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.3)', color: '#ec4899', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Instagram
+                    <button onClick={() => setInstagramAccountId(null)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {extractedProvider === 'Google' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.3)', color: '#ea4335', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> Google
+                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#ea4335', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {(extractedProvider === 'Website' || extractedProvider === 'Documento') && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', color: '#8b5cf6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
+                    <span>✅</span> {extractedProvider}
+                    <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#8b5cf6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
+                  </div>
+                )}
+                {!phoneId && !facebookPageId && !instagramAccountId && !extractedProvider && (
+                  <span style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', padding: '4px 0' }}>Ningún canal vinculado</span>
+                )}
+              </div>
+            </div>
+
+            {/* Name Input */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>Nombre del Negocio</label>
+              <input type="text" style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }} value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} placeholder="Tu Negocio" />
+            </div>
+
+            {/* Documentos */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Base de Conocimiento
+              </label>
+              {profile.topics.map(t => (
+                <button 
+                  key={t.id}
+                  onClick={() => { setEditingTopic(t); setIsTopicModalOpen(true); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                    textAlign: 'left',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: '1.2rem' }}>{t.id === 'identidad' ? '👤' : t.id === 'catalogo' ? '📦' : '📄'}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{t.title}</span>
+                  </div>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Editar →</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        )}
+
       </div>
+
+      {/* Modal para Editar/Ver Documento */}
+      {isTopicModalOpen && editingTopic && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: 24
+        }}>
+          <div className="glass-panel-premium" style={{
+            width: '100%',
+            maxWidth: 800,
+            height: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: '1.5rem' }}>{editingTopic.id === 'identidad' ? '👤' : editingTopic.id === 'catalogo' ? '📦' : '📄'}</span>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>{editingTopic.title}</h2>
+              </div>
+              <button 
+                onClick={() => setIsTopicModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.5rem', transition: 'color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+                Contenido del Documento (Markdown Soportado)
+              </label>
+              <textarea 
+                className="custom-scrollbar"
+                value={editingTopic.content}
+                onChange={e => setEditingTopic({ ...editingTopic, content: e.target.value })}
+                style={{
+                  width: '100%',
+                  flex: 1,
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 12,
+                  padding: 24,
+                  color: 'var(--text-primary)',
+                  fontSize: '0.95rem',
+                  lineHeight: '1.6',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  resize: 'none',
+                  outline: 'none',
+                  boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)'
+                }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-color)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+              />
+            </div>
+            
+            {/* Footer */}
+            <div style={{ padding: '20px 32px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: 16 }}>
+              <button 
+                onClick={() => setIsTopicModalOpen(false)}
+                style={{ padding: '10px 20px', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  applyProfileUpdate({ topics: [editingTopic] });
+                  setIsTopicModalOpen(false);
+                }}
+                style={{ padding: '10px 24px', background: 'var(--accent-color)', border: 'none', borderRadius: 8, color: 'white', fontWeight: 600, cursor: 'pointer', transition: 'filter 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(1.1)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <style>{`
         /* Glassmorphism */
         .glass-panel-premium {
@@ -1526,7 +1715,19 @@ function OnboardingContent() {
 
             <button className="btn-primary" onClick={() => {
               // Update all products to use the selected base currency if none was provided
-              setExtractedProducts(prev => prev.map(p => ({...p, currency: p.currency || baseCurrency})));
+              const updatedProducts = extractedProducts.map(p => ({...p, currency: p.currency || baseCurrency}));
+              setExtractedProducts(updatedProducts);
+              
+              let catalogMarkdown = "### Productos y Servicios Extraídos\n\n";
+              updatedProducts.forEach(p => {
+                catalogMarkdown += `- **${p.name}**: ${p.price ? p.price + ' ' + (p.currency || baseCurrency) : 'Consultar'}\n`;
+                if (p.description) catalogMarkdown += `  ${p.description}\n`;
+              });
+              
+              applyProfileUpdate({
+                topics: [{ id: 'catalogo', title: 'Catálogo de Productos', content: catalogMarkdown }]
+              });
+
               setShowProductReview(false);
               if (onboardingStep === 4) {
                 setOnboardingStep(5);
@@ -1568,6 +1769,12 @@ function OnboardingContent() {
       )}
     </div>
   );
+}
+
+export interface Topic {
+  id: string;
+  title: string;
+  content: string;
 }
 
 export default function OnboardingPage() { return ( <Suspense fallback={<div>Loading Onboarding...</div>}> <OnboardingContent /> </Suspense> ); }

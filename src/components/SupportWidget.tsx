@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, User, Bot, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Message {
   id: string;
@@ -12,6 +13,7 @@ interface Message {
 
 export default function SupportWidget() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -48,7 +50,7 @@ export default function SupportWidget() {
     // Add initial greeting if empty
     if (!isOpen && messages.length === 0) {
       setMessages([
-        { id: '1', role: 'model', content: "Hi there! 👋 I'm the Charlo Support Agent. How can I help you today?" }
+        { id: '1', role: 'model', content: t('supportWidget.initialGreeting') }
       ]);
     }
   };
@@ -83,7 +85,7 @@ export default function SupportWidget() {
       const aiMessage: Message = { 
         id: (Date.now() + 1).toString(), 
         role: 'model', 
-        content: data.reply || "Sorry, I couldn't process that request." 
+        content: data.reply || t('supportWidget.fallbackReply') 
       };
       
       setMessages(prev => [...prev, aiMessage]);
@@ -93,7 +95,7 @@ export default function SupportWidget() {
       const errorMessage: Message = { 
         id: (Date.now() + 1).toString(), 
         role: 'model', 
-        content: "Oops! Something went wrong connecting to the support server. Please try again." 
+        content: t('supportWidget.errorConnecting') 
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -104,94 +106,157 @@ export default function SupportWidget() {
   if (!user) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 50, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
       {/* Chat Window */}
       <div 
-        className={`transition-all duration-300 ease-in-out origin-bottom-right ${
-          isOpen ? 'scale-100 opacity-100 mb-4' : 'scale-0 opacity-0 h-0 w-0 overflow-hidden mb-0'
-        }`}
+        style={{
+          transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          transformOrigin: 'bottom right',
+          transform: isOpen ? 'scale(1)' : 'scale(0)',
+          opacity: isOpen ? 1 : 0,
+          height: isOpen ? '500px' : '0px',
+          width: isOpen ? '350px' : '0px',
+          maxHeight: '80vh',
+          marginBottom: isOpen ? 16 : 0,
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--bg-secondary)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid var(--border-color)',
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+          borderRadius: 24,
+          overflow: 'hidden'
+        }}
       >
-        <div className="w-[350px] sm:w-[400px] h-[500px] max-h-[80vh] flex flex-col bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 shadow-2xl rounded-2xl overflow-hidden">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                <Bot size={20} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Charlo Support</h3>
-                <p className="text-xs opacity-80">We typically reply instantly</p>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--accent-color)', color: 'white' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bot size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>{t('supportWidget.title')}</h3>
+              <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9 }}>{t('supportWidget.subtitle')}</p>
+            </div>
+          </div>
+          <button 
+            onClick={toggleWidget} 
+            style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, transition: 'background 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Messages Area */}
+        <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {messages.map((msg) => (
+            <div key={msg.id} style={{ display: 'flex', gap: 8, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              {msg.role === 'model' && (
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 4 }}>
+                  <Bot size={16} color="var(--accent-color)" />
+                </div>
+              )}
+              <div 
+                style={{
+                  maxWidth: '80%',
+                  padding: '12px 16px',
+                  borderRadius: 16,
+                  fontSize: '0.9rem',
+                  lineHeight: '1.4',
+                  background: msg.role === 'user' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
+                  color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
+                  borderTopRightRadius: msg.role === 'user' ? 4 : 16,
+                  borderTopLeftRadius: msg.role === 'model' ? 4 : 16,
+                  border: msg.role === 'model' ? '1px solid var(--border-color)' : 'none'
+                }}
+              >
+                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
               </div>
             </div>
-            <button onClick={toggleWidget} className="p-1 hover:bg-white/20 rounded-md transition-colors">
-              <X size={20} />
+          ))}
+          {isLoading && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-start' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 4 }}>
+                <Bot size={16} color="var(--accent-color)" />
+              </div>
+              <div style={{ maxWidth: '80%', padding: '12px 16px', borderRadius: 16, borderTopLeftRadius: 4, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Loader2 size={16} className="animate-spin" color="var(--text-secondary)" />
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{t('supportWidget.typing')}</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div style={{ padding: 12, borderTop: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
+          <form onSubmit={sendMessage} style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('supportWidget.inputPlaceholder')}
+              disabled={isLoading}
+              style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 24,
+                padding: '10px 16px',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-color)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
+            />
+            <button 
+              type="submit" 
+              disabled={!input.trim() || isLoading}
+              style={{
+                padding: 10,
+                borderRadius: '50%',
+                background: (!input.trim() || isLoading) ? 'rgba(255,255,255,0.1)' : 'var(--accent-color)',
+                color: (!input.trim() || isLoading) ? 'var(--text-secondary)' : 'white',
+                border: 'none',
+                cursor: (!input.trim() || isLoading) ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background 0.2s'
+              }}
+            >
+              <Send size={18} />
             </button>
-          </div>
-
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'model' && (
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot size={14} className="text-primary" />
-                  </div>
-                )}
-                <div 
-                  className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-tl-sm'
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex gap-2 justify-start">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                  <Bot size={14} className="text-primary" />
-                </div>
-                <div className="max-w-[80%] p-3 rounded-2xl text-sm bg-gray-100 dark:bg-gray-800 rounded-tl-sm flex items-center gap-2">
-                  <Loader2 size={16} className="animate-spin text-gray-500" />
-                  <span className="text-gray-500 text-xs">Charlo is typing...</span>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className="p-3 bg-white/50 dark:bg-gray-900/50 border-t border-gray-200/50 dark:border-gray-800/50">
-            <form onSubmit={sendMessage} className="flex items-center gap-2 relative">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me anything..."
-                className="flex-1 bg-gray-100 dark:bg-gray-800 border-none rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-800 dark:text-gray-200 placeholder-gray-500"
-                disabled={isLoading}
-              />
-              <button 
-                type="submit" 
-                disabled={!input.trim() || isLoading}
-                className="p-2 rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                <Send size={18} />
-              </button>
-            </form>
-          </div>
+          </form>
         </div>
       </div>
 
       {/* FAB */}
       <button
         onClick={toggleWidget}
-        className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-          isOpen ? 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300' : 'bg-primary text-primary-foreground'
-        }`}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 14px 0 rgba(0,0,0,0.2)',
+          background: isOpen ? 'var(--bg-secondary)' : 'var(--accent-color)',
+          color: isOpen ? 'var(--text-primary)' : 'white',
+          border: isOpen ? '1px solid var(--border-color)' : 'none',
+          cursor: 'pointer',
+          transition: 'transform 0.2s, background 0.2s',
+          transform: 'scale(1)'
+        }}
+        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
+        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
       >
         {isOpen ? <X size={24} /> : <MessageCircle size={24} />}
       </button>

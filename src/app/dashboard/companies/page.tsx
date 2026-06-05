@@ -43,9 +43,13 @@ export default function CompaniesPage() {
     const url = editingCompany ? `/api/companies/${editingCompany.id}` : '/api/companies';
     const method = editingCompany ? 'PUT' : 'POST';
     
+    const token = await user?.getIdToken();
     await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      },
       body: JSON.stringify(formData)
     });
     
@@ -63,8 +67,20 @@ export default function CompaniesPage() {
     if (!companyToDelete) return;
     setIsDeleting(true);
     try {
-      await fetch(`/api/companies/${companyToDelete.id}`, { method: 'DELETE' });
-      await refreshCompanies();
+      const token = await user?.getIdToken();
+      const res = await fetch(`/api/companies/${companyToDelete.id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || "Error al eliminar la empresa.");
+      } else {
+        await refreshCompanies();
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error de conexión al eliminar la empresa.");
     } finally {
       setIsDeleting(false);
       setCompanyToDelete(null);
@@ -105,33 +121,83 @@ export default function CompaniesPage() {
           <h2 style={{ fontSize: '2rem', fontWeight: 600 }}>{t('companies.title')}</h2>
           <p style={{ color: 'var(--text-secondary)', marginTop: 8 }}>{t('companies.subtitle')}</p>
         </div>
-        <button className="btn-primary" onClick={() => router.push('/onboarding')}>{t('companies.newBusiness')}</button>
+        <button className="btn-primary" onClick={() => router.push('/onboarding?new=true')}>{t('companies.newBusiness')}</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-        {companies.map(c => (
-          <div key={c.id} className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-            {/* Mockup Ribbon */}
-            {c.id.startsWith('demo_') && (
-              <div style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 10px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em' }}>
-                MOCKUP
+        {companies.map(c => {
+          const isDraft = c.status === 'draft' || c.id.includes('_draft');
+          const initials = (c.name || t('companies.unnamed')).charAt(0).toUpperCase();
+          const avatarGradient = `linear-gradient(135deg, hsl(${(c.name?.length || 0) * 10 % 360}, 70%, 50%), hsl(${(c.name?.length || 0) * 20 % 360}, 70%, 30%))`;
+          
+          return (
+          <div key={c.id} className="glass-panel" style={{ padding: '24px 24px 16px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+               onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            {/* Top row: Avatar + Badges */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div style={{ 
+                width: 52, height: 52, borderRadius: '14px', 
+                background: avatarGradient,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                color: '#fff', fontSize: '1.6rem', fontWeight: 700,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}>
+                {initials}
               </div>
-            )}
-            <h3 style={{ fontSize: '1.25rem', marginBottom: 8, color: 'var(--text-primary)', fontWeight: 600, paddingRight: c.id.startsWith('demo_') ? 60 : 0 }}>{c.name || t('companies.unnamed')}</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 24, fontFamily: 'monospace' }}>{t('companies.id')}: {c.id}</p>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {isDraft && (
+                  <div style={{ background: 'rgba(148, 163, 184, 0.15)', color: 'var(--text-secondary)', padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+                    BORRADOR
+                  </div>
+                )}
+                {c.id.startsWith('demo_') && (
+                  <div style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                    MOCKUP
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Title & Subtitle */}
+            <h3 style={{ fontSize: '1.35rem', marginBottom: 6, color: 'var(--text-primary)', fontWeight: 600, letterSpacing: '-0.02em' }}>{c.name || t('companies.unnamed')}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', opacity: 0.7, fontFamily: 'monospace' }}>ID: {c.id.split('_').pop()?.substring(0, 10) || c.id}</span>
+            </div>
             
-            <div style={{ marginTop: 'auto', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <button className="btn-secondary" style={{ flex: 1, minWidth: 100 }} onClick={() => handleOpenModal(c)}>{t('companies.editConfig')}</button>
-              <button className="btn-secondary" style={{ flex: 1, minWidth: 100 }} onClick={() => handleGenerateInvite(c)}>Invite Team</button>
-              <button className="btn-secondary" style={{ padding: '0 16px', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }} onClick={() => confirmDeleteModal(c)}>{t('companies.delete')}</button>
+            {/* Actions */}
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {isDraft ? (
+                <button className="btn-primary" style={{ width: '100%', padding: '12px', fontWeight: 600 }} onClick={() => router.push(`/onboarding?draftId=${c.id}`)}>Continuar Configuración ➔</button>
+              ) : (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleOpenModal(c)}>{t('companies.editConfig')}</button>
+                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleGenerateInvite(c)}>Invitar Equipo</button>
+                </div>
+              )}
+            </div>
+
+            {/* Footer / Delete */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border-color)' }}>
+              <button 
+                onClick={() => confirmDeleteModal(c)} 
+                style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.85rem', cursor: 'pointer', opacity: 0.6, padding: '4px 8px', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.2s', borderRadius: '6px' }}
+                onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.background = 'transparent'; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                {t('companies.delete')}
+              </button>
             </div>
           </div>
-        ))}
+        )})}
         {companies.length > 0 && (
           <div 
             className="glass-panel" 
             style={{ padding: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', minHeight: 200, borderStyle: 'dashed', borderWidth: 2, borderColor: 'var(--border-color)', opacity: 0.8, transition: 'all 0.2s' }}
-            onClick={() => router.push('/onboarding')}
+            onClick={() => router.push('/onboarding?new=true')}
             onMouseOver={(e) => (e.currentTarget.style.opacity = '1', e.currentTarget.style.borderColor = 'var(--accent-color)')}
             onMouseOut={(e) => (e.currentTarget.style.opacity = '0.8', e.currentTarget.style.borderColor = 'var(--border-color)')}
           >
@@ -143,7 +209,7 @@ export default function CompaniesPage() {
           <div style={{ gridColumn: '1 / -1', padding: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: 'var(--text-secondary)', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)' }}>
             <p>{t('companies.noBusinesses')}</p>
             <div style={{ display: 'flex', gap: 16 }}>
-              <button className="btn-primary" onClick={() => router.push('/onboarding')}>
+              <button className="btn-primary" onClick={() => router.push('/onboarding?new=true')}>
                 {t('companies.createOneBusiness')}
               </button>
             </div>

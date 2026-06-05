@@ -22,7 +22,8 @@ export async function GET(request: Request) {
     }
 
     const allowedAdminEmail = process.env.ADMIN_EMAIL;
-    const isCharloAdmin = userEmail.endsWith('@charlo.ai') || userEmail === allowedAdminEmail;
+    const extraAdmins = ['lrocampoa@gmail.com'];
+    const isCharloAdmin = userEmail.endsWith('@charlo.ai') || userEmail === allowedAdminEmail || extraAdmins.includes(userEmail);
 
     if (!isCharloAdmin) {
       return NextResponse.json({ error: "Forbidden - Admins Only" }, { status: 403 });
