@@ -485,6 +485,10 @@ function OnboardingContent() {
     }
   };
 
+  const handleRemoveUrl = (index: number) => {
+    setScannedUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -932,9 +936,18 @@ function OnboardingContent() {
               {scannedUrls.length > 0 && (
                 <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'left' }}>
                   <div style={{ color: '#10b981', fontWeight: 600, marginBottom: 8 }}>✅ Páginas Escaneadas ({scannedUrls.length}/5):</div>
-                  <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     {scannedUrls.map((s, idx) => (
-                      <li key={idx} style={{ marginBottom: 4, wordBreak: 'break-all' }}>{s.url}</li>
+                      <li key={idx} style={{ marginBottom: 8, wordBreak: 'break-all', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <span style={{ marginRight: 8, flex: 1 }}>{s.url}</span>
+                        <button 
+                          onClick={() => handleRemoveUrl(idx)} 
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Eliminar enlace"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -957,16 +970,19 @@ function OnboardingContent() {
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                     <div className="spinner-small" /> Escaneando...
                   </div>
-                ) : scannedUrls.length >= 5 ? 'Límite Alcanzado' : '🌐 Escanear Sitio Web'}
+                ) : scannedUrls.length >= 5 ? 'Límite Alcanzado' : scannedUrls.length > 0 ? '🌐 Agregar otro link' : '🌐 Escanear Sitio Web'}
               </button>
 
               <button 
                 onClick={() => setOnboardingStep(4)}
                 disabled={isExtracting}
-                className="btn-secondary"
-                style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
+                className={scannedUrls.length > 0 ? "btn-primary" : "btn-secondary"}
+                style={scannedUrls.length > 0 
+                  ? { width: '100%', padding: '16px', fontSize: '1.05rem', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '12px', marginTop: 16 }
+                  : { padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }
+                }
               >
-                {scannedUrls.length > 0 ? 'Continuar al siguiente paso ➡️' : 'No tengo sitio web'}
+                {scannedUrls.length > 0 ? 'Siguiente paso ➡️' : 'No tengo sitio web'}
               </button>
             </div>
           </div>
