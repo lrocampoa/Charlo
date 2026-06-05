@@ -22,7 +22,9 @@ type Message = {
   options?: string[];
 };
 
-export default function OnboardingPage() {
+import { Suspense } from 'react';
+
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshCompanies, setSelectedCompanyId } = useCompany();
@@ -1550,3 +1552,4 @@ export default function OnboardingPage() {
   );
 }
 
+export default function OnboardingPage() { return ( <Suspense fallback={<div>Loading Onboarding...</div>}> <OnboardingContent /> </Suspense> ); }
