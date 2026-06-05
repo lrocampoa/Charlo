@@ -8,6 +8,8 @@ async function seedCharlo() {
   // The ID we will use for the widget
   const companyId = "company_charlo_official";
 
+  if (!adminDb) throw new Error("adminDb is not initialized");
+
   const companyRef = adminDb.collection('companies').doc(companyId);
   const doc = await companyRef.get();
 

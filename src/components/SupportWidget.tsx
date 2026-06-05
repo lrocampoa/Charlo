@@ -70,7 +70,7 @@ export default function SupportWidget() {
           message: userMessage.content,
           companyId: 'company_charlo_official', // Fixed Charlo Support ID
           sessionId: sessionId,
-          userId: user.uid // Passing user id for context if needed
+          userId: user?.uid // Passing user id for context if needed
         }),
       });
 
