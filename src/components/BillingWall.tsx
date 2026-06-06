@@ -7,9 +7,11 @@ import { auth } from '@/lib/firebase/config';
 interface BillingWallProps {
   companyId: string;
   onComplete: () => void;
+  currentPlan?: string;
+  limitReached?: boolean;
 }
 
-export default function BillingWall({ companyId, onComplete }: BillingWallProps) {
+export default function BillingWall({ companyId, onComplete, currentPlan = '', limitReached = false }: BillingWallProps) {
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -100,6 +102,15 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
       padding: '40px 20px', overflowY: 'auto'
     }}>
       <div style={{ textAlign: 'center', marginBottom: 40, maxWidth: 800 }}>
+        {limitReached && (
+          <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
+            <span style={{ fontSize: '1.5rem' }}>⚠️</span>
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: '4px' }}>Límite Alcanzado</strong>
+              Has alcanzado el límite de negocios disponibles en tu plan actual. Por favor, selecciona un plan superior para continuar.
+            </div>
+          </div>
+        )}
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: 16, background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           Selecciona tu Plan
         </h1>
@@ -117,8 +128,13 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 1200 }}>
         
         {/* Sandbox Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
-          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: currentPlan === 'free' ? '2px solid #fff' : '1px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff', position: 'relative' }}>
+          {currentPlan === 'free' && (
+            <div style={{ position: 'absolute', top: -12, background: '#fff', padding: '4px 12px', borderRadius: 12, fontSize: '0.8rem', fontWeight: 700, color: '#000' }}>
+              TU PLAN ACTUAL
+            </div>
+          )}
+          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative', marginTop: currentPlan === 'free' ? 12 : 0 }}>
              <Image src="/sandbox-v2.png" alt="Sandbox" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>Sandbox</h3>
@@ -140,8 +156,13 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Starter Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(0, 191, 255, 0.3)', position: 'relative', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
-          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: currentPlan === 'starter' ? '2px solid #4facfe' : '1px solid rgba(0, 191, 255, 0.3)', position: 'relative', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
+          {currentPlan === 'starter' && (
+            <div style={{ position: 'absolute', top: -12, background: 'linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)', padding: '4px 12px', borderRadius: 12, fontSize: '0.8rem', fontWeight: 700, color: '#000' }}>
+              TU PLAN ACTUAL
+            </div>
+          )}
+          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative', marginTop: currentPlan === 'starter' ? 12 : 0 }}>
             <Image src="/starter-v2.png" alt="Starter" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#4facfe' }}>Starter</h3>
@@ -164,9 +185,9 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Growth Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(16, 185, 129, 0.5)', transform: 'scale(1.05)', zIndex: 2, boxShadow: '0 20px 40px rgba(16,185,129,0.2)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: currentPlan === 'growth' ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.5)', transform: 'scale(1.05)', zIndex: 2, boxShadow: '0 20px 40px rgba(16,185,129,0.2)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff', position: 'relative' }}>
           <div style={{ position: 'absolute', top: -12, background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)', padding: '4px 12px', borderRadius: 12, fontSize: '0.8rem', fontWeight: 700, color: '#000' }}>
-            MÁS POPULAR
+            {currentPlan === 'growth' ? 'TU PLAN ACTUAL' : 'MÁS POPULAR'}
           </div>
           <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative', marginTop: 12 }}>
             <Image src="/growth-v2.png" alt="Growth" fill style={{ objectFit: 'contain' }} />
@@ -191,8 +212,13 @@ export default function BillingWall({ companyId, onComplete }: BillingWallProps)
         </div>
 
         {/* Pro Tier */}
-        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1px solid rgba(168, 85, 247, 0.3)', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
-          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative' }}>
+        <div className="glass-panel" style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'center', border: currentPlan === 'pro' ? '2px solid #a855f7' : '1px solid rgba(168, 85, 247, 0.3)', position: 'relative', backgroundColor: 'rgba(10, 15, 26, 0.95)', color: '#fff' }}>
+          {currentPlan === 'pro' && (
+            <div style={{ position: 'absolute', top: -12, background: 'linear-gradient(90deg, #a855f7 0%, #c084fc 100%)', padding: '4px 12px', borderRadius: 12, fontSize: '0.8rem', fontWeight: 700, color: '#000' }}>
+              TU PLAN ACTUAL
+            </div>
+          )}
+          <div style={{ width: 100, height: 100, marginBottom: 20, position: 'relative', marginTop: currentPlan === 'pro' ? 12 : 0 }}>
             <Image src="/pro-v2.png" alt="Pro" fill style={{ objectFit: 'contain' }} />
           </div>
           <h3 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8, color: '#a855f7' }}>Pro</h3>

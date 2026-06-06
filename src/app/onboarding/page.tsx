@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
 import { GoogleAuthProvider, FacebookAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import BillingWall from '@/components/BillingWall';
 
 declare global {
   interface Window {
@@ -74,6 +75,10 @@ function OnboardingContent() {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [scannedUrls, setScannedUrls] = useState<Array<{ url: string, contentHash: string, docType: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Billing Wall State
+  const [showBillingWall, setShowBillingWall] = useState(false);
+  const [currentTier, setCurrentTier] = useState('');
   
   // Asset Selection States
   const [availablePhones, setAvailablePhones] = useState<any[]>([]);
@@ -293,7 +298,30 @@ function OnboardingContent() {
     hasPaymentMethod, extractedProducts, hasStarted, scannedUrls, dbDraftId, user
   ]);
 
-  const handleConfirmAssetSelection = () => {
+  const extractMetaCatalog = async (token: string, phone: string | null, page: string | null) => {
+    try {
+      const res = await fetch('/api/onboarding/extract-meta-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metaToken: token, whatsappPhoneNumberId: phone, facebookPageId: page })
+      });
+      const data = await res.json();
+      if (data.success && data.extractedProducts && data.extractedProducts.length > 0) {
+        setExtractedProducts(prev => {
+          // Evitar duplicados por ID
+          const existingIds = new Set(prev.map(p => p.id));
+          const newProducts = data.extractedProducts.filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...newProducts];
+        });
+        setShowProductReview(true);
+      }
+    } catch (e) {
+      console.error("Error extrayendo catálogo de Meta:", e);
+    }
+  };
+
+  const handleConfirmAssetSelection = async () => {
+    setIsExtracting(true);
     const data = tempMetaData;
     const chosenPhone = availablePhones.find(p => p.id === selectedPhoneId);
     const chosenPage = availablePages.find(p => p.id === selectedPageId);
@@ -322,6 +350,10 @@ function OnboardingContent() {
     applyProfileUpdate(update);
     setExtractedProvider('Meta');
     setShowAssetSelection(false);
+    
+    await extractMetaCatalog(data.accessToken, chosenPhone?.id || null, chosenPage?.id || null);
+    
+    setIsExtracting(false);
     setOnboardingStep(2);
   };
 
@@ -453,6 +485,9 @@ function OnboardingContent() {
                   
                   applyProfileUpdate(update);
                   setExtractedProvider('Meta');
+                  
+                  await extractMetaCatalog(data.accessToken, singlePhone?.id || null, singlePage?.id || null);
+                  
                   setIsExtracting(false);
                   setOnboardingStep(2);
                 }
@@ -680,7 +715,15 @@ function OnboardingContent() {
         body: JSON.stringify({ 
           message: text, 
           history: currentHistory, 
-          profileState: profile,
+          profileState: {
+            ...profile,
+            connectedChannels: {
+              metaToken: !!metaToken,
+              whatsapp: !!phoneId,
+              messenger: !!facebookPageId,
+              instagram: !!instagramAccountId
+            }
+          },
           userContext: {
             name: user?.displayName || "Unknown",
             email: user?.email || "Unknown"
@@ -734,9 +777,13 @@ function OnboardingContent() {
   const handleFinalSubmit = async (skipMeta: boolean) => {
     setIsCreating(true);
     try {
+      const authToken = await user?.getIdToken();
       const createRes = await fetch('/api/companies', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
         body: JSON.stringify({
           name: finalBusinessArgs?.name || profile.name,
           persona: (finalBusinessArgs?.topics || profile.topics).find((t: Topic) => t.id === 'identidad')?.content || '',
@@ -777,6 +824,34 @@ function OnboardingContent() {
         await refreshCompanies();
         setSelectedCompanyId(newCompany.id);
         router.push('/dashboard/companies');
+      } else {
+        const errText = await createRes.text();
+        // Parse limit error: "Has alcanzado el límite de empresas para tu plan (FREE). Límite: 1."
+        let isLimitError = false;
+        let tier = 'free';
+        try {
+          const errObj = JSON.parse(errText);
+          if (errObj.error && errObj.error.includes("límite de empresas")) {
+            isLimitError = true;
+            const match = errObj.error.match(/tu plan \((.*?)\)/i);
+            if (match) tier = match[1].toLowerCase();
+          }
+        } catch(e) {
+           if (errText.includes("límite de empresas")) {
+             isLimitError = true;
+             const match = errText.match(/tu plan \((.*?)\)/i);
+             if (match) tier = match[1].toLowerCase();
+           }
+        }
+
+        if (isLimitError) {
+          setCurrentTier(tier);
+          setShowBillingWall(true);
+          setIsCreating(false);
+          return; // Stop execution to let user interact with paywall
+        }
+
+        throw new Error(errText || "Error creando empresa");
       }
     } catch (err) {
       console.error("Failed to provision business:", err);
@@ -1307,27 +1382,51 @@ function OnboardingContent() {
                 Canales Conectados
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {metaToken && (
+                  <div style={{ padding: '16px', borderRadius: '12px', marginBottom: '24px', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      ✅ {(() => {
+                        const channels = [];
+                        if (phoneId) channels.push('WhatsApp');
+                        if (facebookPageId) channels.push('Messenger');
+                        if (instagramAccountId) channels.push('Instagram');
+                        if (channels.length === 0) return 'Cuenta de Meta configurada exitosamente.';
+                        if (channels.length === 1) return `Cuenta de Meta y ${channels[0]} configurada exitosamente.`;
+                        if (channels.length === 2) return `Cuenta de Meta, ${channels[0]} y ${channels[1]} configurada exitosamente.`;
+                        return `Cuenta de Meta, ${channels.slice(0, -1).join(', ')} y ${channels[channels.length - 1]} configurada exitosamente.`;
+                      })()}
+                    </div>
+                  </div>
+                )}
                 {phoneId && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> WhatsApp
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginTop: 1 }}>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                    </svg> WhatsApp
                     <button onClick={() => setPhoneId('')} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
                   </div>
                 )}
                 {facebookPageId && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#3b82f6', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Messenger
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginTop: 1 }}>
+                      <path d="M12 0C5.373 0 0 4.974 0 11.111c0 3.498 1.744 6.614 4.469 8.654V24l4.088-2.242c1.092.301 2.246.464 3.443.464 6.627 0 12-4.975 12-11.11S18.627 0 12 0zm1.191 14.963l-3.055-3.259-5.963 3.259 6.559-6.963 3.13 3.259 5.888-3.259-6.559 6.963z"/>
+                    </svg> Messenger
                     <button onClick={() => setFacebookPageId(null)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
                   </div>
                 )}
                 {instagramAccountId && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(236, 72, 153, 0.1)', border: '1px solid rgba(236, 72, 153, 0.3)', color: '#ec4899', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Instagram
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginTop: 1 }}>
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm5.838-10.597a1.44 1.44 0 10-2.88 0 1.44 1.44 0 002.88 0z"/>
+                    </svg> Instagram
                     <button onClick={() => setInstagramAccountId(null)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
                   </div>
                 )}
                 {extractedProvider === 'Google' && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(234, 67, 53, 0.1)', border: '1px solid rgba(234, 67, 53, 0.3)', color: '#ea4335', padding: '6px 12px', borderRadius: '16px', fontSize: '0.8rem' }}>
-                    <span>✅</span> Google
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginTop: 1 }}>
+                      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/>
+                    </svg> Google
                     <button onClick={() => setExtractedProvider(null)} style={{ background: 'none', border: 'none', color: '#ea4335', cursor: 'pointer', marginLeft: 4, opacity: 0.7 }}>✕</button>
                   </div>
                 )}
@@ -1768,6 +1867,15 @@ function OnboardingContent() {
             </button>
           </div>
         </div>
+      )}
+      
+      {showBillingWall && (
+        <BillingWall 
+          companyId="" 
+          currentPlan={currentTier}
+          limitReached={true}
+          onComplete={() => setShowBillingWall(false)} 
+        />
       )}
     </div>
   );

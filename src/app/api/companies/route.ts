@@ -78,7 +78,7 @@ export async function POST(request: Request) {
 
     // Fetch existing companies owned by this user
     const existingCompanies = await getCompanies(userId);
-    const ownedCompanies = existingCompanies.filter((c: any) => c.ownerId === userId && c.status !== 'draft');
+    const ownedCompanies = existingCompanies.filter((c: any) => c.ownerId === userId && c.status !== 'draft' && !c.id.startsWith('demo_'));
 
     if (ownedCompanies.length >= maxBusinesses && (status === 'active' || status === 'trialing')) {
       return NextResponse.json({ 
