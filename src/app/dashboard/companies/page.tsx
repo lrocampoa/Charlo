@@ -126,7 +126,7 @@ export default function CompaniesPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
         {companies.map(c => {
-          const isDraft = c.status === 'draft' || c.id.includes('_draft');
+          const isDraft = c.status === 'draft';
           const initials = (c.name || t('companies.unnamed')).charAt(0).toUpperCase();
           const avatarGradient = `linear-gradient(135deg, hsl(${(c.name?.length || 0) * 10 % 360}, 70%, 50%), hsl(${(c.name?.length || 0) * 20 % 360}, 70%, 30%))`;
           
@@ -163,8 +163,14 @@ export default function CompaniesPage() {
 
             {/* Title & Subtitle */}
             <h3 style={{ fontSize: '1.35rem', marginBottom: 6, color: 'var(--text-primary)', fontWeight: 600, letterSpacing: '-0.02em' }}>{c.name || t('companies.unnamed')}</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 24 }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', opacity: 0.7, fontFamily: 'monospace' }}>ID: {c.id.split('_').pop()?.substring(0, 10) || c.id}</span>
+              {c.whatsappPhoneNumberId && (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', opacity: 0.7, fontFamily: 'monospace' }}>WA ID: {c.whatsappPhoneNumberId}</span>
+              )}
+              {c.whatsappNumber && (
+                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', opacity: 0.7, fontFamily: 'monospace' }}>Tel: {c.whatsappNumber}</span>
+              )}
             </div>
             
             {/* Actions */}

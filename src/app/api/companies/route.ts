@@ -70,11 +70,11 @@ export async function POST(request: Request) {
     const status = userDoc?.subscription?.status || 'active';
     
     const maxBusinesses = {
-      'free': 1,
+      'free': 100, // Temporarily increased for testing
       'starter': 2,
       'growth': 5,
       'pro': 10
-    }[tier as 'free'|'starter'|'growth'|'pro'] || 1;
+    }[tier as 'free'|'starter'|'growth'|'pro'] || 100;
 
     // Fetch existing companies owned by this user
     const existingCompanies = await getCompanies(userId);

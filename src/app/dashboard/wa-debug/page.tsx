@@ -6,10 +6,12 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function WADebugPage() {
   const { user } = useAuth();
+  const [companies, setCompanies] = useState<any[]>([]);
   const [companyId, setCompanyId] = useState('');
   const [token, setToken] = useState('');
   const [phoneId, setPhoneId] = useState('');
   const [wabaId, setWabaId] = useState('');
+  const [testPhone, setTestPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -18,12 +20,14 @@ export default function WADebugPage() {
       user.getIdToken().then(token => {
         fetch('/api/companies', {
           headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.json()).then(companies => {
-          if (companies.length > 0) {
-            setCompanyId(companies[0].id);
-            if (companies[0].metaToken) setToken(companies[0].metaToken);
-            if (companies[0].whatsappPhoneNumberId) setPhoneId(companies[0].whatsappPhoneNumberId);
-            if (companies[0].wabaId) setWabaId(companies[0].wabaId);
+        }).then(res => res.json()).then(data => {
+          if (data.companies && data.companies.length > 0) {
+            setCompanies(data.companies);
+            setCompanyId(data.companies[0].id);
+            if (data.companies[0].metaAccessToken) setToken(data.companies[0].metaAccessToken);
+            if (data.companies[0].whatsappPhoneNumberId) setPhoneId(data.companies[0].whatsappPhoneNumberId);
+            if (data.companies[0].wabaId) setWabaId(data.companies[0].wabaId);
+            if (data.companies[0].testPhoneNumber) setTestPhone(data.companies[0].testPhoneNumber);
           }
         });
       });
@@ -42,9 +46,10 @@ export default function WADebugPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          metaToken: token,
+          metaAccessToken: token,
           whatsappPhoneNumberId: phoneId,
           wabaId: wabaId,
+          testPhoneNumber: testPhone
         })
       });
       if (!res.ok) {
@@ -106,8 +111,23 @@ export default function WADebugPage() {
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Company ID Activa</label>
-            <input className="w-full border p-2 rounded" value={companyId} disabled />
+            <label className="block text-sm font-medium mb-1">Selecciona la Empresa</label>
+            <select 
+              className="w-full border p-2 rounded" 
+              value={companyId} 
+              onChange={(e) => {
+                setCompanyId(e.target.value);
+                const comp = companies.find(c => c.id === e.target.value);
+                if (comp) {
+                  setToken(comp.metaAccessToken || '');
+                  setPhoneId(comp.whatsappPhoneNumberId || '');
+                  setWabaId(comp.wabaId || '');
+                  setTestPhone(comp.testPhoneNumber || '');
+                }
+              }}
+            >
+              {companies.map(c => <option key={c.id} value={c.id}>{c.businessName || c.id}</option>)}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Temporary Access Token (System User Token)</label>
@@ -121,8 +141,13 @@ export default function WADebugPage() {
             <label className="block text-sm font-medium mb-1">WhatsApp Business Account (WABA) ID</label>
             <input className="w-full border p-2 rounded" value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="0987654321" />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Tu Número de Teléfono (Para modo Sandbox/Pruebas)</label>
+            <input className="w-full border p-2 rounded" value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="Ejemplo: 50688888888 (con código de país, sin +)" />
+            <p className="text-xs text-gray-500 mt-1">Como estás en el plan gratis, el sistema solo responderá a este número de teléfono. Asegúrate de incluir el código de país.</p>
+          </div>
           
-          <div className="flex gap-4 pt-4">
+          <div className="flex gap-4 mt-6">
             <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50" onClick={handleSave} disabled={loading || !companyId}>
               {loading ? 'Guardando...' : '1. Inyectar Credenciales'}
             </button>

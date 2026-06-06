@@ -367,7 +367,7 @@ export async function POST(request: Request) {
               );
             }
 
-            if (response && accessToken) {
+            if (!response) {
                console.log("🔇 No response from AI (likely human_handling mode). Skipping Meta API call.");
                continue; // Move to next change
             }
