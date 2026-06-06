@@ -11,6 +11,7 @@ export default function Inbox() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [currentMessages, setCurrentMessages] = useState<any[]>([]);
   const [isViewingArchived, setIsViewingArchived] = useState(false);
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
@@ -87,10 +88,37 @@ export default function Inbox() {
     return () => unsubscribe();
   }, [selectedCompanyId]);
 
+  // Fetch live messages for selected session
+  useEffect(() => {
+    if (!selectedSessionId || !db) {
+      setCurrentMessages([]);
+      return;
+    }
+
+    const docId = selectedSessionId;
+    const q = query(
+      collection(db, 'sessions', docId, 'messages')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const liveMessages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      liveMessages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      
+      // Merge with legacy history if it exists
+      const session = sessions.find(s => s.id === selectedSessionId);
+      const legacyHistory = session?.history || [];
+      
+      const allMessages = [...legacyHistory, ...liveMessages];
+      setCurrentMessages(allMessages);
+    });
+
+    return () => unsubscribe();
+  }, [selectedSessionId, db, sessions]);
+
   // Auto-scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedSession?.history]);
+  }, [currentMessages]);
 
   const handleTakeOver = async () => {
     if (!selectedSession || !db) return;
@@ -301,7 +329,7 @@ export default function Inbox() {
               </div>
               
               <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {(selectedSession.history || []).map((msg: any, i: number) => {
+                {(currentMessages || []).map((msg: any, i: number) => {
                   const isUser = msg.role === 'user';
                   const isHumanRep = msg.role === 'human';
                   
@@ -343,6 +371,22 @@ export default function Inbox() {
                         {isHumanRep && <span style={{ color: '#60a5fa', fontWeight: 600 }}>👤 Sent by Human</span>}
                         {!isUser && !isHumanRep && <span style={{ color: '#a855f7', fontWeight: 600 }}>✨ Sent by AI</span>}
                         <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        {!isUser && msg.status && (
+                          <span style={{ display: 'flex', alignItems: 'center' }} title={msg.status}>
+                            {msg.status === 'sent' && (
+                              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#9ca3af' }}><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            )}
+                            {msg.status === 'delivered' && (
+                              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#9ca3af' }}><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 12 15 17"></polyline></svg>
+                            )}
+                            {msg.status === 'read' && (
+                              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#3b82f6' }}><polyline points="20 6 9 17 4 12"></polyline><polyline points="20 12 15 17"></polyline></svg>
+                            )}
+                            {msg.status === 'failed' && (
+                              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ef4444' }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );

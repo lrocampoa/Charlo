@@ -285,7 +285,14 @@ export async function getSessionHistory(companyId: string, sessionId: string) {
   if (!doc.exists) return [];
   
   const data = doc.data();
-  const history = data?.history || [];
+  let history = data?.history || []; // Legacy array
+
+  // Fetch from new messages subcollection
+  const messagesSnapshot = await getDb().collection('sessions').doc(docId).collection('messages').orderBy('timestamp', 'asc').get();
+  const subcollectionMessages = messagesSnapshot.docs.map(m => m.data());
+  
+  // Combine legacy and new messages (assuming we don't migrate legacy ones to avoid duplicate cost)
+  history = [...history, ...subcollectionMessages];
   
   const twentyFourHoursAgo = Date.now() - (24 * 60 * 60 * 1000);
   const recentHistory = history.filter((msg: any) => msg.timestamp >= twentyFourHoursAgo);
@@ -309,7 +316,17 @@ export async function getRawSessionHistory(companyId: string, sessionId: string)
   const docId = `${companyId}_${sessionId}`;
   const doc = await getDb().collection('sessions').doc(docId).get();
   if (!doc.exists) return null;
-  return doc.data();
+  
+  const data = doc.data();
+  if (!data) return null;
+  let history = data?.history || [];
+
+  const messagesSnapshot = await getDb().collection('sessions').doc(docId).collection('messages').orderBy('timestamp', 'asc').get();
+  const subcollectionMessages = messagesSnapshot.docs.map(m => m.data());
+  
+  data.history = [...history, ...subcollectionMessages];
+  
+  return data;
 }
 
 export async function saveSessionMessage(
@@ -318,38 +335,71 @@ export async function saveSessionMessage(
   role: "user" | "model" | "human", 
   text: string,
   platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp",
-  customerPhone?: string
+  customerPhone?: string,
+  messageId?: string
 ) {
   const docId = `${companyId}_${sessionId}`;
+  const docRef = getDb().collection('sessions').doc(docId);
+  const messagesRef = docRef.collection('messages');
+  
+  // Use provided messageId (e.g. wamid from Meta) or auto-generate one
+  const msgDocRef = messageId ? messagesRef.doc(messageId) : messagesRef.doc();
   
   const newMessage = {
+    id: msgDocRef.id,
     role,
     parts: [{ text }],
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    status: role === 'model' || role === 'human' ? 'sent' : 'received'
   };
 
-  const docRef = getDb().collection('sessions').doc(docId);
   const doc = await docRef.get();
   
+  // Create or update the session document metadata
   if (!doc.exists) {
     await docRef.set({
       companyId,
       sessionId,
       customerPhone: customerPhone || sessionId,
       platform,
-      status: 'ai_handling', // Default status for new chats
+      status: 'ai_handling',
       lastMessage: text,
-      history: [newMessage],
       lastUpdated: new Date().toISOString(),
       updatedAt: Date.now()
     });
   } else {
     await docRef.update({
-      history: FieldValue.arrayUnion(newMessage),
       lastMessage: text,
       lastUpdated: new Date().toISOString(),
       updatedAt: Date.now()
     });
+  }
+
+  // Save the message in the subcollection
+  await msgDocRef.set(newMessage);
+  return msgDocRef.id;
+}
+
+export async function updateMessageStatus(companyId: string, sessionId: string, messageId: string, status: "sent" | "delivered" | "read" | "failed") {
+  const docId = `${companyId}_${sessionId}`;
+  const messagesRef = getDb().collection('sessions').doc(docId).collection('messages');
+  
+  try {
+    // Search by wamid field
+    const snapshot = await messagesRef.where('wamid', '==', messageId).get();
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      await doc.ref.update({ status });
+    } else {
+      // Fallback: try by document ID just in case
+      const msgRef = messagesRef.doc(messageId);
+      const msgDoc = await msgRef.get();
+      if (msgDoc.exists) {
+        await msgRef.update({ status });
+      }
+    }
+  } catch (e) {
+    console.warn(`Failed to update status for message ${messageId} to ${status}`);
   }
 }
 

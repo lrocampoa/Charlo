@@ -96,8 +96,8 @@ export async function processUserMessage(
     response = await handlePaymentImage(companyId, sessionId, imagePart);
     
     // Save Interaction for model only (user message was saved above)
-    await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
-    return { routing: { intent: "PAYMENT" }, response };
+    const docId = await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
+    return { routing: { intent: "PAYMENT" }, response, messageDocId: docId };
   }
   
   // 4. Check active agents
@@ -148,7 +148,7 @@ export async function processUserMessage(
   // 5. Save Interaction to Short-Term Memory
   // Note: user message is already saved at the beginning of this function.
   // We only save the model response here.
-  await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
+  const messageDocId = await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
 
   // 6. Trigger Summarizer & QA Agents Asynchronously
   // We do not await these, we just let them run in the background.
@@ -160,6 +160,7 @@ export async function processUserMessage(
 
   return {
     routing,
-    response
+    response,
+    messageDocId
   };
 }

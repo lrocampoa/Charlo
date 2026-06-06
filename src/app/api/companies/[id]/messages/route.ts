@@ -23,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // 2. Save Human Message to Firestore
-    await saveSessionMessage(companyId, sessionId, "human", text, platform, customerPhone || sessionId);
+    const messageDocId = await saveSessionMessage(companyId, sessionId, "human", text, platform, customerPhone || sessionId);
     
     // 3. Ensure the session status is human_handling
     await updateSessionStatus(companyId, sessionId, "human_handling");
@@ -48,9 +48,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             })
           });
           
-          if (!res.ok) {
-             console.error("Meta API Error:", await res.text());
-             // We still return success because it was saved to DB, but might want to warn
+          const fetchData = await res.json();
+          if (res.ok && fetchData.messages && fetchData.messages.length > 0) {
+             const wamid = fetchData.messages[0].id;
+             if (adminDb) {
+               await adminDb.collection('sessions').doc(`${companyId}_${sessionId}`).collection('messages').doc(messageDocId).update({ id: wamid, wamid: wamid });
+             }
+          } else if (!res.ok) {
+             console.error("Meta API Error:", fetchData);
           }
         } catch (e) {
           console.error("Failed to send Meta message", e);

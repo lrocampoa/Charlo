@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { NextResponse } from 'next/server';
 import { processUserMessage } from '@/lib/ai/orchestrator';
-import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus, checkAndSetPausedAutoResponder } from '@/lib/firebase/dbUtils';
+import { getCompanyByWhatsAppId, getCompanyByFacebookPageId, getCompanyByInstagramId, trackWhatsAppUsage, saveSessionMessage, updateSessionStatus, checkAndSetPausedAutoResponder, updateMessageStatus } from '@/lib/firebase/dbUtils';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 import { sendAdminAlert, sendOwnerEmailAlert } from '@/lib/notifications';
 
@@ -217,6 +217,24 @@ export async function POST(request: Request) {
 
       for (const entry of body.entry) {
         for (const change of entry.changes) {
+          if (change.value && change.value.statuses) {
+            // Handle Message Status Updates (Read Receipts)
+            for (const status of change.value.statuses) {
+              const businessPhoneId = change.value.metadata.phone_number_id;
+              let company: any = companyCache[businessPhoneId];
+              if (company === undefined) {
+                company = await getCompanyByWhatsAppId(businessPhoneId);
+                companyCache[businessPhoneId] = company || null;
+              }
+              if (company) {
+                // Determine session ID (recipient_id is usually the customer's phone number)
+                const sessionId = status.recipient_id;
+                await updateMessageStatus(company.id, sessionId, status.id, status.status);
+                console.log(`✅ Message ${status.id} status updated to ${status.status} for ${sessionId}`);
+              }
+            }
+          }
+
           if (change.value && change.value.messages) {
             let profileName = "";
             if (change.value.contacts && change.value.contacts.length > 0) {
@@ -324,7 +342,7 @@ export async function POST(request: Request) {
             };
 
             // Call Gemini Orchestrator
-            const { response, routing } = await processUserMessage(
+            const { response, routing, messageDocId } = await processUserMessage(
               company.id, 
               senderPhone, // use their phone number as the session ID
               messageText, 
@@ -376,7 +394,7 @@ export async function POST(request: Request) {
 
             // Send response back via Meta Graph API
             if (accessToken) {
-              await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
+              const fetchRes = await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${accessToken}`,
@@ -388,7 +406,28 @@ export async function POST(request: Request) {
                   text: { body: response }
                 })
               });
-              console.log(`✅ Message sent back to ${senderPhone}`);
+              
+              const fetchData = await fetchRes.json();
+              if (fetchData.messages && fetchData.messages.length > 0) {
+                 const wamid = fetchData.messages[0].id;
+                 if (messageDocId) {
+                   // Update the DB message with the wamid so we can track its status
+                   // We actually just need to change the document ID to match the wamid or add a wamid field?
+                   // Wait, our dbUtils uses the messageId as the document ID if provided! But processUserMessage didn't pass wamid.
+                   // So it auto-generated an ID. We can just update the auto-generated doc to have a `wamid` field, 
+                   // BUT updateMessageStatus searches by document ID. 
+                   // Let's modify dbUtils instead or do it here. 
+                   // To keep it simple, let's update the existing doc by creating a new one with wamid and deleting the old one.
+                   // Actually, we can just update the existing doc and modify updateMessageStatus to search by `wamid` OR `doc.id`.
+                   if (adminDb) {
+                     await adminDb.collection('sessions').doc(`${company.id}_${senderPhone}`).collection('messages').doc(messageDocId).update({ id: wamid, wamid: wamid });
+                   }
+                   console.log(`✅ Message sent back to ${senderPhone}. wamid: ${wamid}`);
+                 }
+              } else {
+                 console.error(`❌ Failed to send message to Meta:`, fetchData);
+              }
+              
             } else {
               console.warn("⚠️ No Meta Access Token found for company or environment. Cannot send reply.");
             }
