@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-context';
-import { getCompanies, updateCompany } from '@/lib/firebase/dbUtils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,14 +17,17 @@ export default function WADebugPage() {
 
   useEffect(() => {
     if (user) {
-      getCompanies(user.uid).then(companies => {
-        if (companies.length > 0) {
-          setCompanyId(companies[0].id);
-          // If they already have tokens, prefill
-          if (companies[0].metaToken) setToken(companies[0].metaToken);
-          if (companies[0].whatsappPhoneNumberId) setPhoneId(companies[0].whatsappPhoneNumberId);
-          if (companies[0].wabaId) setWabaId(companies[0].wabaId);
-        }
+      user.getIdToken().then(token => {
+        fetch('/api/companies', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.json()).then(companies => {
+          if (companies.length > 0) {
+            setCompanyId(companies[0].id);
+            if (companies[0].metaToken) setToken(companies[0].metaToken);
+            if (companies[0].whatsappPhoneNumberId) setPhoneId(companies[0].whatsappPhoneNumberId);
+            if (companies[0].wabaId) setWabaId(companies[0].wabaId);
+          }
+        });
       });
     }
   }, [user]);
@@ -34,11 +36,22 @@ export default function WADebugPage() {
     setLoading(true);
     setMessage('');
     try {
-      await updateCompany(companyId, {
-        metaToken: token,
-        whatsappPhoneNumberId: phoneId,
-        wabaId: wabaId,
+      const authToken = await user?.getIdToken();
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          metaToken: token,
+          whatsappPhoneNumberId: phoneId,
+          wabaId: wabaId,
+        })
       });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
       setMessage('✅ Credenciales guardadas en la base de datos!');
     } catch (err: any) {
       setMessage('Error: ' + err.message);
