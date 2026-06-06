@@ -510,7 +510,7 @@ function OnboardingContent() {
         };
         handleResponse();
       }, {
-        config_id: '4412068065735615',
+        config_id: process.env.NEXT_PUBLIC_META_CONFIG_ID || '4412068065735615',
         response_type: 'code',
         override_default_response_type: true
       });
