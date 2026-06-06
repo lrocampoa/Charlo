@@ -54,8 +54,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
              if (adminDb) {
                await adminDb.collection('sessions').doc(`${companyId}_${sessionId}`).collection('messages').doc(messageDocId).update({ id: wamid, wamid: wamid });
              }
-          } else if (!res.ok) {
+          } else {
              console.error("Meta API Error:", fetchData);
+             if (adminDb) {
+               await adminDb.collection('sessions').doc(`${companyId}_${sessionId}`).collection('messages').doc(messageDocId).update({ status: 'failed' });
+             }
           }
         } catch (e) {
           console.error("Failed to send Meta message", e);

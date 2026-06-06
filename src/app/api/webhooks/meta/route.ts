@@ -411,14 +411,6 @@ export async function POST(request: Request) {
               if (fetchData.messages && fetchData.messages.length > 0) {
                  const wamid = fetchData.messages[0].id;
                  if (messageDocId) {
-                   // Update the DB message with the wamid so we can track its status
-                   // We actually just need to change the document ID to match the wamid or add a wamid field?
-                   // Wait, our dbUtils uses the messageId as the document ID if provided! But processUserMessage didn't pass wamid.
-                   // So it auto-generated an ID. We can just update the auto-generated doc to have a `wamid` field, 
-                   // BUT updateMessageStatus searches by document ID. 
-                   // Let's modify dbUtils instead or do it here. 
-                   // To keep it simple, let's update the existing doc by creating a new one with wamid and deleting the old one.
-                   // Actually, we can just update the existing doc and modify updateMessageStatus to search by `wamid` OR `doc.id`.
                    if (adminDb) {
                      await adminDb.collection('sessions').doc(`${company.id}_${senderPhone}`).collection('messages').doc(messageDocId).update({ id: wamid, wamid: wamid });
                    }
@@ -426,6 +418,9 @@ export async function POST(request: Request) {
                  }
               } else {
                  console.error(`❌ Failed to send message to Meta:`, fetchData);
+                 if (messageDocId && adminDb) {
+                   await adminDb.collection('sessions').doc(`${company.id}_${senderPhone}`).collection('messages').doc(messageDocId).update({ status: 'failed' });
+                 }
               }
               
             } else {
