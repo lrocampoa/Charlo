@@ -298,12 +298,12 @@ function OnboardingContent() {
     hasPaymentMethod, extractedProducts, hasStarted, scannedUrls, dbDraftId, user
   ]);
 
-  const extractMetaCatalog = async (token: string, phone: string | null, page: string | null) => {
+  const extractMetaCatalog = async (token: string, wabaId: string | null, page: string | null) => {
     try {
       const res = await fetch('/api/onboarding/extract-meta-catalog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metaToken: token, whatsappPhoneNumberId: phone, facebookPageId: page })
+        body: JSON.stringify({ metaToken: token, wabaId: wabaId, facebookPageId: page })
       });
       const data = await res.json();
       if (data.success && data.extractedProducts && data.extractedProducts.length > 0) {
@@ -351,7 +351,7 @@ function OnboardingContent() {
     setExtractedProvider('Meta');
     setShowAssetSelection(false);
     
-    await extractMetaCatalog(data.accessToken, chosenPhone?.id || null, chosenPage?.id || null);
+    await extractMetaCatalog(data.accessToken, chosenPhone?.wabaId || null, chosenPage?.id || null);
     
     setIsExtracting(false);
     setOnboardingStep(2);
@@ -486,7 +486,7 @@ function OnboardingContent() {
                   applyProfileUpdate(update);
                   setExtractedProvider('Meta');
                   
-                  await extractMetaCatalog(data.accessToken, singlePhone?.id || null, singlePage?.id || null);
+                  await extractMetaCatalog(data.accessToken, singlePhone?.wabaId || null, singlePage?.id || null);
                   
                   setIsExtracting(false);
                   setOnboardingStep(2);

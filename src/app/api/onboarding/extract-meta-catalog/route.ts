@@ -2,21 +2,21 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { metaToken, whatsappPhoneNumberId, facebookPageId } = await req.json();
+    const { metaToken, wabaId, facebookPageId } = await req.json();
 
     if (!metaToken) {
       return NextResponse.json({ success: false, error: 'Missing metaToken' }, { status: 400 });
     }
 
-    if (!whatsappPhoneNumberId && !facebookPageId) {
-      return NextResponse.json({ success: false, error: 'Missing identity IDs (phone or page)' }, { status: 400 });
+    if (!wabaId && !facebookPageId) {
+      return NextResponse.json({ success: false, error: 'Missing identity IDs (waba or page)' }, { status: 400 });
     }
 
     let businessId = null;
 
-    // 1. Try to fetch Business ID via WhatsApp
-    if (whatsappPhoneNumberId) {
-      const waRes = await fetch(`https://graph.facebook.com/v19.0/${whatsappPhoneNumberId}?fields=business&access_token=${metaToken}`);
+    // 1. Try to fetch Business ID via WhatsApp Business Account
+    if (wabaId) {
+      const waRes = await fetch(`https://graph.facebook.com/v19.0/${wabaId}?fields=business&access_token=${metaToken}`);
       const waData = await waRes.json();
       if (waData.business?.id) {
         businessId = waData.business.id;
