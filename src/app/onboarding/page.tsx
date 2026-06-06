@@ -510,7 +510,7 @@ function OnboardingContent() {
         };
         handleResponse();
       }, {
-        config_id: '2262599374275303',
+        config_id: '4412068065735615',
         response_type: 'code',
         override_default_response_type: true
       });
