@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+// No UI imports needed, using standard HTML
 
 export default function WADebugPage() {
   const { user } = useAuth();
@@ -100,46 +98,46 @@ export default function WADebugPage() {
   if (!user) return <div className="p-10">Inicia sesión primero.</div>;
 
   return (
-    <div className="p-10 max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>🔧 Herramienta Interna para App Review</CardTitle>
-          <CardDescription>Pega los valores temporales del panel de Meta for Developers para inyectarlos en tu empresa activa y poder grabar los videos para la revisión de Meta.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="p-10 max-w-2xl mx-auto font-sans">
+      <div className="border rounded-lg p-6 shadow-sm bg-white text-black">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-2">🔧 Herramienta Interna para App Review</h2>
+          <p className="text-sm text-gray-600">Pega los valores temporales del panel de Meta for Developers para inyectarlos en tu empresa activa y poder grabar los videos para la revisión de Meta.</p>
+        </div>
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Company ID Activa</label>
-            <Input value={companyId} disabled />
+            <input className="w-full border p-2 rounded" value={companyId} disabled />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Temporary Access Token (System User Token)</label>
-            <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder="EAA..." />
+            <input className="w-full border p-2 rounded" value={token} onChange={(e) => setToken(e.target.value)} placeholder="EAA..." />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp Phone Number ID</label>
-            <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="1234567890" />
+            <input className="w-full border p-2 rounded" value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="1234567890" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">WhatsApp Business Account (WABA) ID</label>
-            <Input value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="0987654321" />
+            <input className="w-full border p-2 rounded" value={wabaId} onChange={(e) => setWabaId(e.target.value)} placeholder="0987654321" />
           </div>
           
           <div className="flex gap-4 pt-4">
-            <Button onClick={handleSave} disabled={loading || !companyId}>
+            <button className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50" onClick={handleSave} disabled={loading || !companyId}>
               {loading ? 'Guardando...' : '1. Inyectar Credenciales'}
-            </Button>
-            <Button variant="secondary" onClick={handleCreateTemplate} disabled={loading || !wabaId || !token}>
+            </button>
+            <button className="bg-gray-200 text-black px-4 py-2 rounded hover:bg-gray-300 disabled:opacity-50" onClick={handleCreateTemplate} disabled={loading || !wabaId || !token}>
               {loading ? 'Llamando...' : '2. Crear Plantilla (Para Video)'}
-            </Button>
+            </button>
           </div>
 
           {message && (
-            <div className="mt-4 p-4 bg-muted rounded-md text-sm font-mono whitespace-pre-wrap">
+            <div className="mt-4 p-4 bg-gray-100 rounded-md text-sm font-mono whitespace-pre-wrap">
               {message}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
