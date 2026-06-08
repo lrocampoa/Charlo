@@ -46,7 +46,7 @@ export async function processUserMessage(
 
   // 0. Save User Message to Short-Term Memory FIRST
   // This ensures human operators can see incoming messages even if AI is disabled
-  await saveSessionMessage(companyId, sessionId, "user", message, platform, sessionId);
+  await saveSessionMessage(companyId, sessionId, "user", message, platform, sessionId, undefined, context.customerName);
 
   // 0.5 Check session status
   const sessionDoc = await getRawSessionHistory(companyId, sessionId);
@@ -148,7 +148,7 @@ export async function processUserMessage(
   // 5. Save Interaction to Short-Term Memory
   // Note: user message is already saved at the beginning of this function.
   // We only save the model response here.
-  const messageDocId = await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId);
+  const messageDocId = await saveSessionMessage(companyId, sessionId, "model", response, platform, sessionId, undefined, context.customerName);
 
   // 6. Trigger Summarizer & QA Agents Asynchronously
   // We do not await these, we just let them run in the background.

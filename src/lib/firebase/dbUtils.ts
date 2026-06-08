@@ -336,7 +336,8 @@ export async function saveSessionMessage(
   text: string,
   platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp",
   customerPhone?: string,
-  messageId?: string
+  messageId?: string,
+  customerName?: string
 ) {
   const docId = `${companyId}_${sessionId}`;
   const docRef = getDb().collection('sessions').doc(docId);
@@ -357,7 +358,7 @@ export async function saveSessionMessage(
   
   // Create or update the session document metadata
   if (!doc.exists) {
-    await docRef.set({
+    const sessionData: any = {
       companyId,
       sessionId,
       customerPhone: customerPhone || sessionId,
@@ -366,14 +367,19 @@ export async function saveSessionMessage(
       lastMessage: text,
       lastUpdated: new Date().toISOString(),
       updatedAt: Date.now()
-    });
+    };
+    if (customerName) sessionData.customerName = customerName;
+    await docRef.set(sessionData);
   } else {
-    await docRef.update({
+    const updateData: any = {
       lastMessage: text,
       lastUpdated: new Date().toISOString(),
       updatedAt: Date.now()
-    });
+    };
+    if (customerName) updateData.customerName = customerName;
+    await docRef.update(updateData);
   }
+
 
   // Save the message in the subcollection
   await msgDocRef.set(newMessage);

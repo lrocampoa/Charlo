@@ -262,7 +262,7 @@ export default function Inbox() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-                    {formatSessionId(chat.customerPhone || chat.sessionId, chat.platform)}
+                    {chat.customerName || formatSessionId(chat.customerPhone || chat.sessionId, chat.platform)}
                   </strong>
                   <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: 12, background: chat.status === 'needs_human' ? 'var(--danger)' : chat.status === 'human_handling' ? '#3b82f6' : 'var(--success)', color: '#fff' }}>
                     {chat.status === 'needs_human' ? 'Needs Human' : chat.status === 'human_handling' ? 'Human' : 'AI'}
@@ -311,7 +311,7 @@ export default function Inbox() {
             <>
               <div style={{ padding: 16, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <h3 style={{ fontWeight: 600 }}>{formatSessionId(selectedSession.customerPhone || selectedSession.sessionId, selectedSession.platform)}</h3>
+                  <h3 style={{ fontWeight: 600 }}>{selectedSession.customerName || formatSessionId(selectedSession.customerPhone || selectedSession.sessionId, selectedSession.platform)}</h3>
                   {getPlatformBadge(selectedSession.platform)}
                 </div>
                 {selectedSession.status !== 'human_handling' ? (

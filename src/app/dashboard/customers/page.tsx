@@ -5,10 +5,12 @@ import { useCompany } from '@/context/CompanyContext';
 import { formatDistanceToNow, format, differenceInDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function CustomersPage() {
   const { selectedCompanyId, selectedCompany } = useCompany();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
@@ -19,7 +21,10 @@ export default function CustomersPage() {
     const fetchCustomers = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/companies/${selectedCompanyId}/customers`);
+        const token = await user?.getIdToken();
+        const res = await fetch(`/api/companies/${selectedCompanyId}/customers`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (res.ok) {
           const data = await res.json();
           setCustomers(data.customers || []);
@@ -80,7 +85,7 @@ export default function CustomersPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 24 }}>
           {customers.map((customer, idx) => {
             const facts = customer.extractedFacts || {};
-            const customerName = facts.name || customer.customerId;
+            const customerName = facts.name || customer.customerName || customer.customerId;
             const hasPhone = customerName !== customer.customerId;
             
             // Get latest order and reservation
@@ -178,10 +183,10 @@ export default function CustomersPage() {
             <div style={{ padding: 32, borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                 <div style={{ width: 72, height: 72, borderRadius: '50%', backgroundColor: 'var(--accent-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', fontWeight: 'bold' }}>
-                  {(selectedCustomer.extractedFacts?.name || selectedCustomer.customerId)?.substring(0, 2).toUpperCase() || 'CU'}
+                  {(selectedCustomer.extractedFacts?.name || selectedCustomer.customerName || selectedCustomer.customerId)?.substring(0, 2).toUpperCase() || 'CU'}
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{selectedCustomer.extractedFacts?.name || selectedCustomer.customerId}</h2>
+                  <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>{selectedCustomer.extractedFacts?.name || selectedCustomer.customerName || selectedCustomer.customerId}</h2>
                   <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
                     <span style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       📞 {selectedCustomer.customerId}

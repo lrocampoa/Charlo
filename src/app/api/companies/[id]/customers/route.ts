@@ -60,6 +60,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         };
       }
       customersMap[customerId].lastInteractionAt = s.lastUpdated || new Date(s.updatedAt || Date.now()).toISOString();
+      if (s.customerName && !customersMap[customerId].customerName) {
+        customersMap[customerId].customerName = s.customerName;
+      }
     }
 
     const allCustomers = Object.values(customersMap);
