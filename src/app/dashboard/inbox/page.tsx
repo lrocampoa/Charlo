@@ -487,7 +487,7 @@ export default function Inbox() {
                         value={messageText}
                         onChange={e => setMessageText(e.target.value)}
                         placeholder={t('inbox.typeMessage')}
-                        style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none', color: '#fff' }}
+                        style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none', color: 'var(--text-primary)' }}
                       />
                       <button type="submit" className="btn-primary" disabled={isSending || !messageText.trim()}>
                         {isSending ? t('inbox.sending') : t('inbox.send')}

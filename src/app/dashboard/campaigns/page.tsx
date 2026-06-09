@@ -342,21 +342,21 @@ export default function CampaignsPage() {
         <button 
           className={`tab-btn ${activeTab === 'manual' ? 'active' : ''}`}
           onClick={() => setActiveTab('manual')}
-          style={{ padding: '8px 16px', background: activeTab === 'manual' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
+          style={{ padding: '8px 16px', background: activeTab === 'manual' ? 'var(--accent-color)' : 'transparent', border: 'none', borderRadius: '20px', color: activeTab === 'manual' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: activeTab === 'manual' ? 600 : 400 }}
         >
           {t('campaigns.manualTab')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'proactive' ? 'active' : ''}`}
           onClick={() => setActiveTab('proactive')}
-          style={{ padding: '8px 16px', background: activeTab === 'proactive' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
+          style={{ padding: '8px 16px', background: activeTab === 'proactive' ? 'var(--accent-color)' : 'transparent', border: 'none', borderRadius: '20px', color: activeTab === 'proactive' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: activeTab === 'proactive' ? 600 : 400 }}
         >
           {t('campaigns.proactiveTab')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
           onClick={() => setActiveTab('templates')}
-          style={{ padding: '8px 16px', background: activeTab === 'templates' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
+          style={{ padding: '8px 16px', background: activeTab === 'templates' ? 'var(--accent-color)' : 'transparent', border: 'none', borderRadius: '20px', color: activeTab === 'templates' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: activeTab === 'templates' ? 600 : 400 }}
         >
           {t('campaigns.templatesTab')}
         </button>

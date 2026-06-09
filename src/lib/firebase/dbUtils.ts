@@ -314,7 +314,7 @@ export async function getSessionHistory(companyId: string, sessionId: string) {
   }
   
   // Gemini API Requires history to start with a 'user' message
-  if (normalizedHistory.length > 0 && normalizedHistory[0].role === 'model') {
+  while (normalizedHistory.length > 0 && normalizedHistory[0].role === 'model') {
     normalizedHistory.shift();
   }
   
