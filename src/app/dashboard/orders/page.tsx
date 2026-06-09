@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { useCompany } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function OrdersPage() {
   const { selectedCompanyId } = useCompany();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,26 +34,26 @@ export default function OrdersPage() {
     fetchOrders();
   }, [selectedCompanyId]);
 
-  if (loading) return <div style={{ color: '#fff', padding: 24 }}>Cargando órdenes...</div>;
+  if (loading) return <div style={{ color: '#fff', padding: 24 }}>{t('orders.loading')}</div>;
 
   return (
     <div className="fade-in" style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2rem', fontWeight: 600, color: '#fff', marginBottom: 24 }}>Órdenes Recientes</h1>
+      <h1 style={{ fontSize: '2rem', fontWeight: 600, color: '#fff', marginBottom: 24 }}>{t('orders.title')}</h1>
       
       {orders.length === 0 ? (
         <div className="glass-panel" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <p>No hay órdenes registradas aún.</p>
+          <p>{t('orders.noOrders')}</p>
         </div>
       ) : (
         <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
             <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
               <tr>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>ID</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Cliente</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Items</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Total</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Estado</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('orders.id')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('orders.customer')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('orders.items')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('orders.total')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('orders.status')}</th>
               </tr>
             </thead>
             <tbody>

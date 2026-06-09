@@ -3,12 +3,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useCompany } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import { db } from '@/lib/firebase/config';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
 
 export default function Inbox() {
   const { selectedCompanyId } = useCompany();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [sessions, setSessions] = useState<any[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
@@ -158,10 +160,17 @@ export default function Inbox() {
   const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation();
     if (!db) return;
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta conversación permanentemente?')) return;
+    if (!window.confirm(t('inbox.confirmDelete'))) return;
     try {
-      const docRef = doc(db, 'sessions', chatId);
-      await deleteDoc(docRef);
+      // 1. Delete all messages in the subcollection first
+      const messagesRef = collection(db, 'sessions', chatId, 'messages');
+      const messagesSnapshot = await getDocs(messagesRef);
+      const deletePromises = messagesSnapshot.docs.map(messageDoc => deleteDoc(messageDoc.ref));
+      await Promise.all(deletePromises);
+
+      // 2. Delete the session document itself
+      const sessionDocRef = doc(db, 'sessions', chatId);
+      await deleteDoc(sessionDocRef);
       if (selectedSessionId === chatId) setSelectedSessionId(null);
     } catch (e) {
       console.error("Failed to delete chat", e);
@@ -221,7 +230,7 @@ export default function Inbox() {
         const msgRef = doc(db, `sessions/${docId}/messages/${msg.id}`);
         await deleteDoc(msgRef);
       } else {
-        alert("No se pudo reenviar el mensaje. Revisa los permisos de Meta.");
+        alert(t('inbox.resendFailed'));
       }
     } catch (e) {
       console.error("Failed to resend message", e);
@@ -234,18 +243,18 @@ export default function Inbox() {
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>Omnichannel Inbox</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>Monitor live AI conversations and take over when needed.</p>
+          <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8 }}>{t('inbox.title')}</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('inbox.subtitle')}</p>
         </div>
         <button 
           className="btn-secondary"
           onClick={async () => {
             const token = await user?.getIdToken();
             await fetch('/api/seed-chats', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-            alert('¡Chats simulados inyectados con éxito! Deberían aparecer ahora.');
+            alert(t('inbox.injectSuccess'));
           }}
         >
-          🔮 Inyectar Chats de Prueba
+          {t('inbox.injectChats')}
         </button>
       </div>
 
@@ -253,7 +262,7 @@ export default function Inbox() {
         {/* Chat List */}
         <div className="glass-panel" style={{ width: 320, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: 16, borderBottom: '1px solid var(--border-color)', fontWeight: 600 }}>
-            {isViewingArchived ? '📥 Chats Archivados' : 'Active Chats'}
+            {isViewingArchived ? t('inbox.archivedChatsTitle') : t('inbox.activeChats')}
           </div>
           
           <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -264,7 +273,7 @@ export default function Inbox() {
                 style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16 }}
               >
                 <div style={{ fontSize: '1.2rem' }}>📥</div>
-                <div style={{ flex: 1, fontWeight: 600 }}>Archivados</div>
+                <div style={{ flex: 1, fontWeight: 600 }}>{t('inbox.archived')}</div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 12 }}>
                   {archivedChats.length}
                 </div>
@@ -278,7 +287,7 @@ export default function Inbox() {
                 style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16, backgroundColor: 'rgba(255,255,255,0.02)' }}
               >
                 <div style={{ fontSize: '1.2rem' }}>⬅️</div>
-                <div style={{ flex: 1, fontWeight: 600 }}>Volver a Activos</div>
+                <div style={{ flex: 1, fontWeight: 600 }}>{t('inbox.backToActive')}</div>
               </div>
             )}
 
@@ -301,7 +310,7 @@ export default function Inbox() {
                     {chat.customerName || formatSessionId(chat.customerPhone || chat.sessionId, chat.platform)}
                   </strong>
                   <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: 12, background: chat.status === 'needs_human' ? 'var(--danger)' : chat.status === 'human_handling' ? '#3b82f6' : 'var(--success)', color: '#fff' }}>
-                    {chat.status === 'needs_human' ? 'Needs Human' : chat.status === 'human_handling' ? 'Human' : 'AI'}
+                    {chat.status === 'needs_human' ? t('inbox.needsHuman') : chat.status === 'human_handling' ? t('inbox.human') : t('inbox.ai')}
                   </span>
                 </div>
                 <div style={{ marginBottom: 8 }}>
@@ -317,14 +326,14 @@ export default function Inbox() {
                     <button 
                       onClick={(e) => handleArchiveChat(e, chat.id, !!chat.archived)}
                       style={{ fontSize: '1rem', padding: '6px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}
-                      title={chat.archived ? "Desarchivar chat" : "Archivar chat"}
+                      title={chat.archived ? t('inbox.unarchiveChat') : t('inbox.archiveChat')}
                     >
                       {chat.archived ? '📤' : '📥'}
                     </button>
                     <button 
                       onClick={(e) => handleDeleteChat(e, chat.id)}
                       style={{ fontSize: '1rem', padding: '6px', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 4 }}
-                      title="Eliminar chat"
+                      title={t('inbox.deleteChat')}
                     >
                       🗑️
                     </button>
@@ -335,7 +344,7 @@ export default function Inbox() {
             
             {displayedChats.length === 0 && (
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                {isViewingArchived ? 'No hay chats archivados.' : 'No hay chats activos.'}
+                {isViewingArchived ? t('inbox.noArchivedChats') : t('inbox.noActiveChats')}
               </div>
             )}
           </div>
@@ -357,10 +366,10 @@ export default function Inbox() {
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--warning)'; }}
                     onClick={handleTakeOver}
                   >
-                    Take Over Chat
+                    {t('inbox.takeOverChat')}
                   </button>
                 ) : (
-                  <button className="btn-secondary" onClick={handleReturnToAI}>Return to AI</button>
+                  <button className="btn-secondary" onClick={handleReturnToAI}>{t('inbox.returnToAi')}</button>
                 )}
               </div>
               
@@ -434,11 +443,11 @@ export default function Inbox() {
                               gap: 4
                             }}
                           >
-                            🔄 {isResending === msg.id ? 'Reenviando...' : 'Reenviar'}
+                            🔄 {isResending === msg.id ? t('inbox.resending') : t('inbox.resend')}
                           </button>
                         )}
-                        {isHumanRep && <span style={{ color: '#3b82f6', fontWeight: 600 }}>👤 Sent by Human</span>}
-                        {!isUser && !isHumanRep && <span style={{ color: '#a855f7', fontWeight: 600 }}>✨ Sent by AI</span>}
+                        {isHumanRep && <span style={{ color: '#3b82f6', fontWeight: 600 }}>{t('inbox.sentByHuman')}</span>}
+                        {!isUser && !isHumanRep && <span style={{ color: '#a855f7', fontWeight: 600 }}>{t('inbox.sentByAi')}</span>}
                         <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                         
                         {!isUser && msg.status && (
@@ -466,9 +475,10 @@ export default function Inbox() {
               
               <div style={{ padding: 16, borderTop: '1px solid var(--border-color)' }}>
                 {selectedSession.status !== 'human_handling' ? (
-                  <div style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed rgba(245, 158, 11, 0.3)', color: 'var(--warning)', padding: '12px', borderRadius: 8, textAlign: 'center', fontSize: '0.9rem' }}>
-                    Monitoring mode. Click <strong>Take Over Chat</strong> to pause the AI and reply manually.
-                  </div>
+                  <div 
+                    style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed rgba(245, 158, 11, 0.3)', color: 'var(--warning)', padding: '12px', borderRadius: 8, textAlign: 'center', fontSize: '0.9rem' }}
+                    dangerouslySetInnerHTML={{ __html: t('inbox.monitoringMode') }}
+                  />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12 }}>
@@ -476,16 +486,16 @@ export default function Inbox() {
                         type="text" 
                         value={messageText}
                         onChange={e => setMessageText(e.target.value)}
-                        placeholder="Escribe tu mensaje..." 
+                        placeholder={t('inbox.typeMessage')}
                         style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none', color: '#fff' }}
                       />
                       <button type="submit" className="btn-primary" disabled={isSending || !messageText.trim()}>
-                        {isSending ? 'Enviando...' : 'Enviar'}
+                        {isSending ? t('inbox.sending') : t('inbox.send')}
                       </button>
                     </form>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
                       <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4, display: 'inline-block' }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                      <strong>Nota de Meta:</strong> Los mensajes solo se enviarán si el cliente te ha escrito en las últimas 24 horas. Si pasaron 24 horas, abre WhatsApp Business en tu teléfono y respóndele por ahí para continuar.
+                      <span dangerouslySetInnerHTML={{ __html: t('inbox.metaNote') }} />
                     </div>
                   </div>
                 )}
@@ -493,7 +503,7 @@ export default function Inbox() {
             </>
           ) : (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-              Select a conversation to view.
+              {t('inbox.selectConversation')}
             </div>
           )}
         </div>

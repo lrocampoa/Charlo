@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from '@/context/CompanyContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Campaign {
   id: string;
@@ -26,6 +27,7 @@ interface MetaTemplate {
 export default function CampaignsPage() {
   const { user } = useAuth();
   const { selectedCompanyId, selectedCompany } = useCompany();
+  const { t } = useLanguage();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -150,7 +152,7 @@ export default function CampaignsPage() {
 
   const loadPresets = async (category: string) => {
     if (!user || !selectedCompanyId) return;
-    if (!confirm(`¿Cargar presets para ${category}? Esto añadirá nuevos triggers.`)) return;
+    if (!confirm(t('campaigns.confirmPresets').replace('{0}', category))) return;
     
     try {
       const token = await user.getIdToken();
@@ -173,18 +175,18 @@ export default function CampaignsPage() {
     if (!user || !selectedCompanyId) return;
     
     if (!templateName.trim()) {
-      alert("Por favor ingresa el nombre del template aprobado por Meta.");
+      alert(t('campaigns.alertEnterTemplate'));
       return;
     }
 
     if (targetType === 'specific' && selectedPhones.length === 0) {
-      alert("Por favor selecciona al menos un cliente.");
+      alert(t('campaigns.alertSelectCustomer'));
       return;
     }
 
     const msg = targetType === 'all' 
-      ? `¿Estás seguro de enviar el template "${templateName}" a TODOS los clientes de tu CRM?`
-      : `¿Estás seguro de enviar el template "${templateName}" a ${selectedPhones.length} clientes seleccionados?`;
+      ? t('campaigns.confirmSendAll').replace('{0}', templateName)
+      : t('campaigns.confirmSendSpecific').replace('{0}', templateName).replace('{1}', selectedPhones.length.toString());
 
     if (!confirm(msg)) {
       return;
@@ -208,15 +210,15 @@ export default function CampaignsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(`¡Campaña enviada! Entregados: ${data.campaign.sentCount}, Fallidos: ${data.campaign.failedCount}`);
+        alert(t('campaigns.alertSent').replace('{0}', data.campaign.sentCount).replace('{1}', data.campaign.failedCount));
         setCampaigns([data.campaign, ...campaigns]);
         setTemplateName('');
       } else {
-        alert(data.error || "Error al enviar la campaña.");
+        alert(data.error || t('campaigns.alertSendError'));
       }
     } catch (err) {
       console.error(err);
-      alert("Error de red.");
+      alert(t('campaigns.alertNetworkError'));
     } finally {
       setSending(false);
     }
@@ -227,7 +229,7 @@ export default function CampaignsPage() {
     if (!user || !selectedCompanyId) return;
     
     if (!newTemplateName.trim() || !newTemplateBody.trim()) {
-      alert("Por favor completa el nombre y el cuerpo del mensaje.");
+      alert(t('campaigns.alertFillTemplate'));
       return;
     }
 
@@ -251,7 +253,7 @@ export default function CampaignsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert("Template enviado a revisión. Meta puede tardar un par de minutos en aprobarlo.");
+        alert(t('campaigns.alertTemplateReview'));
         setNewTemplateName('');
         setNewTemplateBody('');
         setAiPrompt('');
@@ -264,11 +266,11 @@ export default function CampaignsPage() {
           status: 'PENDING'
         }, ...metaTemplates]);
       } else {
-        alert(data.error || "Error al crear el template.");
+        alert(data.error || t('campaigns.alertCreateError'));
       }
     } catch (err) {
       console.error(err);
-      alert("Error de red.");
+      alert(t('campaigns.alertNetworkError'));
     } finally {
       setSubmittingTemplate(false);
     }
@@ -277,7 +279,7 @@ export default function CampaignsPage() {
   const handleGenerateAI = async () => {
     if (!user || !selectedCompanyId) return;
     if (!aiPrompt.trim()) {
-      alert("Por favor escribe de qué trata el mensaje (ej: 'Promo del día de las madres').");
+      alert(t('campaigns.alertAiPrompt'));
       return;
     }
 
@@ -301,11 +303,11 @@ export default function CampaignsPage() {
       if (res.ok && data.text) {
         setNewTemplateBody(data.text);
       } else {
-        alert(data.error || "Error al generar con IA.");
+        alert(data.error || t('campaigns.alertAiError'));
       }
     } catch (err) {
       console.error(err);
-      alert("Error de red.");
+      alert(t('campaigns.alertNetworkError'));
     } finally {
       setGeneratingAI(false);
     }
@@ -320,7 +322,7 @@ export default function CampaignsPage() {
   };
 
   if (!selectedCompanyId) {
-    return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Selecciona una empresa para gestionar campañas.</div>;
+    return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>{t('campaigns.selectCompany')}</div>;
   }
 
   const isWhatsAppConfigured = selectedCompany?.metaAccessToken && selectedCompany?.whatsappPhoneNumberId;
@@ -329,10 +331,10 @@ export default function CampaignsPage() {
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 24px' }}>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span>📢</span> Campañas de WhatsApp
+          <span>📢</span> {t('campaigns.title')}
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Envía mensajes de marketing a todos tus clientes o configura campañas proactivas.
+          {t('campaigns.subtitle')}
         </p>
       </div>
 
@@ -342,45 +344,45 @@ export default function CampaignsPage() {
           onClick={() => setActiveTab('manual')}
           style={{ padding: '8px 16px', background: activeTab === 'manual' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
         >
-          Campañas Manuales
+          {t('campaigns.manualTab')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'proactive' ? 'active' : ''}`}
           onClick={() => setActiveTab('proactive')}
           style={{ padding: '8px 16px', background: activeTab === 'proactive' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
         >
-          Campañas Proactivas (Triggers)
+          {t('campaigns.proactiveTab')}
         </button>
         <button 
           className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
           onClick={() => setActiveTab('templates')}
           style={{ padding: '8px 16px', background: activeTab === 'templates' ? 'var(--primary)' : 'transparent', border: 'none', borderRadius: '20px', color: '#fff', cursor: 'pointer' }}
         >
-          Gestor de Templates
+          {t('campaigns.templatesTab')}
         </button>
       </div>
 
       {!isWhatsAppConfigured ? (
         <div className="glass-panel" style={{ padding: 32, textAlign: 'center', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.05)' }}>
           <div style={{ fontSize: '2rem', marginBottom: 16 }}>⚙️</div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>WhatsApp No Configurado</h2>
-          <p>Para enviar campañas, primero debes configurar tu Meta Token y Phone ID en la sección de Ajustes.</p>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>{t('campaigns.notConfiguredTitle')}</h2>
+          <p>{t('campaigns.notConfiguredDesc')}</p>
         </div>
       ) : activeTab === 'manual' ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 32, alignItems: 'start' }}>
           
           {/* Create Campaign Form */}
           <div className="glass-panel" style={{ position: 'sticky', top: 24 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Nueva Campaña</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>{t('campaigns.newCampaign')}</h2>
             
             <form onSubmit={handleSendCampaign} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Nombre del Template (Meta API)</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.templateNameLabel')}</label>
                 <input
                   type="text"
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder="ej. promo_verano_01"
+                  placeholder={t('campaigns.templateNamePlaceholder')}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
                     background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace'
@@ -389,7 +391,7 @@ export default function CampaignsPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Idioma del Template</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.templateLangLabel')}</label>
                 <select
                   value={languageCode}
                   onChange={(e) => setLanguageCode(e.target.value)}
@@ -406,7 +408,7 @@ export default function CampaignsPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Audiencia</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.audienceLabel')}</label>
                 <div style={{ display: 'flex', gap: 16 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input 
@@ -416,7 +418,7 @@ export default function CampaignsPage() {
                       onChange={() => setTargetType('all')} 
                       style={{ accentColor: 'var(--accent-color)' }}
                     />
-                    Todos los clientes ({customers.length})
+                    {t('campaigns.allCustomers')} ({customers.length})
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                     <input 
@@ -426,7 +428,7 @@ export default function CampaignsPage() {
                       onChange={() => setTargetType('specific')} 
                       style={{ accentColor: 'var(--accent-color)' }}
                     />
-                    Clientes específicos
+                    {t('campaigns.specificCustomers')}
                   </label>
                 </div>
               </div>
@@ -434,7 +436,7 @@ export default function CampaignsPage() {
               {targetType === 'specific' && (
                 <div className="custom-scrollbar" style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--border-radius-sm)', padding: 8, background: 'rgba(0,0,0,0.2)' }}>
                   {customers.length === 0 ? (
-                    <div style={{ padding: 8, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay clientes en el CRM.</div>
+                    <div style={{ padding: 8, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('campaigns.noCustomers')}</div>
                   ) : (
                     customers.map(c => (
                       <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -445,7 +447,7 @@ export default function CampaignsPage() {
                           style={{ accentColor: 'var(--accent-color)' }}
                         />
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.9rem' }}>{c.name || 'Cliente'}</span>
+                          <span style={{ fontSize: '0.9rem' }}>{c.name || t('orders.customer')}</span>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{c.customerId}</span>
                         </div>
                       </label>
@@ -456,7 +458,7 @@ export default function CampaignsPage() {
 
               {targetType === 'all' && (
                 <div style={{ padding: '16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--border-radius-sm)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  ℹ️ Esta campaña se enviará a TODOS los {customers.length} clientes registrados en el CRM de este negocio.
+                  {t('campaigns.allWarning')}
                 </div>
               )}
 
@@ -466,30 +468,30 @@ export default function CampaignsPage() {
                 disabled={sending}
                 style={{ marginTop: 8 }}
               >
-                {sending ? '🚀 Enviando...' : '🚀 Enviar Campaña'}
+                {sending ? t('campaigns.sending') : t('campaigns.sendBtn')}
               </button>
             </form>
           </div>
 
           {/* Campaign History */}
           <div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Historial de Campañas</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>{t('campaigns.historyTitle')}</h2>
             
             {loading ? (
-               <div style={{ color: 'var(--text-secondary)' }}>Cargando historial...</div>
+               <div style={{ color: 'var(--text-secondary)' }}>{t('campaigns.loadingHistory')}</div>
             ) : campaigns.length === 0 ? (
               <div className="glass-panel" style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
-                No has enviado ninguna campaña aún.
+                {t('campaigns.noHistory')}
               </div>
             ) : (
               <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                   <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
                     <tr>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Template</th>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Audiencia</th>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Estado</th>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Fecha</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.templateTh')}</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.audienceTh')}</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.statusTh')}</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.dateTh')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -500,9 +502,9 @@ export default function CampaignsPage() {
                           {camp.sentCount} / {camp.audienceSize}
                         </td>
                         <td style={{ padding: '16px 24px' }}>
-                          {camp.status === 'success' && <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>Completado</span>}
-                          {camp.status === 'partial' && <span style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>Parcial</span>}
-                          {camp.status === 'failed' && <span style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>Fallido</span>}
+                          {camp.status === 'success' && <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.completed')}</span>}
+                          {camp.status === 'partial' && <span style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.partial')}</span>}
+                          {camp.status === 'failed' && <span style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.failed')}</span>}
                         </td>
                         <td style={{ padding: '16px 24px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                           {new Date(camp.createdAt).toLocaleString()}
@@ -520,16 +522,16 @@ export default function CampaignsPage() {
           
           {/* Template Builder Form */}
           <div className="glass-panel" style={{ position: 'sticky', top: 24 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Crear Nuevo Template</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>{t('campaigns.newTemplateTitle')}</h2>
             
             <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Nombre del Template</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.templateNameLabelBuilder')}</label>
                 <input
                   type="text"
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                  placeholder="ej. promo_verano_01 (solo minusculas)"
+                  placeholder={t('campaigns.templateNamePlaceholderBuilder')}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
                     background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace'
@@ -540,7 +542,7 @@ export default function CampaignsPage() {
 
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Categoría</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.categoryLabel')}</label>
                   <select
                     value={newTemplateCategory}
                     onChange={(e) => setNewTemplateCategory(e.target.value)}
@@ -549,13 +551,13 @@ export default function CampaignsPage() {
                       background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
                     }}
                   >
-                    <option value="MARKETING">Marketing (Promos)</option>
-                    <option value="UTILITY">Utilidad (Alertas)</option>
+                    <option value="MARKETING">{t('campaigns.marketingOpt')}</option>
+                    <option value="UTILITY">{t('campaigns.utilityOpt')}</option>
                   </select>
                 </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Idioma</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.langLabel')}</label>
                   <select
                     value={newTemplateLang}
                     onChange={(e) => setNewTemplateLang(e.target.value)}
@@ -572,17 +574,17 @@ export default function CampaignsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mensaje</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.messageLabel')}</label>
                 </div>
                 
                 <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: 12, borderRadius: 8, display: 'flex', gap: 8, flexDirection: 'column' }}>
-                  <label style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>✨ Generar con IA</label>
+                  <label style={{ fontSize: '0.85rem', color: '#3b82f6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>{t('campaigns.generateAiLabel')}</label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text"
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="ej. Escribe un mensaje invitando al gran evento de aniversario..."
+                      placeholder={t('campaigns.generatePlaceholder')}
                       style={{
                         flex: 1, padding: '8px 12px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
                         background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.9rem'
@@ -596,18 +598,18 @@ export default function CampaignsPage() {
                         padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 'var(--border-radius-sm)', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500
                       }}
                     >
-                      {generatingAI ? 'Generando...' : 'Generar'}
+                      {generatingAI ? t('campaigns.generatingBtn') : t('campaigns.generateBtn')}
                     </button>
                   </div>
                 </div>
 
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  Usa <code style={{background:'rgba(255,255,255,0.1)', padding:'2px 4px', borderRadius:4}}>{'{{1}}'}</code> para variables.
+                  {t('campaigns.varsNote')}
                 </div>
                 <textarea
                   value={newTemplateBody}
                   onChange={(e) => setNewTemplateBody(e.target.value)}
-                  placeholder="¡Hola! Te ofrecemos un descuento..."
+                  placeholder={t('campaigns.msgPlaceholder')}
                   rows={4}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
@@ -618,15 +620,15 @@ export default function CampaignsPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Botón de Opt-Out (Opcional)</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.optOutLabel')}</label>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>
-                  Recomendado para Marketing.
+                  {t('campaigns.optOutNote')}
                 </div>
                 <input
                   type="text"
                   value={newTemplateOptOut}
                   onChange={(e) => setNewTemplateOptOut(e.target.value)}
-                  placeholder="ej. ALTO 🛑"
+                  placeholder={t('campaigns.optOutPlaceholder')}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
                     background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
@@ -640,7 +642,7 @@ export default function CampaignsPage() {
                 disabled={submittingTemplate}
                 style={{ marginTop: 8 }}
               >
-                {submittingTemplate ? 'Enviando a revisión...' : 'Enviar a Meta'}
+                {submittingTemplate ? t('campaigns.submitReviewBtn') : t('campaigns.submitBtn')}
               </button>
             </form>
           </div>
@@ -648,23 +650,23 @@ export default function CampaignsPage() {
           {/* Template List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Tus Templates de Meta</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{t('campaigns.metaTemplatesTitle')}</h2>
             </div>
             
             {loadingTemplates ? (
-               <div style={{ color: 'var(--text-secondary)' }}>Cargando templates...</div>
+               <div style={{ color: 'var(--text-secondary)' }}>{t('campaigns.loadingTemplates')}</div>
             ) : metaTemplates.length === 0 ? (
               <div className="glass-panel" style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
-                No tienes ningún template registrado en Meta.
+                {t('campaigns.noTemplates')}
               </div>
             ) : (
               <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
                   <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
                     <tr>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Nombre</th>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Categoría</th>
-                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>Estado</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.nameTh')}</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.categoryTh')}</th>
+                      <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.statusTh')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -675,10 +677,10 @@ export default function CampaignsPage() {
                           {tpl.category}
                         </td>
                         <td style={{ padding: '16px 24px' }}>
-                          {tpl.status === 'APPROVED' && <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🟢 Aprobado</span>}
-                          {tpl.status === 'PENDING' && <span style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🟡 Pendiente</span>}
-                          {tpl.status === 'REJECTED' && <span style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>🔴 Rechazado</span>}
-                          {tpl.status === 'PAUSED' && <span style={{ color: '#9ca3af', background: 'rgba(156,163,175,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>⚪️ Pausado</span>}
+                          {tpl.status === 'APPROVED' && <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.statusApproved')}</span>}
+                          {tpl.status === 'PENDING' && <span style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.statusPending')}</span>}
+                          {tpl.status === 'REJECTED' && <span style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.statusRejected')}</span>}
+                          {tpl.status === 'PAUSED' && <span style={{ color: '#9ca3af', background: 'rgba(156,163,175,0.1)', padding: '4px 8px', borderRadius: 12, fontSize: '0.8rem' }}>{t('campaigns.statusPaused')}</span>}
                         </td>
                       </tr>
                     ))}
@@ -691,13 +693,13 @@ export default function CampaignsPage() {
       ) : activeTab === 'proactive' ? (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Campañas Proactivas (Automáticas)</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{t('campaigns.proactiveTitle')}</h2>
             <div style={{ display: 'flex', gap: 12 }}>
               <select onChange={(e) => e.target.value && loadPresets(e.target.value)} style={{ padding: '8px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }} defaultValue="">
-                <option value="" disabled>Cargar Presets por Categoría...</option>
-                <option value="retail">🛒 Retail & E-commerce</option>
-                <option value="services">✂️ Salones & Clínicas</option>
-                <option value="restaurants">🍔 Restaurantes</option>
+                <option value="" disabled>{t('campaigns.loadPresetsOpt')}</option>
+                <option value="retail">{t('campaigns.presetRetail')}</option>
+                <option value="services">{t('campaigns.presetServices')}</option>
+                <option value="restaurants">{t('campaigns.presetRestaurants')}</option>
               </select>
             </div>
           </div>
@@ -705,7 +707,7 @@ export default function CampaignsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {proactiveTriggers.length === 0 ? (
                <div className="glass-panel" style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
-                 No tienes campañas proactivas configuradas. Selecciona una categoría arriba para cargar templates.
+                 {t('campaigns.noProactive')}
                </div>
             ) : (
               proactiveTriggers.map(trigger => (
@@ -721,7 +723,7 @@ export default function CampaignsPage() {
                   <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                       <span style={{ fontSize: '0.9rem', color: trigger.isActive ? '#10b981' : 'var(--text-secondary)' }}>
-                        {trigger.isActive ? 'Activa' : 'Inactiva'}
+                        {trigger.isActive ? t('campaigns.triggerActive') : t('campaigns.triggerInactive')}
                       </span>
                       <input 
                         type="checkbox" 

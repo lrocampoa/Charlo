@@ -52,46 +52,46 @@ export default function DashboardOverview() {
       {isSeeding ? (
         <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
           <div className="spinner-small" style={{ margin: '0 auto 16px', borderTopColor: 'var(--accent-color)' }}></div>
-          <p>Estamos cargando negocios de prueba...</p>
+          <p>{t('overview.loadingTestBusinesses')}</p>
         </div>
       ) : !selectedCompanyId ? (
         <div style={{ padding: 40, textAlign: 'center', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, border: '1px dashed var(--border-color)', color: 'var(--text-secondary)' }}>
           {t('overview.noBusiness')}
         </div>
       ) : loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando métricas...</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>{t('overview.loadingMetrics')}</div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginBottom: 40 }}>
             {/* Stat Cards */}
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Conversaciones Totales</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.totalConversations')}</span>
               <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalConversations || 0}</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>Mensajes totales: {metrics?.totalMessages || 0}</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{t('overview.totalMessages')}: {metrics?.totalMessages || 0}</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Tiempo Ahorrado (Estimado)</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.estimatedTimeSaved')}</span>
               <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.hoursSaved || 0}h</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>Basado en 5 min por resolución</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{t('overview.basedOn5Min')}</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Resolución por IA</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.aiResolutionRate')}</span>
               <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.aiResolutionRate || 0}%</span>
-              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{metrics?.aiHandled || 0} chats manejados solos</span>
+              <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{metrics?.aiHandled || 0} {t('overview.aiHandledChats')}</span>
             </div>
             <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Escalaciones a Humanos</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{t('overview.escalations')}</span>
               <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.humanHandled || 0}</span>
-              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Requieren atención</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('overview.requireAttention')}</span>
             </div>
           </div>
 
           <div className="glass-panel" style={{ padding: 24, marginBottom: 40 }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 20 }}>Uso del Plan Actual (Pro)</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 20 }}>{t('overview.currentPlanUsage')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 500 }}>Mensajes de WhatsApp (API)</span>
+                  <span style={{ fontWeight: 500 }}>{t('overview.whatsappApiMessages')}</span>
                   <span style={{ color: 'var(--text-secondary)' }}>3,450 / 5,000</span>
                 </div>
                 <div style={{ width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
@@ -101,7 +101,7 @@ export default function DashboardOverview() {
               
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 500 }}>Interacciones de IA (Gemini)</span>
+                  <span style={{ fontWeight: 500 }}>{t('overview.aiInteractionsGemini')}</span>
                   <span style={{ color: 'var(--text-secondary)' }}>8,200 / 10,000</span>
                 </div>
                 <div style={{ width: '100%', height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
@@ -110,8 +110,8 @@ export default function DashboardOverview() {
               </div>
             </div>
             <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>El ciclo de facturación se reinicia en 12 días</span>
-              <button className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.9rem' }}>Actualizar Plan</button>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('overview.billingCycleResets')}</span>
+              <button className="btn-primary" style={{ padding: '6px 16px', fontSize: '0.9rem' }}>{t('overview.upgradePlan')}</button>
             </div>
           </div>
 
@@ -138,11 +138,11 @@ export default function DashboardOverview() {
               <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: 16 }}>{t('overview.systemHealth')}</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--success)' }}></div>
-                <span style={{ fontWeight: 500 }}>WhatsApp API connected</span>
+                <span style={{ fontWeight: 500 }}>{t('overview.whatsappApiConnected')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--success)' }}></div>
-                <span style={{ fontWeight: 500 }}>Charlo Core operational</span>
+                <span style={{ fontWeight: 500 }}>{t('overview.charloCoreOperational')}</span>
               </div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
                 {t('overview.allSystemsOperational')}
@@ -155,9 +155,9 @@ export default function DashboardOverview() {
       {showTestModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
           <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32, textAlign: 'center' }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>¡Bienvenido a Charlo!</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>{t('overview.welcomeTitle')}</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '1.05rem', lineHeight: 1.5 }}>
-              Hemos creado 2 negocios de prueba para que veas cómo se ve la aplicación con data. Para crear tu negocio dirígete a <strong>&apos;Gestionar empresas&apos;</strong>.
+              {t('overview.welcomeText')}<strong>{t('overview.welcomeTextBold')}</strong>.
             </p>
             <button className="btn-primary" onClick={closeTestModal} style={{ padding: '10px 24px', fontSize: '1rem' }}>
               OK

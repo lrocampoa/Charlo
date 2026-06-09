@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCompany } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Service {
   id: string;
@@ -16,6 +17,7 @@ interface Service {
 export default function ServicesPage() {
   const { selectedCompanyId } = useCompany();
   const { user } = useAuth();
+  const { t } = useLanguage();
   
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,7 @@ export default function ServicesPage() {
         await fetchServices();
         setIsModalOpen(false);
       } else {
-        alert("Error al guardar el servicio");
+        alert(t('services.saveError'));
       }
     } catch (e) {
       console.error(e);
@@ -78,7 +80,7 @@ export default function ServicesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Seguro que deseas eliminar este servicio?")) return;
+    if (!confirm(t('services.confirmDelete'))) return;
     if (!user || !selectedCompanyId) return;
     try {
       const token = await user.getIdToken();
@@ -106,11 +108,11 @@ export default function ServicesPage() {
         setSuggestedServices(data.services || []);
         setIsAiModalOpen(true);
       } else {
-        alert("Error: " + data.error);
+        alert(t('services.generateError') + " " + data.error);
       }
     } catch (e) {
       console.error(e);
-      alert("Error generating services.");
+      alert(t('services.generateError'));
     } finally {
       setGenerating(false);
     }
@@ -136,7 +138,7 @@ export default function ServicesPage() {
       setSuggestedServices([]);
     } catch (e) {
       console.error(e);
-      alert("Error saving some services.");
+      alert(t('services.saveSomeError'));
     } finally {
       setGenerating(false);
     }
@@ -148,7 +150,7 @@ export default function ServicesPage() {
   };
 
   if (!selectedCompanyId) {
-    return <div style={{ padding: 24, color: 'var(--text-secondary)' }}>Selecciona una empresa primero.</div>;
+    return <div style={{ padding: 24, color: 'var(--text-secondary)' }}>{t('services.selectCompany')}</div>;
   }
 
   return (
@@ -156,25 +158,25 @@ export default function ServicesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span>🏷️</span> Servicios Bookeables
+            <span>🏷️</span> {t('services.title')}
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Define los servicios, clases o tours que el agente IA puede reservar.</p>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('services.subtitle')}</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={generateWithAI} disabled={generating} className="btn-secondary" style={{ padding: '10px 20px', borderRadius: 20 }}>
-            {generating ? 'Generando...' : '✨ Generar con IA'}
+            {generating ? t('services.generating') : t('services.generateAi')}
           </button>
           <button onClick={openNewModal} className="btn-primary" style={{ padding: '10px 20px', borderRadius: 20 }}>
-            + Nuevo Servicio
+            {t('services.newService')}
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)' }}>Cargando servicios...</div>
+        <div style={{ color: 'var(--text-secondary)' }}>{t('services.loading')}</div>
       ) : services.length === 0 ? (
         <div className="glass-panel" style={{ textAlign: 'center', padding: 48, color: 'var(--text-secondary)' }}>
-          No has creado ningún servicio. Haz clic en "Nuevo Servicio" para empezar.
+          {t('services.noServices')}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
@@ -183,7 +185,7 @@ export default function ServicesPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 600 }}>{service.name}</h3>
                 <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '4px 8px', borderRadius: 4, textTransform: 'capitalize' }}>
-                  {service.type === 'appointment' ? 'Cita' : 'Evento'}
+                  {service.type === 'appointment' ? t('services.appointment') : t('services.event')}
                 </span>
               </div>
               
@@ -192,7 +194,7 @@ export default function ServicesPage() {
                   <span>⏱️</span> {service.durationMinutes} minutos
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>👥</span> Capacidad: {service.capacity}
+                  <span>👥</span> {t('services.capacity')}: {service.capacity}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>💰</span> ₡{service.price?.toLocaleString()}
@@ -204,13 +206,13 @@ export default function ServicesPage() {
                   onClick={() => { setEditingService(service); setIsModalOpen(true); }}
                   className="btn-secondary" style={{ flex: 1, padding: '8px' }}
                 >
-                  Editar
+                  {t('services.edit')}
                 </button>
                 <button 
                   onClick={() => handleDelete(service.id)}
                   style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}
                 >
-                  Eliminar
+                  {t('services.delete')}
                 </button>
               </div>
             </div>
@@ -222,37 +224,37 @@ export default function ServicesPage() {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
           <div className="glass-panel" style={{ width: '100%', maxWidth: 500, padding: 32 }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 24 }}>
-              {editingService.id ? 'Editar Servicio' : 'Nuevo Servicio'}
+              {editingService.id ? t('services.editTitle') : t('services.newTitle')}
             </h2>
             
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Nombre del Servicio</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('services.nameLabel')}</label>
                 <input 
                   type="text" 
                   value={editingService.name}
                   onChange={(e) => setEditingService({...editingService, name: e.target.value})}
                   className="glass-input"
-                  placeholder="ej. Corte Clásico, Tour Volcán"
+                  placeholder={t('services.namePlaceholder')}
                   required
                 />
               </div>
 
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Tipo</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('services.typeLabel')}</label>
                   <select 
                     value={editingService.type}
                     onChange={(e) => setEditingService({...editingService, type: e.target.value as any})}
                     className="glass-input"
                   >
-                    <option value="appointment">Cita (1 a 1)</option>
-                    <option value="event">Evento / Clase (Grupal)</option>
+                    <option value="appointment">{t('services.typeAppointment')}</option>
+                    <option value="event">{t('services.typeEvent')}</option>
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Duración (min)</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('services.durationLabel')}</label>
                   <input 
                     type="number" 
                     value={editingService.durationMinutes}
@@ -265,7 +267,7 @@ export default function ServicesPage() {
 
               <div style={{ display: 'flex', gap: 16 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Capacidad Max.</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('services.capacityLabel')}</label>
                   <input 
                     type="number" 
                     value={editingService.capacity}
@@ -275,7 +277,7 @@ export default function ServicesPage() {
                   />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
-                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Precio (CRC)</label>
+                  <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('services.priceLabel')}</label>
                   <input 
                     type="number" 
                     value={editingService.price}
@@ -286,8 +288,8 @@ export default function ServicesPage() {
               </div>
 
               <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Guardar Servicio</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary" style={{ flex: 1 }}>{t('services.cancel')}</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>{t('services.saveBtn')}</button>
               </div>
             </form>
           </div>
@@ -297,8 +299,8 @@ export default function ServicesPage() {
       {isAiModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
           <div className="glass-panel" style={{ width: '100%', maxWidth: 700, padding: 32, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>✨ Servicios Sugeridos</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>La IA ha extraído estos servicios de tu Base de Conocimiento. Revisa, edita si es necesario, y guárdalos.</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>{t('services.aiSuggested')}</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>{t('services.aiDesc')}</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               {suggestedServices.map((svc, idx) => (
@@ -314,7 +316,7 @@ export default function ServicesPage() {
                     />
                   </div>
                   <div style={{ flex: '1 1 20%', minWidth: 100 }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Tipo</label>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('services.typeLabel')}</label>
                     <select value={svc.type} className="glass-input" style={{ width: '100%' }}
                       onChange={(e) => {
                         const newArr = [...suggestedServices];
@@ -322,8 +324,8 @@ export default function ServicesPage() {
                         setSuggestedServices(newArr);
                       }}
                     >
-                      <option value="appointment">Cita</option>
-                      <option value="event">Evento</option>
+                      <option value="appointment">{t('services.appointment')}</option>
+                      <option value="event">{t('services.event')}</option>
                     </select>
                   </div>
                   <div style={{ flex: '1 1 15%', minWidth: 80 }}>
@@ -359,14 +361,14 @@ export default function ServicesPage() {
               ))}
               
               {suggestedServices.length === 0 && (
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: 24 }}>No hay servicios en la lista.</div>
+                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: 24 }}>{t('services.noList')}</div>
               )}
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
-              <button type="button" onClick={() => setIsAiModalOpen(false)} className="btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+              <button type="button" onClick={() => setIsAiModalOpen(false)} className="btn-secondary" style={{ flex: 1 }}>{t('services.cancel')}</button>
               <button type="button" onClick={saveSuggestedServices} className="btn-primary" style={{ flex: 1 }} disabled={generating || suggestedServices.length === 0}>
-                {generating ? 'Guardando...' : 'Guardar Todos'}
+                {generating ? t('services.generating') : t('services.saveAll')}
               </button>
             </div>
           </div>

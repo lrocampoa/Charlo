@@ -25,14 +25,14 @@ export default function Sidebar() {
     { name: `📥 ${t('sidebar.inbox')}`, path: '/dashboard/inbox' },
     { name: `👥 ${t('sidebar.customers')}`, path: '/dashboard/customers' },
     { name: `🧠 ${t('sidebar.knowledge')}`, path: '/dashboard/knowledge' },
-    { name: `⚠️ Mejora Continua`, path: '/dashboard/gaps' },
+    { name: `⚠️ ${t('sidebar.gapAnalysis')}`, path: '/dashboard/gaps' },
     { name: `🤖 ${t('sidebar.agents')}`, path: '/dashboard/agents' },
     { name: `📅 ${t('sidebar.reservations')}`, path: '/dashboard/reservations' },
-    { name: `🏷️ Servicios`, path: '/dashboard/services' },
-    { name: "🛍️ Órdenes", path: '/dashboard/orders' },
-    { name: "💳 Pagos", path: '/dashboard/payments' },
-    { name: "🎁 Fidelización", path: '/dashboard/loyalty' },
-    { name: "📢 Campañas", path: '/dashboard/campaigns' },
+    { name: `🏷️ ${t('sidebar.services')}`, path: '/dashboard/services' },
+    { name: `🛍️ ${t('sidebar.orders')}`, path: '/dashboard/orders' },
+    { name: `💳 ${t('sidebar.payments')}`, path: '/dashboard/payments' },
+    { name: `🎁 ${t('sidebar.loyalty')}`, path: '/dashboard/loyalty' },
+    { name: `📢 ${t('sidebar.campaigns')}`, path: '/dashboard/campaigns' },
     { name: `🎮 ${t('sidebar.simulator')}`, path: '/dashboard/test' },
   ];
 
@@ -96,7 +96,7 @@ export default function Sidebar() {
               transition: 'all var(--transition-fast)',
               border: '1px solid rgba(234, 179, 8, 0.3)'
             }}>
-              👑 Panel Global Admin
+              👑 {t('sidebar.globalAdmin')}
             </Link>
         )}
         {navItems.map((item) => {

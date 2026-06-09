@@ -302,11 +302,20 @@ export async function getSessionHistory(companyId: string, sessionId: string) {
     let role = msg.role === 'human' ? 'model' : msg.role;
     if (role !== 'user' && role !== 'model') role = 'user'; // fallback
     
+    // Ensure we don't crash if msg.parts is malformed from legacy data
+    const text = msg.parts?.[0]?.text || msg.text || "";
+    if (!text) continue;
+
     if (normalizedHistory.length > 0 && normalizedHistory[normalizedHistory.length - 1].role === role) {
-      normalizedHistory[normalizedHistory.length - 1].parts[0].text += `\n${msg.parts[0].text}`;
+      normalizedHistory[normalizedHistory.length - 1].parts[0].text += `\n${text}`;
     } else {
-      normalizedHistory.push({ role, parts: [{ text: msg.parts[0].text || "" }] });
+      normalizedHistory.push({ role, parts: [{ text }] });
     }
+  }
+  
+  // Gemini API Requires history to start with a 'user' message
+  if (normalizedHistory.length > 0 && normalizedHistory[0].role === 'model') {
+    normalizedHistory.shift();
   }
   
   return normalizedHistory;

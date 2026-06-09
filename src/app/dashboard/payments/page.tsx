@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { useCompany } from '@/context/CompanyContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function PaymentsPage() {
   const { selectedCompanyId } = useCompany();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,31 +34,31 @@ export default function PaymentsPage() {
     fetchPayments();
   }, [selectedCompanyId]);
 
-  if (loading) return <div style={{ color: '#fff', padding: 24 }}>Cargando pagos...</div>;
+  if (loading) return <div style={{ color: '#fff', padding: 24 }}>{t('payments.loading')}</div>;
 
   return (
     <div className="fade-in" style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 600, color: '#fff' }}>Pagos Recientes</h1>
+        <h1 style={{ fontSize: '2rem', fontWeight: 600, color: '#fff' }}>{t('payments.title')}</h1>
         <div style={{ padding: '8px 16px', backgroundColor: 'rgba(139, 92, 246, 0.1)', color: 'var(--accent-color)', borderRadius: 'var(--border-radius-full)', fontSize: '0.9rem', fontWeight: 500 }}>
-          ⚡ Analizados por Charlo AI
+          {t('payments.aiAnalyzed')}
         </div>
       </div>
       
       {payments.length === 0 ? (
         <div className="glass-panel" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <p>No hay pagos registrados aún. Envíale un comprobante de SINPE por WhatsApp a tu bot para verlo aquí.</p>
+          <p>{t('payments.noPayments')}</p>
         </div>
       ) : (
         <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
             <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
               <tr>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Referencia</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Teléfono (WhatsApp)</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Remitente (AI)</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Monto</th>
-                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Fecha Comprobante</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('payments.reference')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('payments.phone')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('payments.sender')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('payments.amount')}</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('payments.date')}</th>
               </tr>
             </thead>
             <tbody>

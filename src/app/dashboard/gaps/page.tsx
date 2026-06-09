@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from '@/context/CompanyContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface Gap {
   id: string;
@@ -14,6 +15,7 @@ interface Gap {
 export default function GapsPage() {
   const { user } = useAuth();
   const { selectedCompanyId } = useCompany();
+  const { t } = useLanguage();
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [resolutions, setResolutions] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function GapsPage() {
     if (!user || !selectedCompanyId) return;
     const text = resolutions[gap.id];
     if (!text || text.trim().length === 0) {
-      alert("Por favor, ingresa el procedimiento para resolver esta duda.");
+      alert(t('gaps.resolveError'));
       return;
     }
 
@@ -67,32 +69,31 @@ export default function GapsPage() {
 
       if (res.ok) {
         setGaps(prev => prev.filter(g => g.id !== gap.id));
-        alert("¡Resuelto! La IA ha memorizado este nuevo procedimiento.");
+        alert(t('gaps.resolvedSuccess'));
       } else {
         const errData = await res.json();
-        alert(errData.error || "Error al resolver la brecha.");
+        alert(errData.error || t('gaps.resolveError'));
       }
     } catch (err) {
       console.error(err);
-      alert("Error de red.");
+      alert(t('gaps.networkError'));
     } finally {
       setResolving(null);
     }
   };
 
   if (!selectedCompanyId) {
-    return <div style={{ color: 'var(--text-secondary)' }}>Selecciona una empresa para ver sus áreas de mejora.</div>;
+    return <div style={{ color: 'var(--text-secondary)' }}>{t('gaps.selectCompany')}</div>;
   }
 
   return (
     <div>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span>⚠️</span> Mejora Continua
+          <span>⚠️</span> {t('gaps.title')}
         </h1>
         <p style={{ color: 'var(--text-secondary)' }}>
-          Nuestro Agente de Calidad (QA) ha detectado preguntas que la IA no pudo responder. 
-          Escribe el procedimiento aquí y la IA lo memorizará instantáneamente.
+          {t('gaps.subtitle')}
         </p>
       </div>
 
@@ -101,8 +102,8 @@ export default function GapsPage() {
       ) : gaps.length === 0 ? (
         <div className="glass-panel" style={{ textAlign: 'center', padding: 48 }}>
           <div style={{ fontSize: '3rem', marginBottom: 16 }}>🎉</div>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>¡Tu IA lo sabe todo!</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>No hay brechas de conocimiento pendientes.</p>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>{t('gaps.noGapsTitle')}</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('gaps.noGapsSubtitle')}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 800 }}>
@@ -126,15 +127,15 @@ export default function GapsPage() {
               </div>
 
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Detectado el: {new Date(gap.createdAt).toLocaleString()}
+                {t('gaps.detectedOn')}: {new Date(gap.createdAt).toLocaleString()}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Escribe la respuesta o procedimiento a seguir:</label>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('gaps.writeResponseLabel')}</label>
                 <textarea
                   value={resolutions[gap.id] || ''}
                   onChange={(e) => setResolutions({ ...resolutions, [gap.id]: e.target.value })}
-                  placeholder="Ej: Para devoluciones internacionales, el cliente debe..."
+                  placeholder={t('gaps.writeResponsePlaceholder')}
                   rows={4}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
@@ -149,7 +150,7 @@ export default function GapsPage() {
                 disabled={resolving === gap.id}
                 style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 8 }}
               >
-                {resolving === gap.id ? '🧠 Enseñando...' : 'Enseñar a la IA'}
+                {resolving === gap.id ? t('gaps.teaching') : t('gaps.teachAi')}
               </button>
             </div>
           ))}
