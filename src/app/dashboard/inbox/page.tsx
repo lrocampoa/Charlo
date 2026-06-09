@@ -16,6 +16,8 @@ export default function Inbox() {
   const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null;
@@ -194,6 +196,40 @@ export default function Inbox() {
     }
   };
 
+  const handleResendMessage = async (msg: any) => {
+    if (!selectedCompanyId || !selectedSessionId || !user) return;
+    setIsResending(msg.id);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/companies/${selectedCompanyId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sessionId: selectedSession?.sessionId,
+          text: msg.parts?.[0]?.text || "",
+          platform: selectedSession?.platform,
+          customerPhone: selectedSession?.customerPhone
+        })
+      });
+
+      if (res.ok) {
+        // Delete the old failed message
+        const docId = `${selectedCompanyId}_${selectedSessionId}`;
+        const msgRef = doc(db, `sessions/${docId}/messages/${msg.id}`);
+        await deleteDoc(msgRef);
+      } else {
+        alert("No se pudo reenviar el mensaje. Revisa los permisos de Meta.");
+      }
+    } catch (e) {
+      console.error("Failed to resend message", e);
+    } finally {
+      setIsResending(null);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -332,33 +368,45 @@ export default function Inbox() {
                 {(currentMessages || []).map((msg: any, i: number) => {
                   const isUser = msg.role === 'user';
                   const isHumanRep = msg.role === 'human';
+                  const isModel = msg.role === 'model' || msg.role === 'human';
+                  const msgText = (msg.parts?.[0]?.text || "").replace(/\[Meta Profile Name: .*?\]\s*/g, '');
                   
                   // Styling logic
                   const bgColor = isUser 
-                    ? 'rgba(255, 255, 255, 0.08)' // Distinct dark gray/transparent for user
+                    ? '#e5e7eb' // Light gray for user
                     : isHumanRep 
                       ? '#3b82f6' // Solid blue for human
                       : 'linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%)'; // Purple gradient for AI
                   
                   return (
-                    <div key={i} style={{ 
-                      alignSelf: isUser ? 'flex-start' : 'flex-end', 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isUser ? 'flex-start' : 'flex-end',
-                      maxWidth: '75%' 
-                    }}>
+                    <div 
+                      key={msg.id || i} 
+                      style={{ 
+                        alignSelf: isUser ? 'flex-start' : 'flex-end', 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: isUser ? 'flex-start' : 'flex-end',
+                        maxWidth: '75%' 
+                      }}
+                      onMouseEnter={() => setHoveredMessageId(msg.id || i.toString())}
+                      onMouseLeave={() => setHoveredMessageId(null)}
+                    >
                       <div style={{
                         background: bgColor,
-                        color: isUser ? 'var(--text-primary)' : '#fff', 
+                        color: isUser ? '#1f2937' : '#fff', 
                         padding: '14px 18px', 
                         borderRadius: isUser ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
                         lineHeight: 1.5,
                         boxShadow: isUser ? 'none' : '0 4px 14px rgba(0,0,0,0.1)',
-                        border: isUser ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                        border: isUser ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        position: 'relative'
                       }}>
-                        {msg.parts[0]?.text}
+                        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {msgText}
+                        </div>
                       </div>
+
+                      {/* Footer Info */}
                       <div style={{ 
                         fontSize: '0.75rem', 
                         color: 'var(--text-secondary)', 
@@ -366,11 +414,33 @@ export default function Inbox() {
                         padding: '0 4px',
                         display: 'flex',
                         gap: 6,
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        justifyContent: isUser ? 'flex-start' : 'flex-end'
                       }}>
-                        {isHumanRep && <span style={{ color: '#60a5fa', fontWeight: 600 }}>👤 Sent by Human</span>}
+                        {msg.status === 'failed' && hoveredMessageId === (msg.id || i.toString()) && (
+                          <button 
+                            onClick={() => handleResendMessage(msg)}
+                            disabled={isResending === msg.id}
+                            style={{ 
+                              fontSize: '0.75rem', 
+                              padding: '2px 8px', 
+                              borderRadius: 12, 
+                              border: 'none', 
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                              color: 'var(--danger)', 
+                              cursor: isResending === msg.id ? 'not-allowed' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            🔄 {isResending === msg.id ? 'Reenviando...' : 'Reenviar'}
+                          </button>
+                        )}
+                        {isHumanRep && <span style={{ color: '#3b82f6', fontWeight: 600 }}>👤 Sent by Human</span>}
                         {!isUser && !isHumanRep && <span style={{ color: '#a855f7', fontWeight: 600 }}>✨ Sent by AI</span>}
                         <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                        
                         {!isUser && msg.status && (
                           <span style={{ display: 'flex', alignItems: 'center' }} title={msg.status}>
                             {msg.status === 'sent' && (
@@ -400,18 +470,24 @@ export default function Inbox() {
                     Monitoring mode. Click <strong>Take Over Chat</strong> to pause the AI and reply manually.
                   </div>
                 ) : (
-                  <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12 }}>
-                    <input 
-                      type="text" 
-                      value={messageText}
-                      onChange={e => setMessageText(e.target.value)}
-                      placeholder="Escribe tu mensaje..." 
-                      style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none', color: '#fff' }}
-                    />
-                    <button type="submit" className="btn-primary" disabled={isSending || !messageText.trim()}>
-                      {isSending ? 'Enviando...' : 'Enviar'}
-                    </button>
-                  </form>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 12 }}>
+                      <input 
+                        type="text" 
+                        value={messageText}
+                        onChange={e => setMessageText(e.target.value)}
+                        placeholder="Escribe tu mensaje..." 
+                        style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', outline: 'none', color: '#fff' }}
+                      />
+                      <button type="submit" className="btn-primary" disabled={isSending || !messageText.trim()}>
+                        {isSending ? 'Enviando...' : 'Enviar'}
+                      </button>
+                    </form>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                      <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: 4, display: 'inline-block' }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      <strong>Nota de Meta:</strong> Los mensajes solo se enviarán si el cliente te ha escrito en las últimas 24 horas. Si pasaron 24 horas, abre WhatsApp Business en tu teléfono y respóndele por ahí para continuar.
+                    </div>
+                  </div>
                 )}
               </div>
             </>

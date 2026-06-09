@@ -44,13 +44,23 @@ export async function processUserMessage(
     message = `[Meta Profile Name: ${context.customerName}] ${message}`;
   }
 
+  // 0.5 Check session status BEFORE saving the new message
+  // We do this first to check the timestamp of the PREVIOUS last message
+  const sessionDoc = await getRawSessionHistory(companyId, sessionId);
+  let status = sessionDoc?.status || 'ai_handling';
+  const lastUpdated = sessionDoc?.updatedAt || 0;
+
+  // Auto-resume if last activity was > 5 hours ago and it was paused
+  const FIVE_HOURS = 5 * 60 * 60 * 1000;
+  if (status === 'human_handling' && (Date.now() - lastUpdated) > FIVE_HOURS) {
+    status = 'ai_handling';
+    await updateSessionStatus(companyId, sessionId, 'ai_handling');
+    console.log(`⏱️ Auto-resumed session ${sessionId} after 5 hours of inactivity.`);
+  }
+
   // 0. Save User Message to Short-Term Memory FIRST
   // This ensures human operators can see incoming messages even if AI is disabled
   await saveSessionMessage(companyId, sessionId, "user", message, platform, sessionId, undefined, context.customerName);
-
-  // 0.5 Check session status
-  const sessionDoc = await getRawSessionHistory(companyId, sessionId);
-  const status = sessionDoc?.status || 'ai_handling';
 
   if (status === 'human_handling') {
     console.log(`🔇 Session ${sessionId} is in 'human_handling' mode. AI will ignore.`);

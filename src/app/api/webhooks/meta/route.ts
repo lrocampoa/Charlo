@@ -427,6 +427,40 @@ export async function POST(request: Request) {
               console.warn("⚠️ No Meta Access Token found for company or environment. Cannot send reply.");
             }
           }
+
+          // Detect messages sent from the WhatsApp Business App by the business (Coexistence)
+          if (change.value && change.value.smb_message_echoes) {
+            for (const echo of change.value.smb_message_echoes) {
+              const businessPhoneId = change.value.metadata.phone_number_id;
+              let company: any = companyCache[businessPhoneId];
+              if (company === undefined) {
+                company = await getCompanyByWhatsAppId(businessPhoneId);
+                companyCache[businessPhoneId] = company || null;
+              }
+              if (company) {
+                const customerPhone = echo.to;
+                if (customerPhone) {
+                  console.log(`👤 Human took over chat from WhatsApp Business App for ${customerPhone}`);
+                  
+                  // Pause the AI automatically
+                  await updateSessionStatus(company.id, customerPhone, "human_handling");
+                  
+                  // Optionally, save the human message to DB so it appears in Inbox
+                  const messageText = echo.text?.body || "[Imagen/Audio enviado desde WhatsApp Business]";
+                  await saveSessionMessage(
+                    company.id, 
+                    customerPhone, 
+                    "human", 
+                    messageText, 
+                    "whatsapp", 
+                    customerPhone, 
+                    echo.id,
+                    undefined
+                  );
+                }
+              }
+            }
+          }
         }
       }
       return NextResponse.json({ status: "EVENT_RECEIVED" }, { status: 200 });
