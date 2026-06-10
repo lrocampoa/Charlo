@@ -19,7 +19,6 @@ const createDraftEmailDeclaration: FunctionDeclaration = {
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function handleCustomerServiceQuery(
-export async function handleCustomerServiceQuery(
   companyId: string,
   sessionId: string,
   userInput: string, 
