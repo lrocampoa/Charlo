@@ -95,7 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         type: "BUTTONS",
         buttons: [
           {
-            type: "QUICK_REPLY",
+            type: "OPT_OUT",
             text: optOutButton
           }
         ]
@@ -121,8 +121,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const data = await res.json();
 
     if (data.error) {
-      console.error("Meta Template Creation Error:", data.error);
-      return NextResponse.json({ error: data.error.message }, { status: 400 });
+      console.error("Meta Template Creation Error:", JSON.stringify(data.error, null, 2));
+      const detailedMessage = data.error.error_user_msg || (data.error.error_data && data.error.error_data.details) || data.error.message;
+      return NextResponse.json({ error: detailedMessage, fullError: data.error }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, id: data.id });

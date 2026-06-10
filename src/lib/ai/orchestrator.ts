@@ -126,10 +126,10 @@ export async function processUserMessage(
   // 5. Call Specialized Agent with History and CRM Facts
   switch (finalIntent) {
     case "CUSTOMER_SERVICE":
-      response = await handleCustomerServiceQuery(companyId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
+      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
     case "SALES":
-      response = await handleSalesQuery(message, history, context.productsCatalog, crmFacts, context.productsList);
+      response = await handleSalesQuery(companyId, sessionId, message, history, context.productsCatalog, crmFacts, context.productsList);
       break;
     case "BOOKING":
       response = await handleBookingQuery(
@@ -151,7 +151,7 @@ export async function processUserMessage(
       response = "Por favor, envíe una captura de pantalla del comprobante de SINPE Móvil para verificar el pago.";
       break;
     default:
-      response = await handleCustomerServiceQuery(companyId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
+      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
       break;
   }
   

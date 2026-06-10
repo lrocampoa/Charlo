@@ -67,37 +67,37 @@ export default function AdminDashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, marginBottom: 40 }}>
         {/* Stat Cards */}
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/users')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Total Enrolled Users</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalUsers || 0}</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/businesses')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Total Businesses</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalBusinesses || 0}</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/conversations')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Conversations Had</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalConversations || 0}</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/conversations')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Time Saved (Platform)</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.hoursSaved || 0}h</span>
           <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>Est. 5min/resolution</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/conversations')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>AI Handled / Escalated</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.aiHandled || 0} / {metrics?.humanHandled || 0}</span>
           <span style={{ color: 'var(--success)', fontSize: '0.85rem' }}>{metrics?.aiResolutionRate || 0}% AI Resolution Rate</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/orders')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Platform Sales/Orders</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalOrders || 0}</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/reservations')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Platform Reservations</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalReservations || 0}</span>
         </div>
-        <div className="glass-panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-panel" onClick={() => router.push('/admin/details/qa')} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer' }}>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Total QA / Knowledge Gaps</span>
           <span style={{ fontSize: '2.5rem', fontWeight: 700 }}>{metrics?.totalQA || 0}</span>
         </div>

@@ -20,6 +20,8 @@ export default function Inbox() {
   const [isSending, setIsSending] = useState(false);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [isResending, setIsResending] = useState<string | null>(null);
+  const [sessionTasks, setSessionTasks] = useState<any[]>([]);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null;
@@ -118,6 +120,27 @@ export default function Inbox() {
 
     return () => unsubscribe();
   }, [selectedSessionId, db, sessions]);
+
+  // Fetch tasks for selected session
+  useEffect(() => {
+    if (!selectedSessionId || !db) {
+      setSessionTasks([]);
+      return;
+    }
+
+    const docId = selectedSessionId;
+    const q = query(
+      collection(db, 'sessions', docId, 'tasks')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      tasks.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      setSessionTasks(tasks);
+    });
+
+    return () => unsubscribe();
+  }, [selectedSessionId, db]);
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
@@ -373,6 +396,23 @@ export default function Inbox() {
                 )}
               </div>
               
+              {/* Pending Tasks Banner */}
+              {sessionTasks.filter(t => t.status === 'pending').length > 0 && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <span style={{ fontWeight: 600 }}>{sessionTasks.filter(t => t.status === 'pending').length} Tarea(s) Pendiente(s) (Human in the loop)</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {sessionTasks.filter(t => t.status === 'pending').map(task => (
+                      <button key={task.id} onClick={() => setSelectedTask(task)} style={{ padding: '6px 12px', background: 'var(--danger)', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
+                        Revisar Borrador ({task.type === 'SEND_EMAIL' ? 'Correo' : task.type})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ flex: 1, padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {(currentMessages || []).map((msg: any, i: number) => {
                   const isUser = msg.role === 'user';
@@ -508,6 +548,82 @@ export default function Inbox() {
           )}
         </div>
       </div>
+      
+      {/* Modal de Revisión de Tarea */}
+      {selectedTask && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setSelectedTask(null)}>
+          <div className="glass-panel" style={{ width: '90%', maxWidth: 600, padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Revisar Tarea: {selectedTask.type === 'SEND_EMAIL' ? 'Enviar Correo' : selectedTask.type}</h3>
+              <button onClick={() => setSelectedTask(null)} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
+            </div>
+            
+            {selectedTask.type === 'SEND_EMAIL' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ color: 'var(--text-secondary)' }}>La IA ha redactado este correo para el cliente. Revísalo y presiona enviar. (Se abrirá tu cliente de correo por defecto).</p>
+                
+                <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Para:</label>
+                <input 
+                  type="email" 
+                  value={selectedTask.data.to || ''} 
+                  onChange={(e) => setSelectedTask({...selectedTask, data: {...selectedTask.data, to: e.target.value}})}
+                  style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+                
+                <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Asunto:</label>
+                <input 
+                  type="text" 
+                  value={selectedTask.data.subject || ''} 
+                  onChange={(e) => setSelectedTask({...selectedTask, data: {...selectedTask.data, subject: e.target.value}})}
+                  style={{ padding: '8px 12px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                />
+                
+                <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Cuerpo del Correo:</label>
+                <textarea 
+                  value={selectedTask.data.body || ''} 
+                  onChange={(e) => setSelectedTask({...selectedTask, data: {...selectedTask.data, body: e.target.value}})}
+                  rows={8}
+                  style={{ padding: '12px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+              <button className="btn-secondary" onClick={() => setSelectedTask(null)}>Cancelar</button>
+              <button 
+                className="btn-primary" 
+                onClick={async () => {
+                  if (!db) return;
+                  try {
+                    // 1. Abrir mailto para enviar el correo desde la app local
+                    if (selectedTask.type === 'SEND_EMAIL') {
+                      const mailtoLink = `mailto:${selectedTask.data.to}?subject=${encodeURIComponent(selectedTask.data.subject)}&body=${encodeURIComponent(selectedTask.data.body)}`;
+                      window.open(mailtoLink, '_blank');
+                    }
+                    
+                    // 2. Marcar como completada en Firestore
+                    const docId = selectedSessionId; // The ID is just selectedSessionId on this page (it combines companyId_sessionId via formatting where it matters, wait: here we use selectedSessionId directly to match other queries)
+                    // Wait, let's verify how tasks collection is built in this page:
+                    // query(collection(db, 'sessions', selectedSessionId, 'tasks'))
+                    // Yes, selectedSessionId is the full doc ID (`${companyId}_${sessionId}`)
+                    await updateDoc(doc(db, `sessions/${selectedSessionId}/tasks/${selectedTask.id}`), {
+                      status: 'completed',
+                      data: selectedTask.data,
+                      completedAt: new Date().toISOString()
+                    });
+                    
+                    setSelectedTask(null);
+                  } catch (e) {
+                    console.error("Error completando la tarea", e);
+                  }
+                }}
+              >
+                Enviar y Completar Tarea
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

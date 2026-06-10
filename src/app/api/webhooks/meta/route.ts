@@ -17,7 +17,7 @@ async function enforceLimitsAndPause(
   accessToken: string
 ): Promise<boolean> {
   const tier = company.subscription?.tier || 'free';
-  const status = company.subscription?.status || 'active';
+  const status = company.subscription?.status || 'pending';
   const usageCount = company.usage?.aiMessagesCurrentMonth || 0;
   
   let limit = Infinity;

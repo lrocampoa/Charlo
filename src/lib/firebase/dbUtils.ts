@@ -557,7 +557,7 @@ export async function getUser(userId: string) {
 export async function createUser(userId: string, email: string) {
   const newUser = {
     email,
-    subscription: { tier: 'free', status: 'active', currentPeriodEnd: null },
+    subscription: { tier: 'free', status: 'pending', currentPeriodEnd: null },
     stripeCustomerId: null,
     usage: { aiMessagesCurrentMonth: 0 },
     billing: { geminiTokensUsed: 0, whatsappMessagesUsed: 0 },
@@ -607,3 +607,41 @@ export async function checkAndSetPausedAutoResponder(companyId: string, customer
   return true;
 }
 
+// --- SESSION TASKS (HUMAN IN THE LOOP) ---
+export async function createSessionTask(companyId: string, sessionId: string, taskData: { type: string; data: any; status?: 'pending' | 'completed' }) {
+  const db = getDb();
+  const docId = `${companyId}_${sessionId}`;
+  
+  const taskRef = db.collection('sessions').doc(docId).collection('tasks').doc();
+  const newTask = {
+    id: taskRef.id,
+    type: taskData.type,
+    status: taskData.status || 'pending',
+    data: taskData.data,
+    createdAt: new Date().toISOString()
+  };
+  
+  await taskRef.set(newTask);
+  return newTask;
+}
+
+export async function getSessionTasks(companyId: string, sessionId: string) {
+  const db = getDb();
+  const docId = `${companyId}_${sessionId}`;
+  
+  const snapshot = await db.collection('sessions').doc(docId).collection('tasks')
+    .orderBy('createdAt', 'desc')
+    .get();
+    
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+export async function updateTaskStatus(companyId: string, sessionId: string, taskId: string, status: 'pending' | 'completed') {
+  const db = getDb();
+  const docId = `${companyId}_${sessionId}`;
+  
+  await db.collection('sessions').doc(docId).collection('tasks').doc(taskId).update({
+    status,
+    completedAt: status === 'completed' ? new Date().toISOString() : null
+  });
+}

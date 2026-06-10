@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     // ENFORCE BUSINESS LIMITS
     const userDoc: any = await getUser(userId);
     const tier = userDoc?.subscription?.tier || 'free';
-    const status = userDoc?.subscription?.status || 'active';
+    const status = userDoc?.subscription?.status || 'pending';
     
     const maxBusinesses = {
       'free': 100, // Temporarily increased for testing
