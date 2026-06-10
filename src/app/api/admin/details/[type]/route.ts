@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
 
-export async function GET(request: Request, { params }: { params: { type: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ type: string }> }) {
   try {
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ') || !adminAuth) {
@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: { type: string
       return NextResponse.json({ error: "Database not initialized" }, { status: 500 });
     }
 
-    const { type } = params;
+    const { type } = await params;
     let data: any[] = [];
 
     switch (type) {
@@ -104,7 +104,7 @@ export async function GET(request: Request, { params }: { params: { type: string
     return NextResponse.json({ data });
 
   } catch (error) {
-    console.error(`Admin details API error for type ${params.type}:`, error);
+    console.error(`Admin details API error:`, error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

@@ -66,13 +66,14 @@ export async function handleCustomerServiceQuery(
     if (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
       if (call.name === "create_draft_email") {
-        console.log(`[CustomerServiceAgent] Creating draft email for ${call.args.to}`);
+        const args = call.args as any;
+        console.log(`[CustomerServiceAgent] Creating draft email for ${args.to}`);
         await createSessionTask(companyId, sessionId, {
           type: 'SEND_EMAIL',
           data: {
-            to: call.args.to,
-            subject: call.args.subject,
-            body: call.args.body
+            to: args.to,
+            subject: args.subject,
+            body: args.body
           }
         });
         
