@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useCompany } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -22,6 +22,7 @@ interface MetaTemplate {
   status: string;
   category: string;
   language: string;
+  components?: any[];
 }
 
 export default function CampaignsPage() {
@@ -50,6 +51,7 @@ export default function CampaignsPage() {
   const [languageCode, setLanguageCode] = useState('es_MX');
   const [targetType, setTargetType] = useState<'all' | 'specific'>('all');
   const [selectedPhones, setSelectedPhones] = useState<string[]>([]);
+  const [templateVariables, setTemplateVariables] = useState<Record<string, string>>({});
   
   const [customers, setCustomers] = useState<any[]>([]);
   const [proactiveTriggers, setProactiveTriggers] = useState<any[]>([]);
@@ -135,6 +137,20 @@ export default function CampaignsPage() {
     fetchTemplates();
   }, [selectedCompanyId, user]);
 
+  const selectedTemplateData = useMemo(() => {
+    return metaTemplates.find(t => t.name === templateName);
+  }, [metaTemplates, templateName]);
+
+  const requiredVars = useMemo(() => {
+    if (!selectedTemplateData || !selectedTemplateData.components) return [];
+    const bodyComp = selectedTemplateData.components.find((c: any) => c.type === 'BODY');
+    if (!bodyComp || !bodyComp.text) return [];
+    const matches = bodyComp.text.match(/\{\{\d+\}\}/g);
+    if (!matches) return [];
+    const numVars = new Set<string>(matches.map((m: string) => m.match(/\d+/)?.[0] as string));
+    return Array.from(numVars).sort((a, b) => parseInt(a) - parseInt(b));
+  }, [selectedTemplateData]);
+
   const toggleTrigger = async (triggerId: string, isActive: boolean) => {
     if (!user || !selectedCompanyId) return;
     try {
@@ -204,7 +220,8 @@ export default function CampaignsPage() {
         body: JSON.stringify({
           templateName: templateName.trim(),
           languageCode,
-          targetPhones: targetType === 'specific' ? selectedPhones : undefined
+          targetPhones: targetType === 'specific' ? selectedPhones : undefined,
+          templateVariables
         })
       });
 
@@ -378,17 +395,73 @@ export default function CampaignsPage() {
             <form onSubmit={handleSendCampaign} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.templateNameLabel')}</label>
-                <input
-                  type="text"
+                <select
                   value={templateName}
-                  onChange={(e) => setTemplateName(e.target.value)}
-                  placeholder={t('campaigns.templateNamePlaceholder')}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTemplateName(val);
+                    const tpl = metaTemplates.find(t => t.name === val);
+                    if (tpl) setLanguageCode(tpl.language);
+                    setTemplateVariables({}); // Reset vars on template change
+                  }}
                   style={{
                     padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
-                    background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace'
+                    background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none'
                   }}
-                />
+                  required
+                >
+                  <option value="" disabled>{t('campaigns.templateNamePlaceholder')}</option>
+                  {metaTemplates.filter(t => t.status === 'APPROVED').map(t => (
+                    <option key={t.id} value={t.name}>{t.name} ({t.language})</option>
+                  ))}
+                </select>
               </div>
+
+              {requiredVars.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: 'var(--border-radius-sm)' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>Variables del Template</h4>
+                  {requiredVars.map(varNum => (
+                    <div key={varNum} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Variable {`{{${varNum}}}`}</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <select
+                          value={templateVariables[varNum]?.startsWith('$crm.') ? templateVariables[varNum] : 'custom'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'custom') {
+                              setTemplateVariables(prev => ({ ...prev, [varNum]: '' }));
+                            } else {
+                              setTemplateVariables(prev => ({ ...prev, [varNum]: val }));
+                            }
+                          }}
+                          style={{
+                            padding: '8px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                            background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', flex: 1
+                          }}
+                        >
+                          <option value="custom">Texto Personalizado</option>
+                          <option value="$crm.name">Nombre del Cliente</option>
+                          <option value="$crm.customerId">Teléfono del Cliente</option>
+                        </select>
+                        
+                        {(!templateVariables[varNum] || !templateVariables[varNum].startsWith('$crm.')) && (
+                          <input
+                            type="text"
+                            placeholder="Valor de la variable"
+                            value={templateVariables[varNum] || ''}
+                            onChange={(e) => setTemplateVariables(prev => ({ ...prev, [varNum]: e.target.value }))}
+                            style={{
+                              padding: '8px', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)',
+                              background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none', flex: 2
+                            }}
+                            required
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('campaigns.templateLangLabel')}</label>
@@ -485,7 +558,7 @@ export default function CampaignsPage() {
               </div>
             ) : (
               <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)', textAlign: 'left' }}>
                   <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
                     <tr>
                       <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.templateTh')}</th>
@@ -661,7 +734,7 @@ export default function CampaignsPage() {
               </div>
             ) : (
               <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', color: '#fff', textAlign: 'left' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)', textAlign: 'left' }}>
                   <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
                     <tr>
                       <th style={{ padding: '16px 24px', fontWeight: 500 }}>{t('campaigns.nameTh')}</th>

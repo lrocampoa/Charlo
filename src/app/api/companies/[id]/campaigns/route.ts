@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const isActive = await verifyActiveSubscription(companyId);
     if (!isActive) return NextResponse.json({ error: "Subscription inactive or past due." }, { status: 402 });
 
-    const { templateName, languageCode, targetPhones } = await request.json();
+    const { templateName, languageCode, targetPhones, templateVariables } = await request.json();
 
     if (!templateName || !languageCode) {
       return NextResponse.json({ error: 'Faltan campos obligatorios (Template Name o Language Code)' }, { status: 400 });
@@ -72,6 +72,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Send the messages
     for (const customer of customers) {
       try {
+        let components: any[] | undefined = undefined;
+        
+        if (templateVariables && Object.keys(templateVariables).length > 0) {
+          const parameters: any[] = [];
+          const sortedKeys = Object.keys(templateVariables).sort((a, b) => parseInt(a) - parseInt(b));
+          
+          for (const key of sortedKeys) {
+            let val = templateVariables[key];
+            if (val === '$crm.name') {
+              val = customer.name || 'Cliente';
+            } else if (val === '$crm.customerId') {
+              val = customer.customerId || '';
+            }
+            parameters.push({
+              type: "text",
+              text: val || ' '
+            });
+          }
+          
+          components = [{
+            type: "body",
+            parameters
+          }];
+        }
+
         const res = await fetch(`https://graph.facebook.com/v19.0/${businessPhoneId}/messages`, {
           method: 'POST',
           headers: {
@@ -86,7 +111,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
               name: templateName,
               language: {
                 code: languageCode
-              }
+              },
+              ...(components && { components })
             }
           })
         });
