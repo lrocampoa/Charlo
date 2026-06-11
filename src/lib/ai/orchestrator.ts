@@ -124,9 +124,25 @@ export async function processUserMessage(
   }
 
   // 5. Call Specialized Agent with History and CRM Facts
+  
+  // Format Advanced SOPs for un-cached fallback
+  let fallbackKB = context.knowledgeBase || "";
+  if (context.advancedSOPs) {
+    try {
+      const sops = JSON.parse(context.advancedSOPs);
+      if (Array.isArray(sops)) {
+        fallbackKB += "\n\n" + sops.map(s => `### ${s.title || 'SOP'}\n${s.content || ''}`).join("\n\n");
+      } else {
+        fallbackKB += "\n\n" + context.advancedSOPs;
+      }
+    } catch(e) {
+      fallbackKB += "\n\n" + context.advancedSOPs;
+    }
+  }
+
   switch (finalIntent) {
     case "CUSTOMER_SERVICE":
-      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
+      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, fallbackKB, context.persona, crmFacts, context.geminiCacheId);
       break;
     case "SALES":
       response = await handleSalesQuery(companyId, sessionId, message, history, context.productsCatalog, crmFacts, context.productsList);
@@ -151,7 +167,7 @@ export async function processUserMessage(
       response = "Por favor, envíe una captura de pantalla del comprobante de SINPE Móvil para verificar el pago.";
       break;
     default:
-      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, context.knowledgeBase, context.persona, crmFacts, context.geminiCacheId);
+      response = await handleCustomerServiceQuery(companyId, sessionId, message, history, fallbackKB, context.persona, crmFacts, context.geminiCacheId);
       break;
   }
   

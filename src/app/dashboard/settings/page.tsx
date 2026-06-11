@@ -289,19 +289,27 @@ function SettingsContent() {
         {activeTab === 'knowledge' && (
           <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div className="glass-panel">
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Base de Conocimiento Textual</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16 }}>Base de Conocimiento</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 20 }}>
-                Esta es la información básica que el agente siempre recordará. Para catálogos muy extensos o subir archivos PDF, ve a la sección "Conocimiento y SOPs" en el menú principal.
+                La gestión de la Base de Conocimiento, PDFs, Enlaces web y Procedimientos (SOPs) ha sido movida a su propia sección para darle más poder a tu Agente IA.
               </p>
+              
+              <div style={{ padding: '24px', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '12px', textAlign: 'center', marginBottom: 24 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#3b82f6', marginBottom: 8 }}>🧠 Gestionar Conocimiento y SOPs</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 16 }}>Sube menús, catálogos, escanea sitios web y crea tarjetas de procedimientos estructurados.</p>
+                <button 
+                  onClick={() => router.push('/dashboard/knowledge')}
+                  className="btn-primary"
+                  style={{ background: '#3b82f6', color: '#fff', padding: '10px 20px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Ir a Knowledge & SOPs →
+                </button>
+              </div>
+
               <form onSubmit={handleSaveConfig} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.productsCatalog')}</label>
                   <textarea rows={6} value={formData.productsCatalog || ''} onChange={e => setFormData({...formData, productsCatalog: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', outline: 'none', fontFamily: 'monospace', fontSize: '0.85rem' }} />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.knowledgeBase')} (Políticas, Horarios, Ubicación)</label>
-                  <textarea rows={8} value={formData.knowledgeBase || ''} onChange={e => setFormData({...formData, knowledgeBase: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }} />
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>

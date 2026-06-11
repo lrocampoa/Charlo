@@ -788,7 +788,15 @@ function OnboardingContent() {
           name: finalBusinessArgs?.name || profile.name,
           persona: (finalBusinessArgs?.topics || profile.topics).find((t: Topic) => t.id === 'identidad')?.content || '',
           productsCatalog: (finalBusinessArgs?.topics || profile.topics).find((t: Topic) => t.id === 'catalogo')?.content || '',
-          knowledgeBase: (finalBusinessArgs?.topics || profile.topics).filter((t: Topic) => t.id !== 'identidad' && t.id !== 'catalogo').map((t: Topic) => `### ${t.title}\n${t.content}`).join('\n\n'),
+          advancedSOPs: JSON.stringify(
+            (finalBusinessArgs?.topics || profile.topics)
+              .filter((t: Topic) => t.id !== 'identidad' && t.id !== 'catalogo')
+              .map((t: Topic) => ({
+                id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+                title: t.title,
+                content: t.content
+              }))
+          ),
           calendlyLink: '',
           metaAccessToken: skipMeta ? undefined : metaToken,
           whatsappPhoneNumberId: skipMeta ? undefined : phoneId,
@@ -819,6 +827,19 @@ function OnboardingContent() {
             },
             body: JSON.stringify({ extractedProducts })
           }).catch(err => console.error("Background meta sync failed", err));
+        }
+
+        // Trigger AI Brain Compilation in background
+        if (newCompany.advancedSOPs || (scannedUrls && scannedUrls.length > 0)) {
+          const authToken = await user?.getIdToken();
+          fetch(`/api/companies/${newCompany.id}/sops`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ advancedSOPs: newCompany.advancedSOPs })
+          }).catch(err => console.error("Background AI Brain compile failed", err));
         }
 
         await refreshCompanies();

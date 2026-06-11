@@ -39,12 +39,17 @@ Tu objetivo es generar plantillas (templates) de WhatsApp para empresas.
 Categoría deseada: ${category}
 Idioma deseado: ${language}
 
-Reglas estrictas:
-- El mensaje debe ser corto, directo y persuasivo.
-- Usa emojis de manera natural pero no excesiva.
-- Usa variables de WhatsApp en formato {{1}}, {{2}} si necesitas incluir nombres de clientes, fechas o montos específicos que cambiarán por cliente.
-- NO incluyas saludos genéricos introductorios en tu respuesta, devuelve ÚNICAMENTE el texto del mensaje que se enviará.
-- NO envuelvas la respuesta en comillas.`,
+Reglas estrictas e inquebrantables de Meta (WhatsApp Business Policy):
+1. El texto NO DEBE superar los 1024 caracteres.
+2. Si usas variables, DEBEN ser estrictamente secuenciales empezando por {{1}} (luego {{2}}, {{3}}, etc.).
+3. Las variables NO pueden estar al principio ni al final exacto del mensaje.
+4. No uses demasiadas variables ni permitas que una variable represente más de unas pocas palabras.
+5. Evita dobles espacios o retornos de carro (saltos de línea) consecutivos innecesarios.
+6. Cero tolerancia a contenido ofensivo, amenazas, o promoción de artículos prohibidos (drogas, armas).
+7. Si la categoría es UTILITY, el mensaje NO DEBE contener ningún tipo de lenguaje promocional (ni "descuentos", ni "ofertas"). Debe ser meramente informativo.
+8. Si la categoría es MARKETING, hazlo persuasivo y directo.
+9. Usa emojis de manera natural pero no excesiva.
+10. NO incluyas saludos genéricos introductorios en tu respuesta, devuelve ÚNICAMENTE el texto del mensaje que se enviará. NO envuelvas la respuesta en comillas.`,
     });
 
     const result = await model.generateContent(prompt);

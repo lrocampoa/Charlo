@@ -43,7 +43,7 @@ export default function CampaignsPage() {
   const [newTemplateCategory, setNewTemplateCategory] = useState('MARKETING');
   const [newTemplateLang, setNewTemplateLang] = useState('es_MX');
   const [newTemplateBody, setNewTemplateBody] = useState('');
-  const [newTemplateOptOut, setNewTemplateOptOut] = useState('ALTO 🛑');
+  const [newTemplateOptOut, setNewTemplateOptOut] = useState('Darse de baja');
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatingAI, setGeneratingAI] = useState(false);
 
@@ -56,6 +56,9 @@ export default function CampaignsPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [proactiveTriggers, setProactiveTriggers] = useState<any[]>([]);
   const [loadingTriggers, setLoadingTriggers] = useState(false);
+
+  const [feedbackModal, setFeedbackModal] = useState<{ open: boolean, type: 'success' | 'error', message: string }>({ open: false, type: 'success', message: '' });
+  const showFeedback = (type: 'success' | 'error', message: string) => { setFeedbackModal({ open: true, type, message }); };
 
   useEffect(() => {
     async function fetchCampaigns() {
@@ -191,12 +194,12 @@ export default function CampaignsPage() {
     if (!user || !selectedCompanyId) return;
     
     if (!templateName.trim()) {
-      alert(t('campaigns.alertEnterTemplate'));
+      showFeedback('error', t('campaigns.alertEnterTemplate'));
       return;
     }
 
     if (targetType === 'specific' && selectedPhones.length === 0) {
-      alert(t('campaigns.alertSelectCustomer'));
+      showFeedback('error', t('campaigns.alertSelectCustomer'));
       return;
     }
 
@@ -227,15 +230,15 @@ export default function CampaignsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(t('campaigns.alertSent').replace('{0}', data.campaign.sentCount).replace('{1}', data.campaign.failedCount));
+        showFeedback('success', t('campaigns.alertSent').replace('{0}', data.campaign.sentCount.toString()).replace('{1}', data.campaign.failedCount.toString()));
         setCampaigns([data.campaign, ...campaigns]);
         setTemplateName('');
       } else {
-        alert(data.error || t('campaigns.alertSendError'));
+        showFeedback('error', data.error || t('campaigns.alertSendError'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('campaigns.alertNetworkError'));
+      showFeedback('error', t('campaigns.alertNetworkError'));
     } finally {
       setSending(false);
     }
@@ -246,7 +249,7 @@ export default function CampaignsPage() {
     if (!user || !selectedCompanyId) return;
     
     if (!newTemplateName.trim() || !newTemplateBody.trim()) {
-      alert(t('campaigns.alertFillTemplate'));
+      showFeedback('error', t('campaigns.alertFillTemplate'));
       return;
     }
 
@@ -270,7 +273,7 @@ export default function CampaignsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert(t('campaigns.alertTemplateReview'));
+        showFeedback('success', t('campaigns.alertTemplateReview'));
         setNewTemplateName('');
         setNewTemplateBody('');
         setAiPrompt('');
@@ -283,11 +286,11 @@ export default function CampaignsPage() {
           status: 'PENDING'
         }, ...metaTemplates]);
       } else {
-        alert(data.error || t('campaigns.alertCreateError'));
+        showFeedback('error', data.error || t('campaigns.alertCreateError'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('campaigns.alertNetworkError'));
+      showFeedback('error', t('campaigns.alertNetworkError'));
     } finally {
       setSubmittingTemplate(false);
     }
@@ -296,7 +299,7 @@ export default function CampaignsPage() {
   const handleGenerateAI = async () => {
     if (!user || !selectedCompanyId) return;
     if (!aiPrompt.trim()) {
-      alert(t('campaigns.alertAiPrompt'));
+      showFeedback('error', t('campaigns.alertAiPrompt'));
       return;
     }
 
@@ -320,11 +323,11 @@ export default function CampaignsPage() {
       if (res.ok && data.text) {
         setNewTemplateBody(data.text);
       } else {
-        alert(data.error || t('campaigns.alertAiError'));
+        showFeedback('error', data.error || t('campaigns.alertAiError'));
       }
     } catch (err) {
       console.error(err);
-      alert(t('campaigns.alertNetworkError'));
+      showFeedback('error', t('campaigns.alertNetworkError'));
     } finally {
       setGeneratingAI(false);
     }
@@ -812,6 +815,32 @@ export default function CampaignsPage() {
           </div>
         </div>
       ) : null}
+
+      {feedbackModal.open && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: 'var(--border-radius-lg)', maxWidth: '400px', width: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ background: feedbackModal.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: feedbackModal.type === 'success' ? '#10b981' : '#ef4444', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                {feedbackModal.type === 'success' ? '✓' : '⚠️'}
+              </div>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem', fontWeight: 600 }}>
+                {feedbackModal.type === 'success' ? 'Éxito' : 'Error'}
+              </h3>
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              {feedbackModal.message}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button 
+                onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
+                style={{ padding: '8px 16px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--border-radius-sm)', cursor: 'pointer', fontWeight: 500 }}
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

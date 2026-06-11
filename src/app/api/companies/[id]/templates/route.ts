@@ -68,11 +68,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'WhatsApp Business Account not fully configured' }, { status: 400 });
     }
 
+    let sanitizedBodyText = bodyText.trim();
+    if (sanitizedBodyText.startsWith('{{')) {
+      sanitizedBodyText = ' ' + sanitizedBodyText;
+    }
+    if (sanitizedBodyText.endsWith('}}')) {
+      sanitizedBodyText += '.';
+    }
+
     // Prepare components payload
     const components: any[] = [
       {
         type: "BODY",
-        text: bodyText
+        text: sanitizedBodyText
       }
     ];
 
@@ -95,7 +103,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         type: "BUTTONS",
         buttons: [
           {
-            type: "OPT_OUT",
+            type: "QUICK_REPLY",
             text: optOutButton
           }
         ]

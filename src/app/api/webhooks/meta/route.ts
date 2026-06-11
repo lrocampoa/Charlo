@@ -338,7 +338,9 @@ export async function POST(request: Request) {
               productsCatalog: company.productsCatalog || "",
               calendlyLink: company.calendlyLink || "",
               persona: company.persona || "Eres un asistente virtual amable y profesional.",
-              customerName: profileName
+              customerName: profileName,
+              advancedSOPs: company.advancedSOPs || "",
+              geminiCacheId: company.geminiCacheId || ""
             };
 
             // Call Gemini Orchestrator
@@ -533,7 +535,9 @@ export async function POST(request: Request) {
                 knowledgeBase: company.knowledgeBase || "",
                 productsCatalog: company.productsCatalog || "",
                 calendlyLink: company.calendlyLink || "",
-                persona: company.persona || "Eres un asistente virtual amable y profesional."
+                persona: company.persona || "Eres un asistente virtual amable y profesional.",
+                advancedSOPs: company.advancedSOPs || "",
+                geminiCacheId: company.geminiCacheId || ""
               };
 
               const { response } = await processUserMessage(

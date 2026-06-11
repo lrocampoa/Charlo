@@ -36,6 +36,7 @@ The logic for automatically dispatching an Uber Flash upon payment extraction is
 ## 2. Bucket List (Future Enhancements)
 
 - [ ] **Real Social Media Scraping**: Replace the generative simulated scraping in the Onboarding flow with a real headless browser pipeline (e.g. Puppeteer/Playwright or specialized APIs) to accurately pull Menus, Bios, and Posts directly from Instagram, Facebook, and Google Business links.
+- [ ] **Exception List for Automatic Responses**: Build a list where some specific phone numbers are excepted from receiving Charlo's automatic responses.
 - [ ] **Meta Connection Troubleshooting Guide**: Create documentation for users explaining how to troubleshoot Meta connection issues (e.g., missing WABA IDs, missing phone numbers, assigning correct permissions in Business Manager).
 - [x] **Email Verification Enforcement**: Force users who sign up via Email/Password to verify their email before accessing the dashboard. *(Completed)*
 - [x] **Granular Usage Alerts**: Send WhatsApp warnings to the owner when the AI consumes 85%, 90%, 95%, and 100% of the tier limit. *(Completed)*
