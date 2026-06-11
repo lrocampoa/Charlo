@@ -970,19 +970,19 @@ function OnboardingContent() {
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
             <div className="glass-panel-premium" style={{ width: 500, padding: 40, display: 'flex', flexDirection: 'column', gap: 24, animation: 'scaleIn 0.3s ease-out' }}>
               <div style={{ textAlign: 'center' }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>¡Ya casi terminamos!</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>Charlo ha configurado tu agente inteligentemente.</p>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8, background: "linear-gradient(to right, #10b981, #3b82f6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{t('onboarding.almostDoneTitle')}</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>{t('onboarding.almostDoneDesc')}</p>
               </div>
 
               {metaToken ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center', color: '#10b981' }}>
-                    ✅ Cuenta de Meta y WhatsApp configurada exitosamente.
+                    ✅ {t('onboarding.metaSuccess')}
                   </div>
                   {!hasPaymentMethod && (
                     <div style={{ padding: '16px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', color: '#f59e0b', fontSize: '0.95rem', lineHeight: 1.5, textAlign: 'left' }}>
-                      <strong>⚠️ Acción Requerida:</strong> Hemos detectado que tu cuenta no tiene un método de pago. Para que la IA pueda responder a tus clientes, Meta requiere una tarjeta de crédito.<br/><br/>
-                      <a href="https://business.facebook.com/settings/payment-methods" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', fontWeight: 600 }}>Haz clic aquí</a> para agregar un método de pago en tu Business Manager y luego vincúlalo a tu cuenta de WhatsApp.
+                      <strong>⚠️ {t('onboarding.paymentWarning').split(':')[0]}:</strong> {t('onboarding.paymentWarning').split(':')[1]}<br/><br/>
+                      <a href="https://business.facebook.com/settings/payment-methods" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', fontWeight: 600 }}>{t('onboarding.addPaymentMethod')}</a> {t('onboarding.paymentWarningText')}
                     </div>
                   )}
                 </div>
@@ -1018,11 +1018,11 @@ function OnboardingContent() {
               <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
                 {!metaToken && (
                   <button className="btn-secondary" style={{ flex: 1, padding: '14px 0' }} onClick={() => handleFinalSubmit(true)} disabled={isCreating}>
-                    Saltar por ahora
+                    {t('onboarding.skipForNow')}
                   </button>
                 )}
                 <button className="btn-primary" style={{ flex: 1, backgroundColor: '#10b981', color: '#fff', padding: '14px 0', border: 'none' }} onClick={() => handleFinalSubmit(false)} disabled={isCreating}>
-                  {isCreating ? 'Guardando...' : 'Finalizar Configuración'}
+                  {isCreating ? t('onboarding.saving') : t('onboarding.finishSetup')}
                 </button>
               </div>
             </div>
@@ -1033,17 +1033,17 @@ function OnboardingContent() {
         {onboardingStep === 1 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Conecta tu negocio
+              {t('onboarding.step1Title')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Conecta tus redes para que la IA responda automáticamente en Facebook Messenger, Instagram y WhatsApp.
+              {t('onboarding.step1Desc')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               {metaToken && (
                 <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ Conectado a Meta</div>
-                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>Negocio: {profile.name}</div>}
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ {t('onboarding.connectedMeta')}</div>
+                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>{t('onboarding.business')}: {profile.name}</div>}
                 </div>
               )}
               <button 
@@ -1053,7 +1053,7 @@ function OnboardingContent() {
                 style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: '#1877F2', color: '#fff', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
               >
                 {isExtracting ? <div className="spinner-small" /> : <img src="https://www.facebook.com/favicon.ico" alt="Meta" style={{ width: 24, height: 24 }} />}
-                {isExtracting ? 'Conectando...' : metaToken ? 'Reconectar Meta' : 'Conectar Meta (Obligatorio)'}
+                {isExtracting ? t('onboarding.configuring').split(' ')[0] + '...' : metaToken ? t('onboarding.reconnectMeta') : t('onboarding.connectMeta')}
               </button>
 
               <button 
@@ -1062,7 +1062,7 @@ function OnboardingContent() {
                 className="btn-secondary"
                 style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
               >
-                Saltar por ahora (Solo pruebas)
+                {t('onboarding.skipTest')}
               </button>
             </div>
           </div>
@@ -1072,17 +1072,17 @@ function OnboardingContent() {
         {onboardingStep === 2 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Conectar Google Business
+              {t('onboarding.step2Title')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Para empezar a entrenar tu IA, podemos conectarnos a tu Perfil de Negocio de Google. Esto nos permitirá extraer tu ubicación, horarios y datos de contacto automáticamente.
+              {t('onboarding.step2Desc')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               {extractedProvider === 'Google' && (
                 <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'center' }}>
-                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ Conectado a Google Business</div>
-                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>Negocio: {profile.name}</div>}
+                  <div style={{ color: '#10b981', fontWeight: 600 }}>✅ {t('onboarding.connectedGoogle')}</div>
+                  {profile.name && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>{t('onboarding.business')}: {profile.name}</div>}
                 </div>
               )}
               <button 
@@ -1092,7 +1092,7 @@ function OnboardingContent() {
                 style={{ padding: '16px 24px', fontSize: '1.05rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', transition: 'transform 0.2s', transform: isExtracting ? 'scale(0.98)' : 'scale(1)' }}
               >
                 {isExtracting ? <div className="spinner-small" /> : <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 24, height: 24 }} />}
-                {isExtracting ? 'Conectando...' : extractedProvider === 'Google' ? 'Reconectar Google' : 'Conectar Google Business'}
+                {isExtracting ? t('onboarding.configuring').split(' ')[0] + '...' : extractedProvider === 'Google' ? t('onboarding.reconnectGoogle') : t('onboarding.connectGoogle')}
               </button>
               
               <button 
@@ -1101,7 +1101,7 @@ function OnboardingContent() {
                 className="btn-secondary"
                 style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
               >
-                Omitir este paso
+                {t('onboarding.skipGoogle')}
               </button>
             </div>
           </div>
@@ -1111,16 +1111,16 @@ function OnboardingContent() {
         {onboardingStep === 3 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Escanear Sitio Web
+              {t('onboarding.step3Title')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Ingresa el enlace de tu sitio web para que tu IA aprenda automáticamente sobre tus servicios, productos y reglas de negocio.
+              {t('onboarding.step3Desc')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
               {scannedUrls.length > 0 && (
                 <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '12px', textAlign: 'left' }}>
-                  <div style={{ color: '#10b981', fontWeight: 600, marginBottom: 8 }}>✅ Páginas Escaneadas ({scannedUrls.length}/5):</div>
+                  <div style={{ color: '#10b981', fontWeight: 600, marginBottom: 8 }}>✅ {t('onboarding.scannedPages')} ({scannedUrls.length}/5):</div>
                   <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                     {scannedUrls.map((s, idx) => (
                       <li key={idx} style={{ marginBottom: 8, wordBreak: 'break-all', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-primary)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
@@ -1137,29 +1137,30 @@ function OnboardingContent() {
                   </ul>
                 </div>
               )}
-              <input
-                type="text"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://www.tu-sitio.com/pagina"
-                style={{ width: '100%', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
-                disabled={scannedUrls.length >= 5}
-              />
-              <button 
-                onClick={handleScrapeUrl}
-                disabled={isExtracting || !websiteUrl || scannedUrls.length >= 5}
-                className="btn-primary" 
-                style={{ width: '100%', padding: '16px', fontSize: '1.05rem', backgroundColor: '#8b5cf6', color: '#fff', border: 'none', borderRadius: '12px' }}
-              >
-                {isExtracting ? (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-                    <div className="spinner-small" /> Escaneando...
-                  </div>
-                ) : scannedUrls.length >= 5 ? 'Límite Alcanzado' : scannedUrls.length > 0 ? '🌐 Agregar otro link' : '🌐 Escanear Sitio Web'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder={t('onboarding.websitePlaceholder')}
+                  style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', outline: 'none' }}
+                  disabled={isExtracting || scannedUrls.length >= 5}
+                />
+                <button 
+                  onClick={handleScrapeUrl}
+                  disabled={isExtracting || !websiteUrl || scannedUrls.length >= 5}
+                  className="btn-primary" 
+                  style={{ whiteSpace: 'nowrap', padding: '0 24px', backgroundColor: 'var(--accent-color)', color: '#fff', border: 'none', borderRadius: '12px' }}
+                >
+                  {isExtracting ? t('onboarding.scanning') : t('onboarding.scan')}
+                </button>
+              </div>
 
               <button 
-                onClick={() => setOnboardingStep(4)}
+                onClick={() => {
+                  if (scannedUrls.length === 0) handleNoWebsite();
+                  else setOnboardingStep(4);
+                }}
                 disabled={isExtracting}
                 className={scannedUrls.length > 0 ? "btn-primary" : "btn-secondary"}
                 style={scannedUrls.length > 0 
@@ -1167,7 +1168,7 @@ function OnboardingContent() {
                   : { padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }
                 }
               >
-                {scannedUrls.length > 0 ? 'Siguiente paso ➡️' : 'No tengo sitio web'}
+                {scannedUrls.length > 0 ? 'Siguiente paso ➡️' : t('onboarding.skipWebsite')}
               </button>
             </div>
           </div>
@@ -1177,10 +1178,10 @@ function OnboardingContent() {
         {onboardingStep === 4 && (
           <div className="glass-panel-premium slide-up" style={{ width: '100%', maxWidth: 500, padding: 48, textAlign: 'center' }}>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 16, background: "linear-gradient(to right, #3b82f6, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Subir Menú o Catálogo
+              {t('onboarding.step4Title')}
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', marginBottom: 40, lineHeight: 1.6 }}>
-              Sube tu menú, catálogo o manual en formato PDF o Imagen para que la IA sepa qué productos vendes.
+              {t('onboarding.step4Desc')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
@@ -1205,12 +1206,12 @@ function OnboardingContent() {
               >
                 {isExtracting ? (
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-                    <div className="spinner-small" /> Procesando...
+                    <div className="spinner-small" /> {t('onboarding.processing')}
                   </div>
                 ) : (
                   <>
                     <span style={{ fontSize: '2rem' }}>📸</span>
-                    Subir Menú / PDF
+                    {t('onboarding.uploadFile')}
                   </>
                 )}
               </button>
@@ -1221,7 +1222,7 @@ function OnboardingContent() {
                 className="btn-secondary"
                 style={{ padding: '12px 24px', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, backgroundColor: 'transparent', color: 'var(--text-secondary)', border: 'none', marginTop: 16 }}
               >
-                No tengo menú / Omitir
+                {t('onboarding.skipUpload')}
               </button>
             </div>
           </div>
@@ -1247,10 +1248,10 @@ function OnboardingContent() {
           <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)', backdropFilter: 'blur(10px)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h1 style={{ fontSize: '1.4rem', fontWeight: 600, background: "linear-gradient(to right, var(--accent-color), #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                Asistente de Configuración
+                {t('onboarding.step5AssistantTitle')}
               </h1>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
-                Responde mis preguntas para entrenar a tu IA.
+                {t('onboarding.step5AssistantDesc')}
               </p>
             </div>
             {hasStarted && (
@@ -1258,7 +1259,7 @@ function OnboardingContent() {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}
               >
-                {isProfileOpen ? '▶ Ocultar Perfil' : '◀ Ver Perfil'}
+                {isProfileOpen ? `▶ ${t('onboarding.hideProfile')}` : `◀ ${t('onboarding.showProfile')}`}
               </button>
             )}
           </div>
@@ -1391,8 +1392,8 @@ function OnboardingContent() {
           }}
         >
           <div style={{ paddingBottom: 24, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>📄 Perfil en Construcción</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Charlo actualiza esto mientras conversan.</p>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)' }}>📄 {t('onboarding.profileBuilding')}</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>{t('onboarding.profileBuildingDesc')}</p>
           </div>
 
           <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', flex: 1, paddingRight: 8 }}>
@@ -1400,7 +1401,7 @@ function OnboardingContent() {
             {/* Canales Conectados */}
             <div style={{ padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 12 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Canales Conectados
+                {t('onboarding.connectedChannels')}
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {metaToken && (
@@ -1465,8 +1466,8 @@ function OnboardingContent() {
 
             {/* Name Input */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>Nombre del Negocio</label>
-              <input type="text" style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }} value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} placeholder="Tu Negocio" />
+              <label style={{ display: 'block', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 6, letterSpacing: '0.5px' }}>{t('onboarding.businessName')}</label>
+              <input type="text" style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none' }} value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} placeholder={t('onboarding.businessNamePlaceholder')} />
             </div>
 
             {/* Documentos */}

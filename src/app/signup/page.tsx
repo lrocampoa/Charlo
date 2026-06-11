@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, getAdditionalUserInfo, sendEmailVerification, fetchSignInMethodsForEmail, linkWithCredential, AuthCredential } from 'firebase/auth';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo, sendEmailVerification, fetchSignInMethodsForEmail, linkWithCredential, AuthCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -77,9 +77,7 @@ export default function Signup() {
       if (err.code === 'auth/account-exists-with-different-credential') {
         const email = err.customData?.email;
         let pendingCred = null;
-        if (provider.providerId === 'facebook.com') {
-            pendingCred = FacebookAuthProvider.credentialFromError(err);
-        } else if (provider.providerId === 'google.com') {
+        if (provider.providerId === 'google.com') {
             pendingCred = GoogleAuthProvider.credentialFromError(err);
         }
         
@@ -107,7 +105,6 @@ export default function Signup() {
     try {
         let providerToLink: any = null;
         if (method === 'google.com') providerToLink = new GoogleAuthProvider();
-        else if (method === 'facebook.com') providerToLink = new FacebookAuthProvider();
         
         if (providerToLink) {
             const result = await signInWithPopup(auth, providerToLink);
@@ -183,24 +180,15 @@ export default function Signup() {
             {isSeeding ? t('signup.settingUpWorkspace') : isLoading ? t('signup.signingUp') : t('signup.signUp')}
           </button>
           
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <div style={{ marginTop: 8 }}>
             <button 
               type="button" 
               disabled={isLoading || isSeeding}
               onClick={() => handleProviderSignIn(new GoogleAuthProvider())} 
               className="btn-secondary" 
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}
+              style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 16, height: 16 }} /> Google
-            </button>
-            <button 
-              type="button" 
-              disabled={isLoading || isSeeding}
-              onClick={() => handleProviderSignIn(new FacebookAuthProvider())} 
-              className="btn-secondary" 
-              style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}
-            >
-              <img src="https://www.facebook.com/favicon.ico" alt="Facebook" style={{ width: 16, height: 16 }} /> Facebook
             </button>
           </div>
         </form>

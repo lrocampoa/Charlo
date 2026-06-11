@@ -17,7 +17,6 @@ export default function AccountPage() {
 
   const providers = user?.providerData || [];
   const hasGoogle = providers.some(p => p.providerId === 'google.com');
-  const hasFacebook = providers.some(p => p.providerId === 'facebook.com');
   const hasPassword = providers.some(p => p.providerId === 'password');
 
   const handleLinkGoogle = async () => {
@@ -36,21 +35,6 @@ export default function AccountPage() {
     }
   };
 
-  const handleLinkFacebook = async () => {
-    if (!user) return;
-    setIsLinking(true);
-    try {
-      const provider = new FacebookAuthProvider();
-      await linkWithPopup(user, provider);
-      alert('Cuenta de Meta (Facebook) vinculada con éxito.');
-      window.location.reload();
-    } catch (e: any) {
-      console.error(e);
-      alert('Error al vincular cuenta: ' + e.message);
-    } finally {
-      setIsLinking(false);
-    }
-  };
 
   const getLimitForTier = (tier?: string) => {
     switch(tier) {
@@ -151,30 +135,6 @@ export default function AccountPage() {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(0,0,0,0.1)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: '1.2rem', color: '#1877F2' }}>📘</span>
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Facebook / Meta</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    {hasFacebook ? 'Conectado' : 'No conectado'}
-                  </div>
-                </div>
-              </div>
-              {!hasFacebook && (
-                <button 
-                  onClick={handleLinkFacebook} 
-                  disabled={isLinking}
-                  className="btn-secondary" 
-                  style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                >
-                  {isLinking ? '...' : 'Vincular'}
-                </button>
-              )}
-              {hasFacebook && (
-                <span style={{ color: '#10b981', fontSize: '0.9rem', fontWeight: 600 }}>✅</span>
-              )}
-            </div>
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(0,0,0,0.1)', borderRadius: 'var(--border-radius-sm)', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
