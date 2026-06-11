@@ -126,6 +126,16 @@ export default function Sidebar() {
           }}>
             ⚙️ {t('sidebar.settings')}
           </Link>
+          <Link href="/dashboard/account" style={{
+              padding: '12px 16px',
+              borderRadius: 'var(--border-radius-sm)',
+              backgroundColor: pathname === '/dashboard/account' ? 'var(--bg-secondary)' : 'transparent',
+              color: pathname === '/dashboard/account' ? 'var(--accent-color)' : 'var(--text-secondary)',
+              fontWeight: pathname === '/dashboard/account' ? 600 : 400,
+              transition: 'all var(--transition-fast)'
+          }}>
+            👤 {t('sidebar.myAccount')}
+          </Link>
           {isAdmin && (
             <>
               <Link href="/admin" style={{

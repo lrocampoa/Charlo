@@ -9,6 +9,7 @@ export const en = {
     agents: "Agent Config",
     simulator: "AI Simulator (Test)",
     settings: "Settings",
+    myAccount: "My Account",
     reservations: "Reservations",
     signOut: "Sign Out",
     addBusiness: "Add Business",

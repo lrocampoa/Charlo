@@ -9,6 +9,7 @@ export const es = {
     agents: "Configuración de Agentes",
     simulator: "Simulador de IA",
     settings: "Ajustes",
+    myAccount: "Mi Cuenta",
     reservations: "Reservas",
     signOut: "Cerrar Sesión",
     addBusiness: "Agregar Empresa",

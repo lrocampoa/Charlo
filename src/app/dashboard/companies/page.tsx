@@ -5,57 +5,25 @@ import { useRouter } from 'next/navigation';
 import { useCompany, Company } from '@/context/CompanyContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { TeamManagement } from '@/components/TeamManagement';
 
 export default function CompaniesPage() {
-  const { companies, refreshCompanies, isLoading } = useCompany();
+  const { companies, refreshCompanies, isLoading, setSelectedCompanyId } = useCompany();
   const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  
-  const [formData, setFormData] = useState<Partial<Company>>({});
-  const [isSaving, setIsSaving] = useState(false);
 
   const [companyToDelete, setCompanyToDelete] = useState<Company | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [inviteModalCompany, setInviteModalCompany] = useState<Company | null>(null);
-  const [inviteLink, setInviteLink] = useState('');
-  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
-
-  const handleOpenModal = (company?: Company) => {
-    if (company) {
-      setEditingCompany(company);
-      setFormData(company);
-    } else {
-      setEditingCompany(null);
-      setFormData({ name: '', knowledgeBase: '', productsCatalog: '', calendlyLink: '', persona: '', whatsappPhoneNumberId: '' });
-    }
-    setIsModalOpen(true);
+  const handleEditConfig = (company: Company) => {
+    setSelectedCompanyId(company.id);
+    router.push('/dashboard/settings?tab=general');
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    const url = editingCompany ? `/api/companies/${editingCompany.id}` : '/api/companies';
-    const method = editingCompany ? 'PUT' : 'POST';
-    
-    const token = await user?.getIdToken();
-    await fetch(url, {
-      method,
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    await refreshCompanies();
-    setIsSaving(false);
-    setIsModalOpen(false);
+  const handleInviteTeam = (company: Company) => {
+    setSelectedCompanyId(company.id);
+    router.push('/dashboard/settings?tab=team');
   };
 
   const confirmDeleteModal = (company: Company) => {
@@ -84,31 +52,6 @@ export default function CompaniesPage() {
     } finally {
       setIsDeleting(false);
       setCompanyToDelete(null);
-    }
-  };
-
-  const handleGenerateInvite = async (company: Company) => {
-    setInviteModalCompany(company);
-    setInviteLink('');
-    setIsGeneratingInvite(true);
-    try {
-      const token = await user?.getIdToken();
-      const res = await fetch(`/api/companies/${company.id}/invites`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setInviteLink(`${window.location.origin}/invite/${data.id}`);
-      } else {
-        alert("Failed to generate invite: " + data.error);
-        setInviteModalCompany(null);
-      }
-    } catch (e) {
-      console.error(e);
-      setInviteModalCompany(null);
-    } finally {
-      setIsGeneratingInvite(false);
     }
   };
 
@@ -179,8 +122,8 @@ export default function CompaniesPage() {
                 <button className="btn-primary" style={{ width: '100%', padding: '12px', fontWeight: 600 }} onClick={() => router.push(`/onboarding?draftId=${c.id}`)}>Continuar Configuración ➔</button>
               ) : (
                 <div style={{ display: 'flex', gap: 12 }}>
-                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleOpenModal(c)}>{t('companies.editConfig')}</button>
-                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleGenerateInvite(c)}>Invitar Equipo</button>
+                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleEditConfig(c)}>{t('companies.editConfig')}</button>
+                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleInviteTeam(c)}>Invitar Equipo</button>
                 </div>
               )}
             </div>
@@ -223,63 +166,6 @@ export default function CompaniesPage() {
         )}
       </div>
 
-      {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
-          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 700, padding: 32, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 24, fontWeight: 600 }}>{t('companies.editTitle')}</h3>
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.name')}</label>
-                <input type="text" required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }} />
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.whatsappId')}</label>
-                  <input type="text" value={formData.whatsappPhoneNumberId || ''} onChange={e => setFormData({...formData, whatsappPhoneNumberId: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.calendlyLink')}</label>
-                  <input type="url" value={formData.calendlyLink || ''} onChange={e => setFormData({...formData, calendlyLink: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }} />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.persona')}</label>
-                <textarea rows={2} required value={formData.persona || ''} onChange={e => setFormData({...formData, persona: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }} />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.productsCatalog')}</label>
-                <textarea rows={4} value={formData.productsCatalog || ''} onChange={e => setFormData({...formData, productsCatalog: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none', fontFamily: 'monospace' }} />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('companies.knowledgeBase')}</label>
-                <textarea rows={5} value={formData.knowledgeBase || ''} onChange={e => setFormData({...formData, knowledgeBase: e.target.value})} style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }} />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>{t('companies.cancel')}</button>
-                <button type="submit" disabled={isSaving} className="btn-primary">
-                  {isSaving ? t('companies.saving') : t('companies.save')}
-                </button>
-              </div>
-            </form>
-
-            {editingCompany && (
-              <div style={{ marginTop: 32, paddingTop: 32, borderTop: '1px solid var(--border-color)' }}>
-                <h4 style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>👥</span> Team Access
-                </h4>
-                <TeamManagement companyId={editingCompany.id} ownerId={editingCompany.ownerId || ''} />
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {companyToDelete && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
           <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32 }}>
@@ -310,43 +196,6 @@ export default function CompaniesPage() {
               >
                 {isDeleting ? 'Borrando...' : 'Confirmar Borrado'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {inviteModalCompany && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
-          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32 }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>Invite Team Members</h3>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
-              Share this link with anyone you want to join <strong>{inviteModalCompany.name || 'this business'}</strong>. They will be granted member access.
-            </p>
-            
-            {isGeneratingInvite ? (
-              <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Generating link...</div>
-            ) : (
-              <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={inviteLink}
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none' }}
-                />
-                <button 
-                  className="btn-primary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(inviteLink);
-                    alert("Copied to clipboard!");
-                  }}
-                >
-                  Copy Link
-                </button>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" className="btn-secondary" onClick={() => setInviteModalCompany(null)}>Done</button>
             </div>
           </div>
         </div>
