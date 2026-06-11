@@ -824,7 +824,7 @@ export default function CampaignsPage() {
                 {feedbackModal.type === 'success' ? '✓' : '⚠️'}
               </div>
               <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem', fontWeight: 600 }}>
-                {feedbackModal.type === 'success' ? 'Éxito' : 'Error'}
+                {feedbackModal.type === 'success' ? t('common.success') : t('common.error')}
               </h3>
             </div>
             <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: '1.5' }}>
@@ -835,7 +835,7 @@ export default function CampaignsPage() {
                 onClick={() => setFeedbackModal({ ...feedbackModal, open: false })}
                 style={{ padding: '8px 16px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--border-radius-sm)', cursor: 'pointer', fontWeight: 500 }}
               >
-                Aceptar
+                {t('common.accept')}
               </button>
             </div>
           </div>

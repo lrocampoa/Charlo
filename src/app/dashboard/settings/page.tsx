@@ -150,7 +150,7 @@ function SettingsContent() {
         console.log('User cancelled login or did not fully authorize.');
       }
     }, {
-      scope: 'whatsapp_business_management,whatsapp_business_messaging,pages_messaging,pages_read_engagement,pages_show_list,instagram_manage_messages,instagram_basic',
+      scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging,pages_messaging,pages_read_engagement,pages_show_list,instagram_manage_messages,instagram_basic',
       extras: { feature: 'whatsapp_embedded_signup', version: 2 },
       return_scopes: true
     });

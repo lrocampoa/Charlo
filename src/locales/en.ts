@@ -1,4 +1,9 @@
 export const en = {
+  common: {
+    success: "Success",
+    error: "Error",
+    accept: "Accept / OK"
+  },
   // Sidebar
   sidebar: {
     overview: "Overview",
