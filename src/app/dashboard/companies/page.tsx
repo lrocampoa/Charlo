@@ -93,12 +93,12 @@ export default function CompaniesPage() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 {isDraft && (
                   <div style={{ background: 'rgba(148, 163, 184, 0.15)', color: 'var(--text-secondary)', padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.05em', border: '1px solid rgba(148, 163, 184, 0.3)' }}>
-                    BORRADOR
+                    {t('companies.draft')}
                   </div>
                 )}
                 {c.id.startsWith('demo_') && (
                   <div style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '6px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
-                    MOCKUP
+                    {t('companies.mockup')}
                   </div>
                 )}
               </div>
@@ -119,11 +119,11 @@ export default function CompaniesPage() {
             {/* Actions */}
             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {isDraft ? (
-                <button className="btn-primary" style={{ width: '100%', padding: '12px', fontWeight: 600 }} onClick={() => router.push(`/onboarding?draftId=${c.id}`)}>Continuar Configuración ➔</button>
+                <button className="btn-primary" style={{ width: '100%', padding: '12px', fontWeight: 600 }} onClick={() => router.push(`/onboarding?draftId=${c.id}`)}>{t('companies.continueSetup')}</button>
               ) : (
                 <div style={{ display: 'flex', gap: 12 }}>
                   <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleEditConfig(c)}>{t('companies.editConfig')}</button>
-                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleInviteTeam(c)}>Invitar Equipo</button>
+                  <button className="btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => handleInviteTeam(c)}>{t('companies.inviteTeam')}</button>
                 </div>
               )}
             </div>
@@ -151,7 +151,7 @@ export default function CompaniesPage() {
             onMouseOut={(e) => (e.currentTarget.style.opacity = '0.8', e.currentTarget.style.borderColor = 'var(--border-color)')}
           >
             <div style={{ fontSize: '3rem', marginBottom: 8, color: 'var(--text-secondary)' }}>+</div>
-            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 600 }}>Crear otro negocio</h3>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', fontWeight: 600 }}>{t('companies.createAnotherBusiness')}</h3>
           </div>
         )}
         {companies.length === 0 && (
@@ -169,32 +169,32 @@ export default function CompaniesPage() {
       {companyToDelete && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
           <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 500, padding: 32 }}>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600, color: '#ef4444' }}>Borrar Negocio</h3>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600, color: '#ef4444' }}>{t('companies.deleteBusiness')}</h3>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
-              Esta acción es permanente y no se puede deshacer. Para confirmar, por favor escribe la siguiente frase:
+              {t('companies.deleteWarning')}
             </p>
             <div style={{ padding: '12px 16px', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 8, fontFamily: 'monospace', marginBottom: 16, userSelect: 'all' }}>
-              estoy seguro de borrar {companyToDelete.name}
+              {t('companies.iAmSureToDelete')} {companyToDelete.name}
             </div>
             
             <input 
               type="text" 
-              placeholder="Escribe la frase aquí..."
+              placeholder={t('companies.typePhraseHere')}
               value={deleteConfirmText}
               onChange={e => setDeleteConfirmText(e.target.value)}
               style={{ width: '100%', padding: '12px 16px', borderRadius: 'var(--border-radius-sm)', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: '#fff', outline: 'none', marginBottom: 24 }}
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button type="button" className="btn-secondary" onClick={() => setCompanyToDelete(null)}>Cancelar</button>
+              <button type="button" className="btn-secondary" onClick={() => setCompanyToDelete(null)}>{t('companies.cancel')}</button>
               <button 
                 type="button" 
                 className="btn-primary" 
                 style={{ backgroundColor: '#ef4444' }}
-                disabled={isDeleting || deleteConfirmText !== `estoy seguro de borrar ${companyToDelete.name}`}
+                disabled={isDeleting || deleteConfirmText !== `${t('companies.iAmSureToDelete')} ${companyToDelete.name}`}
                 onClick={executeDelete}
               >
-                {isDeleting ? 'Borrando...' : 'Confirmar Borrado'}
+                {isDeleting ? t('companies.deleting') : t('companies.confirmDeletion')}
               </button>
             </div>
           </div>

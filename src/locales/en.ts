@@ -130,6 +130,17 @@ export const en = {
     save: "Save Configuration",
     saving: "Saving...",
     confirmDelete: "Are you sure you want to delete this business?",
+    draft: "DRAFT",
+    mockup: "MOCKUP",
+    continueSetup: "Continue Setup ➔",
+    inviteTeam: "Invite Team",
+    createAnotherBusiness: "Create another business",
+    deleteBusiness: "Delete Business",
+    deleteWarning: "This action is permanent and cannot be undone. To confirm, please type the following phrase:",
+    iAmSureToDelete: "i am sure to delete",
+    typePhraseHere: "Type the phrase here...",
+    deleting: "Deleting...",
+    confirmDeletion: "Confirm Deletion",
   },
 
   // Customers (CRM)

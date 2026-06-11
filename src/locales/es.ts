@@ -130,6 +130,17 @@ export const es = {
     save: "Guardar Configuración",
     saving: "Guardando...",
     confirmDelete: "¿Estás seguro de que deseas eliminar esta empresa?",
+    draft: "BORRADOR",
+    mockup: "MOCKUP",
+    continueSetup: "Continuar Configuración ➔",
+    inviteTeam: "Invitar Equipo",
+    createAnotherBusiness: "Crear otro negocio",
+    deleteBusiness: "Borrar Negocio",
+    deleteWarning: "Esta acción es permanente y no se puede deshacer. Para confirmar, por favor escribe la siguiente frase:",
+    iAmSureToDelete: "estoy seguro de borrar",
+    typePhraseHere: "Escribe la frase aquí...",
+    deleting: "Borrando...",
+    confirmDeletion: "Confirmar Borrado",
   },
 
   // Customers (CRM)
