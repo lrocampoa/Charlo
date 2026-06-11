@@ -215,6 +215,10 @@ export const es = {
     errorInvalidCredential: "El correo o contraseña es incorrecto. Por favor, inténtalo de nuevo.",
     errorGeneric: "No se pudo iniciar sesión. Por favor, inténtalo de nuevo.",
     providerError: "No se pudo iniciar sesión con este proveedor.",
+    errorEmailCollision: "Ya existe una cuenta con este correo. Por favor, inicia sesión usando tu método original (ej. Google o Correo).",
+    linkModalTitle: "Vincular Cuentas",
+    linkModalDesc: "Ya existe una cuenta con este correo. Para vincular tu nueva cuenta, por favor inicia sesión usando tu método original:",
+    linkModalCancel: "Cancelar",
     forgotPassword: "¿Olvidaste tu contraseña?",
     resetPassword: "Restablecer Contraseña",
     resetInstructions: "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
@@ -236,6 +240,10 @@ export const es = {
     signIn: "Inicia Sesión",
     errorPasswordMatch: "Las contraseñas no coinciden.",
     errorGeneric: "No se pudo crear la cuenta. Inténtalo de nuevo.",
+    errorEmailCollision: "Ya existe una cuenta con este correo. Por favor, inicia sesión usando tu método original (ej. Google o Correo).",
+    linkModalTitle: "Vincular Cuentas",
+    linkModalDesc: "Ya existe una cuenta con este correo. Para vincular tu nueva cuenta, por favor inicia sesión usando tu método original:",
+    linkModalCancel: "Cancelar",
     settingUpWorkspace: "Configurando tu espacio de trabajo..."
   },
 

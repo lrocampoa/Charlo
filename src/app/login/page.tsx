@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, GoogleAuthProvider, FacebookAuthProvider, signInWithPopup, sendPasswordResetEmail, fetchSignInMethodsForEmail, linkWithCredential, AuthCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +19,9 @@ export default function Login() {
   const [resetMessage, setResetMessage] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Account Linking State
+  const [linkModalData, setLinkModalData] = useState<{email: string, methods: string[], pendingCred: AuthCredential} | null>(null);
 
   const router = useRouter();
   const { t, language, setLanguage } = useLanguage();
@@ -48,9 +51,53 @@ export default function Login() {
       await signInWithPopup(auth, provider);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(t('login.providerError'));
+      if (err.code === 'auth/account-exists-with-different-credential') {
+        const email = err.customData?.email;
+        let pendingCred = null;
+        if (provider.providerId === 'facebook.com') {
+            pendingCred = FacebookAuthProvider.credentialFromError(err);
+        } else if (provider.providerId === 'google.com') {
+            pendingCred = GoogleAuthProvider.credentialFromError(err);
+        }
+        
+        if (email && pendingCred) {
+          fetchSignInMethodsForEmail(auth, email).then(methods => {
+              setLinkModalData({ email, methods, pendingCred: pendingCred as AuthCredential });
+          }).catch(() => {
+              setError(t('login.errorEmailCollision'));
+          });
+        } else {
+          setError(t('login.errorEmailCollision'));
+        }
+      } else {
+        setError(t('login.providerError'));
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLinkAccount = async (method: string) => {
+    if (!linkModalData) return;
+    setError('');
+    setIsLoading(true);
+    try {
+        let providerToLink: any = null;
+        if (method === 'google.com') providerToLink = new GoogleAuthProvider();
+        else if (method === 'facebook.com') providerToLink = new FacebookAuthProvider();
+        
+        if (providerToLink) {
+            const result = await signInWithPopup(auth, providerToLink);
+            await linkWithCredential(result.user, linkModalData.pendingCred);
+            router.push('/dashboard');
+        } else if (method === 'password') {
+            setError(t('login.errorEmailCollision'));
+        }
+    } catch (err) {
+        setError(t('login.providerError'));
+    } finally {
+        setIsLoading(false);
+        setLinkModalData(null);
     }
   };
 
@@ -183,6 +230,36 @@ export default function Login() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Account Linking Modal */}
+      {linkModalData && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 24 }}>
+          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: 400, padding: 32 }}>
+            <h3 style={{ fontSize: '1.5rem', marginBottom: 16, fontWeight: 600 }}>{t('login.linkModalTitle')}</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.95rem' }}>
+                {t('login.linkModalDesc')} <br/>
+                <strong>{linkModalData.email}</strong>
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {linkModalData.methods.includes('google.com') && (
+                    <button onClick={() => handleLinkAccount('google.com')} className="btn-secondary" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '10px' }}>
+                        <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 16, height: 16 }} /> Google
+                    </button>
+                )}
+                {linkModalData.methods.includes('password') && (
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                        Por favor cierra esto e inicia sesión con tu correo y contraseña para vincular las cuentas automáticamente.
+                    </p>
+                )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button type="button" className="btn-secondary" onClick={() => setLinkModalData(null)}>{t('login.linkModalCancel')}</button>
+            </div>
           </div>
         </div>
       )}

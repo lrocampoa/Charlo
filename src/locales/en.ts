@@ -215,6 +215,10 @@ export const en = {
     errorInvalidCredential: "The email or password you entered is incorrect. Please try again.",
     errorGeneric: "Failed to login. Please try again.",
     providerError: "Failed to login with provider.",
+    errorEmailCollision: "An account already exists with the same email. Please sign in using your original method (e.g., Google or Email).",
+    linkModalTitle: "Link Accounts",
+    linkModalDesc: "You already have an account with this email. To link your new account, please sign in using your original method:",
+    linkModalCancel: "Cancel",
     forgotPassword: "Forgot password?",
     resetPassword: "Reset Password",
     resetInstructions: "Enter your email address and we'll send you a link to reset your password.",
@@ -236,6 +240,10 @@ export const en = {
     signIn: "Sign In",
     errorPasswordMatch: "Passwords do not match.",
     errorGeneric: "Failed to create account. Please try again.",
+    errorEmailCollision: "An account already exists with the same email. Please sign in using your original method (e.g., Google or Email).",
+    linkModalTitle: "Link Accounts",
+    linkModalDesc: "You already have an account with this email. To link your new account, please sign in using your original method:",
+    linkModalCancel: "Cancel",
     settingUpWorkspace: "Setting up your workspace..."
   },
 

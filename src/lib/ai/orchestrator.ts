@@ -33,6 +33,7 @@ export async function processUserMessage(
     subscription?: { tier: string, currentPeriodEnd: number };
     usage?: { aiMessagesCurrentMonth: number };
     productsList?: any[];
+    advancedSOPs?: string;
   },
   imagePart?: { data: string, mimeType: string } | null,
   platform: "whatsapp" | "web" | "messenger" | "instagram" = "whatsapp"
