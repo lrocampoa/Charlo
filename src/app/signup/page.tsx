@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CharloLogo } from '@/components/CharloLogo';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext'; // ADDED
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -21,6 +22,14 @@ export default function Signup() {
   
   const router = useRouter();
   const { t, language, setLanguage } = useLanguage();
+  const { user, loading } = useAuth(); // ADDED
+
+  // ADDED: Auto-redirect to dashboard if already logged in
+  React.useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
